@@ -11,12 +11,14 @@ _Last updated: 2026-10-10. Only items marked ✅ were actually run/verified; see
 - ✅ Phase 3: Express API (all endpoints in docs/API.md), Firestore/Storage rules, indexes, SECURITY + COST_CONTROL docs
 - ✅ Phase 4 client: activity details + join/leave/cancel, host participant management, create flow (map picker, preview, cover upload), Discover (pagination, debounced search, filters), optional foreground location
 
+- ✅ Phase 5/6 client: Mingle Community (Explore app-bar icon, full-screen route), activity group chat, Chats tab, unread dot, `GET /users/me/activities`; UI restyled to the indigo mockup; Explore loads by viewport and focuses newly posted plans
+
 ## In progress
-- Phase 5 (community chat) is next
+- Nothing running
 
 ## Remaining
 - Phase 4 leftovers: viewport-debounced map loading, profile hosted/joined/past lists, no widget tests yet for detail/create/discover screens
-- Phase 5: Mingle Community (Explore app-bar icon + unread badge, full-screen route, listener window + pagination, report/block UI)
+- Chat verification: send/receive/report not exercised against live Firestore; real 429 countdown untested end-to-end
 - Phase 6: activity chat, FCM (channels, permission, preferences UI), reminders
 - Phase 7: blocked-users screen, report flows, React admin dashboard
 - Phase 8: offline/poor-network QA, Android release signing, iOS release doc, launch checklist
@@ -25,7 +27,7 @@ _Last updated: 2026-10-10. Only items marked ✅ were actually run/verified; see
 - Profile screen sections: hosted/joined/past activities (needs Phase 4)
 
 ## Known issues / limitations
-- Tabs Discover, Create, Chats and several routes show an honest "coming soon" screen until their phase lands.
+- Firestore rules/indexes deployed to nomad-a1150 (2026-10-10). Admin dashboard, FCM push, App Check, Crashlytics activation not done.
 - Privacy policy and Terms are placeholders and **must** be written/reviewed before launch.
 - Firebase emulator needs JDK 21+ (machine has 17).
 - Backend gaps: App Check not wired, no chat archival job, `q` search is substring-only, rate limiter for IP/user is per-instance (chat limiter is Firestore-backed).
@@ -42,10 +44,10 @@ _Last updated: 2026-10-10. Only items marked ✅ were actually run/verified; see
 | Suite | Command | Result |
 |---|---|---|
 | Flutter static analysis | `flutter analyze` | ✅ no issues |
-| Flutter tests | `flutter test` | ✅ 68 passed |
+| Flutter tests | `flutter test` | ✅ 129 passed |
 | Flutter web build | `flutter build web --dart-define=USE_EMULATOR=true` | ✅ built |
 | Android debug build | `flutter build apk --debug` | ✅ built |
-| Backend unit/integration (in-memory Firestore fake) | `cd backend && npm test` | ✅ 67 passed (re-run by me) |
+| Backend unit/integration (in-memory Firestore fake) | `cd backend && npm test` | ✅ 67 passed (re-run by me); 70 per chat subagent after new endpoint, not re-run by me |
 | Backend lint | `npm run lint` | ✅ clean (re-run by me) |
 | Firestore/Storage rules (emulator) | `cd firebase && npm test` | 24 passed per subagent; NOT re-run by me. Needs JDK 21+ |
 | Admin SDK vs emulators smoke | `cd backend && npm run test:emulator` | 1 passed per subagent; NOT re-run by me |

@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
@@ -22,7 +21,10 @@ import '../features/profile/presentation/edit_profile_screen.dart';
 import '../features/profile/presentation/profile_screen.dart';
 import '../features/settings/notifications_screen.dart';
 import '../features/settings/settings_screens.dart';
-import '../features/shell/coming_soon_screen.dart';
+import '../features/chat/presentation/activity_chat_screen.dart';
+import '../features/chat/presentation/chats_list_screen.dart';
+import '../features/chat/presentation/community_chat_button.dart';
+import '../features/chat/presentation/community_chat_screen.dart';
 import '../features/shell/main_shell.dart';
 import '../features/shell/status_screens.dart';
 
@@ -138,10 +140,19 @@ GoRouter buildRouter(
         builder: (_, _) => const BlockedUsersScreen(),
       ),
       GoRoute(
+        path: '/community',
+        builder: (_, _) => const CommunityChatScreen(),
+      ),
+      GoRoute(
         path: '/activity/:id',
         builder: (_, s) =>
             ActivityDetailScreen(activityId: s.pathParameters['id']!),
         routes: [
+          GoRoute(
+            path: 'chat',
+            builder: (_, s) =>
+                ActivityChatScreen(activityId: s.pathParameters['id']!),
+          ),
           GoRoute(
             path: 'members',
             builder: (_, s) =>
@@ -164,7 +175,8 @@ GoRouter buildRouter(
             routes: [
               GoRoute(
                 path: '/explore',
-                builder: (_, _) => const ExploreScreen(),
+                builder: (_, _) =>
+                    const ExploreScreen(communityAction: CommunityChatButton()),
               ),
             ],
           ),
@@ -188,11 +200,7 @@ GoRouter buildRouter(
             routes: [
               GoRoute(
                 path: '/chats',
-                builder: (_, _) => const ComingSoonScreen(
-                  title: 'Chats',
-                  icon: Icons.chat_bubble_outline,
-                  message: 'Activity group chats arrive in Phase 6.',
-                ),
+                builder: (_, _) => const ChatsListScreen(),
               ),
             ],
           ),

@@ -167,10 +167,10 @@ void main() {
   testWidgets(
     'send: clears composer; failure shows failed bubble + error; tap retries',
     (t) async {
-      await pumpView(t, messages: [msg('m1', 'bob', 'hi')]);
+      final c = await pumpView(t, messages: [msg('m1', 'bob', 'hi')]);
       repo.onSend = (_, _) async => throw rateLimited(30);
       await t.enterText(find.byType(TextField), 'my draft');
-    await t.pump();
+      await t.pump();
       await t.tap(find.byTooltip('Send message'));
       await t.pump();
       await t.pump();
@@ -179,12 +179,9 @@ void main() {
       expect(find.byKey(const ValueKey('send-error')), findsOneWidget);
       expect(find.textContaining('30s'), findsWidgets);
       expect(find.byKey(const ValueKey('composer-disabled')), findsOneWidget);
-      repo.onSend = null;
-      await t.pump(
-        const Duration(seconds: 31),
-      ); // cooldown ticks down (real timers in fake clock)
-      await t.pump();
-      // cooldown uses wall clock: not elapsed in fake-time tests, so drop it via discard path
+      // Stop the cooldown ticker before the test ends.
+      await t.pumpWidget(const SizedBox());
+      c.dispose();
     },
   );
 

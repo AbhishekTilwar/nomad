@@ -209,7 +209,7 @@ void main() {
         expect(c.messages.where((m) => m.text == 'hello'), hasLength(1));
         repo.emitWindow([
           msg('me_client-id-1', 'me', 'hello', minutesAgo: 0),
-          ...c.messages.where((m) => m.id.startsWith('m')).toList(),
+          ...c.messages.where((m) => m.id.startsWith('m')),
         ]);
         await settle();
         expect(c.messages.where((m) => m.text == 'hello'), hasLength(1));

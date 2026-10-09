@@ -6,6 +6,7 @@ import 'package:nomad_mingle/features/auth/data/auth_repository.dart';
 import 'package:nomad_mingle/features/profile/data/user_profile.dart';
 
 import '../support/fakes.dart';
+import 'chat/chat_test_support.dart' show FakeChatRepository;
 
 const _user = AuthUser(
   uid: 'u1',
@@ -37,6 +38,7 @@ void main() {
     addTearDown(t.view.reset);
     await t.pumpWidget(
       NomadMingleApp(
+        chat: FakeChatRepository(),
         auth: FakeAuthRepository(),
         profiles: FakeProfileRepository(),
         activities: FakeActivityRepository(),
@@ -64,6 +66,7 @@ void main() {
         );
       await t.pumpWidget(
         NomadMingleApp(
+          chat: FakeChatRepository(),
           auth: auth,
           profiles: FakeProfileRepository(profile: _profile),
           activities: FakeActivityRepository([sampleActivity()]),
@@ -99,6 +102,7 @@ void main() {
     final auth = FakeAuthRepository(_user);
     await t.pumpWidget(
       NomadMingleApp(
+        chat: FakeChatRepository(),
         auth: auth,
         profiles: FakeProfileRepository(),
         activities: FakeActivityRepository(),
@@ -120,6 +124,7 @@ void main() {
     (t) async {
       await t.pumpWidget(
         NomadMingleApp(
+          chat: FakeChatRepository(),
           auth: FakeAuthRepository(_user),
           profiles: FakeProfileRepository(profile: _profile),
           activities: FakeActivityRepository([sampleActivity()]),
@@ -138,6 +143,7 @@ void main() {
   testWidgets('Explore: map/list toggle, list shows activities', (t) async {
     await t.pumpWidget(
       NomadMingleApp(
+        chat: FakeChatRepository(),
         auth: FakeAuthRepository(_user),
         profiles: FakeProfileRepository(profile: _profile),
         activities: FakeActivityRepository([
@@ -165,6 +171,7 @@ void main() {
       ..error = const AppException('No internet connection.', retryable: true);
     await t.pumpWidget(
       NomadMingleApp(
+        chat: FakeChatRepository(),
         auth: FakeAuthRepository(_user),
         profiles: FakeProfileRepository(profile: _profile),
         activities: repo,
@@ -188,6 +195,7 @@ void main() {
     addTearDown(t.view.reset);
     await t.pumpWidget(
       NomadMingleApp(
+        chat: FakeChatRepository(),
         auth: FakeAuthRepository(_user),
         profiles: FakeProfileRepository(profile: _profile),
         activities: FakeActivityRepository(),

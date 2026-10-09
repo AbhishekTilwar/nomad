@@ -12,6 +12,11 @@ import '../features/safety/data/safety_repository.dart';
 import '../features/auth/data/auth_repository.dart';
 import '../features/profile/data/profile_repository.dart';
 import 'router.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../features/activities/data/my_activities_repository.dart';
+import '../features/chat/application/chat_read_store.dart';
+import '../features/chat/application/community_unread_controller.dart';
+import '../features/chat/data/chat_repository.dart';
 
 /// Wires repositories and controllers. Tests can inject fakes through the
 /// constructor parameters.
@@ -24,6 +29,8 @@ class NomadMingleApp extends StatefulWidget {
     this.safety,
     this.location,
     this.images,
+    this.chat,
+    this.myActivities,
   });
 
   final AuthRepository auth;
@@ -32,6 +39,8 @@ class NomadMingleApp extends StatefulWidget {
   final SafetyRepository? safety;
   final LocationService? location;
   final ImageUploadService? images;
+  final ChatRepository? chat;
+  final MyActivitiesRepository? myActivities;
 
   @override
   State<NomadMingleApp> createState() => _NomadMingleAppState();
@@ -77,6 +86,32 @@ class _NomadMingleAppState extends State<NomadMingleApp> {
           create: (_) => widget.images ?? FirebaseImageUploadService(),
         ),
         ChangeNotifierProvider<SessionController>.value(value: _session),
+        // Chat providers sit above the router: /community and
+        // /activity/:id/chat are top-level routes layered over the shell.
+        Provider<ChatRepository>(
+          create: (ctx) =>
+              widget.chat ??
+              FirestoreChatRepository(
+                firestore: FirebaseFirestore.instance,
+                api: ctx.read<ApiClient>(),
+              ),
+        ),
+        Provider<MyActivitiesRepository>(
+          create: (ctx) =>
+              widget.myActivities ??
+              ApiMyActivitiesRepository(ctx.read<ApiClient>()),
+        ),
+        ChangeNotifierProvider<ChatReadStore>(
+          create: (ctx) =>
+              ChatReadStore(uid: () => ctx.read<SessionController>().user?.uid),
+        ),
+        ChangeNotifierProvider<CommunityUnreadController>(
+          create: (ctx) => CommunityUnreadController(
+            repository: ctx.read<ChatRepository>(),
+            store: ctx.read<ChatReadStore>(),
+            uid: () => ctx.read<SessionController>().user?.uid,
+          ),
+        ),
       ],
       child: MaterialApp.router(
         title: 'Nomad Mingle',

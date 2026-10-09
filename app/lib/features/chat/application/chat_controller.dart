@@ -133,7 +133,9 @@ class ChatController extends ChangeNotifier {
 
   // --- lifecycle
   Future<void> start() async {
-    await _sub?.cancel();
+    unawaited(
+      _sub?.cancel(),
+    ); // not awaited: a cancel after a stream error may not complete promptly
     _sub = null;
     _status = ChatStatus.loading;
     _error = null;
@@ -377,6 +379,7 @@ class ChatController extends ChangeNotifier {
 
   @override
   void dispose() {
+    if (_disposed) return;
     _disposed = true;
     _sub?.cancel();
     _ticker?.cancel();
