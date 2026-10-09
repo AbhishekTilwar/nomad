@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/config/map_config.dart';
+import '../../../core/services/image_upload_service.dart';
+import '../../../core/widgets/user_avatar.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/utils/app_exception.dart';
 import '../../../core/utils/validators.dart';
@@ -30,7 +32,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late final Set<String> _interests;
   late final Set<String> _prefs;
   bool _busy = false;
+  bool _uploading = false;
   String? _error;
+
+  /// Newly uploaded photo URL (sent on Save) / whether to clear the photo.
+  String? _newPhotoUrl;
+  bool _removePhoto = false;
 
   @override
   void initState() {
@@ -50,6 +57,35 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.dispose();
   }
 
+  String? get _shownPhoto => _removePhoto
+      ? null
+      : (_newPhotoUrl ?? context.read<SessionController>().profile?.photoUrl);
+
+  /// Picks, compresses (max 512px, JPEG 80) and uploads to Firebase Storage
+  /// under users/{uid}/avatar/. Only uploads when the user picks a photo.
+  Future<void> _pickPhoto() async {
+    final uid = context.read<SessionController>().user?.uid;
+    if (uid == null || _uploading) return;
+    final images = context.read<ImageUploadService>();
+    setState(() {
+      _uploading = true;
+      _error = null;
+    });
+    try {
+      final url = await images.pickAndUpload(uid, ImageKind.avatar);
+      if (url != null && mounted) {
+        setState(() {
+          _newPhotoUrl = url;
+          _removePhoto = false;
+        });
+      }
+    } on AppException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
+
   Future<void> _save() async {
     if (_busy || !_form.currentState!.validate()) return;
     if (_interests.isEmpty) {
@@ -67,6 +103,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         city: _city,
         interests: _interests.toList(),
         preferredActivityTypes: _prefs.toList(),
+        photoUrl: _newPhotoUrl,
+        removePhoto: _removePhoto,
       );
       if (mounted) context.pop();
     } on AppException catch (e) {
@@ -88,6 +126,56 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             padding: AppSpacing.page.copyWith(top: 8, bottom: 24),
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             children: [
+              Center(
+                child: Column(
+                  children: [
+                    Stack(
+                      children: [
+                        UserAvatar(
+                          name: _name.text.isEmpty ? '?' : _name.text,
+                          photoUrl: _shownPhoto,
+                          size: 96,
+                        ),
+                        Positioned(
+                          right: 0,
+                          bottom: 0,
+                          child: Material(
+                            color: t.colorScheme.primary,
+                            shape: const CircleBorder(
+                              side: BorderSide(color: Colors.white, width: 2),
+                            ),
+                            child: IconButton(
+                              tooltip: 'Change profile photo',
+                              iconSize: 18,
+                              color: Colors.white,
+                              onPressed: _uploading ? null : _pickPhoto,
+                              icon: _uploading
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Icon(Icons.photo_camera_outlined),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (_shownPhoto != null)
+                      TextButton(
+                        onPressed: () => setState(() {
+                          _removePhoto = true;
+                          _newPhotoUrl = null;
+                        }),
+                        child: const Text('Remove photo'),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
               AppFormField(
                 label: 'Display name',
                 controller: _name,

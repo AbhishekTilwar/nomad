@@ -194,9 +194,15 @@ class _DetailViewState extends State<_DetailView> {
                 );
               }
               if (v == 'members') context.push('/activity/${a.id}/members');
+              if (v == 'edit') {
+                context
+                    .push<Activity>('/activity/${a.id}/edit', extra: a)
+                    .then((_) => c.load());
+              }
             },
             itemBuilder: (_) => [
               if (a.isHost && a.status == ActivityStatus.scheduled) ...[
+                const PopupMenuItem(value: 'edit', child: Text('Edit plan')),
                 const PopupMenuItem(
                   value: 'members',
                   child: Text('Manage participants'),

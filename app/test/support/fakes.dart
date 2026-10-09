@@ -155,14 +155,23 @@ class FakeProfileRepository implements ProfileRepository {
     List<String>? interests,
     List<String>? preferredActivityTypes,
     String? photoUrl,
-  }) async => profile = UserProfile(
-    uid: profile!.uid,
-    displayName: displayName ?? profile!.displayName,
-    city: city ?? profile!.city,
-    bio: bio ?? profile!.bio,
-    interests: interests ?? profile!.interests,
-    profileCompleted: true,
-  );
+    bool removePhoto = false,
+  }) async {
+    lastPhotoUrl = photoUrl;
+    lastRemovePhoto = removePhoto;
+    return profile = UserProfile(
+      uid: profile!.uid,
+      displayName: displayName ?? profile!.displayName,
+      photoUrl: removePhoto ? null : (photoUrl ?? profile!.photoUrl),
+      city: city ?? profile!.city,
+      bio: bio ?? profile!.bio,
+      interests: interests ?? profile!.interests,
+      profileCompleted: true,
+    );
+  }
+
+  String? lastPhotoUrl;
+  bool lastRemovePhoto = false;
 
   @override
   Future<void> deleteAccountData() async {}
@@ -213,6 +222,17 @@ class FakeActivityRepository implements ActivityRepository {
       capacity: d.capacity,
       participants: 1,
     );
+  }
+
+  String? updatedId;
+  ActivityDraft? updatedDraft;
+
+  @override
+  Future<Activity> update(String id, ActivityDraft d) async {
+    if (error != null) throw error!;
+    updatedId = id;
+    updatedDraft = d;
+    return sampleActivity(id: id, title: d.title, capacity: d.capacity);
   }
 
   @override

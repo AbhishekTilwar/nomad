@@ -68,6 +68,9 @@ abstract class ActivityRepository {
   Future<Activity> get(String id);
   Future<Activity> create(ActivityDraft draft);
 
+  /// Host-only edit (PATCH). The server re-validates everything.
+  Future<Activity> update(String id, ActivityDraft draft);
+
   /// Returns the resulting membership status (`approved` or `requested`).
   Future<MembershipStatus> join(String id);
   Future<void> leave(String id);
@@ -206,6 +209,12 @@ class ApiActivityRepository implements ActivityRepository {
   Future<Activity> create(ActivityDraft draft) async => Activity.fromJson(
     (await _api.post('/activities', body: draft.toJson())).asMap,
   );
+
+  @override
+  Future<Activity> update(String id, ActivityDraft draft) async =>
+      Activity.fromJson(
+        (await _api.patch('/activities/$id', body: draft.toJson())).asMap,
+      );
 
   @override
   Future<MembershipStatus> join(String id) async {

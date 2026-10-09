@@ -22,7 +22,10 @@ import '../../profile/data/user_profile.dart';
 import 'create_activity_controller.dart';
 
 class CreateActivityScreen extends StatelessWidget {
-  const CreateActivityScreen({super.key});
+  const CreateActivityScreen({super.key, this.editing});
+
+  /// When set, the form edits this existing plan instead of creating one.
+  final Activity? editing;
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +33,8 @@ class CreateActivityScreen extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (_) => CreateActivityController(
         context.read<ActivityRepository>(),
-        city: session.profile?.city ?? 'mumbai',
+        city: editing?.city ?? session.profile?.city ?? 'mumbai',
+        editing: editing,
       ),
       child: const _CreateView(),
     );
@@ -64,6 +68,22 @@ class _CreateViewState extends State<_CreateView> {
     _safety,
     _cancel,
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    final c = context.read<CreateActivityController>();
+    final a = c.editing;
+    if (a != null) {
+      _title.text = a.title;
+      _description.text = a.description;
+      _venue.text = a.venueName;
+      _maxMembers.text = '${a.capacity}';
+      _costDesc.text = a.costDescription;
+      _safety.text = a.safetyNotes;
+      _cancel.text = a.cancellationPolicy;
+    }
+  }
 
   @override
   void dispose() {
@@ -132,6 +152,10 @@ class _CreateViewState extends State<_CreateView> {
         const SnackBar(content: Text('Please fix the highlighted fields.')),
       );
       _scroll.animateTo(0, duration: AppMotion.normal, curve: Curves.easeOut);
+      return;
+    }
+    if (c.isEditing) {
+      await _saveEdit(c);
       return;
     }
     final session = context.read<SessionController>();
@@ -211,6 +235,22 @@ class _CreateViewState extends State<_CreateView> {
     }
   }
 
+  Future<void> _saveEdit(CreateActivityController c) async {
+    final updated = await c.submit();
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    if (updated == null) {
+      if (c.submitError != null) {
+        messenger.showSnackBar(SnackBar(content: Text(c.submitError!)));
+      }
+      return;
+    }
+    // Refresh the map/list so the changes (and any moved pin) show up.
+    context.read<ExploreController>().showPosted(updated);
+    messenger.showSnackBar(const SnackBar(content: Text('Plan updated.')));
+    context.pop(updated);
+  }
+
   void _resetForm(CreateActivityController c) {
     for (final t in _all) {
       t.clear();
@@ -255,7 +295,7 @@ class _CreateViewState extends State<_CreateView> {
           onPressed: () =>
               context.canPop() ? context.pop() : context.go('/explore'),
         ),
-        title: const Text('Create a Meetup'),
+        title: Text(c.isEditing ? 'Edit Meetup' : 'Create a Meetup'),
       ),
       body: SafeArea(
         child: ListView(
@@ -432,7 +472,7 @@ class _CreateViewState extends State<_CreateView> {
             ),
             const SizedBox(height: 24),
             PrimaryButton(
-              label: 'Create Plan',
+              label: c.isEditing ? 'Save Changes' : 'Create Plan',
               loading: c.submitting,
               onPressed: () => _preview(c),
             ),

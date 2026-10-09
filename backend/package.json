@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Nomad Mingle REST API (Express + Firebase Admin)",
   "engines": {
-    "node": ">=20"
+    "node": ">=20 <25"
   },
   "scripts": {
     "start": "node src/server.js",

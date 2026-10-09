@@ -8,10 +8,41 @@ import '../../activities/models/activity.dart';
 
 /// Form state + validation for hosting a plan. Pure Dart so it is unit-tested.
 class CreateActivityController extends ChangeNotifier {
-  CreateActivityController(this._repo, {required this.city});
+  CreateActivityController(this._repo, {required this.city, this.editing}) {
+    final a = editing;
+    if (a != null) {
+      title = a.title;
+      description = a.description;
+      category = a.category;
+      startAt = a.startAt;
+      durationMinutes = _nearestDuration(
+        a.endAt.difference(a.startAt).inMinutes,
+      );
+      venueName = a.venueName;
+      location = a.position;
+      capacity = a.capacity;
+      costType = a.costType;
+      costDescription = a.costDescription;
+      approvalRequired = a.approvalRequired;
+      isPrivate = a.isPrivate;
+      safetyNotes = a.safetyNotes;
+      cancellationPolicy = a.cancellationPolicy;
+      coverImageUrl = a.coverImageUrl;
+    }
+  }
 
   final ActivityRepository _repo;
   final String city;
+
+  /// Non-null when the host is editing an existing plan.
+  final Activity? editing;
+  bool get isEditing => editing != null;
+
+  /// Duration choices offered by the form (minutes).
+  static const durations = [60, 120, 180, 240, 360, 600];
+  static int _nearestDuration(int minutes) => durations.reduce(
+    (a, b) => (a - minutes).abs() <= (b - minutes).abs() ? a : b,
+  );
 
   String title = '';
   String description = '';
@@ -50,7 +81,11 @@ class CreateActivityController extends ChangeNotifier {
     add('title', Validators.activityTitle(title));
     add('description', Validators.activityDescription(description));
     if (category == null) e['category'] = 'Choose a category.';
-    add('startAt', Validators.startTime(startAt, now: now));
+    // When editing, an unchanged start time isn't re-checked against "now"
+    // (the plan may start soon; other fields must still be editable).
+    if (!(isEditing && startAt == editing!.startAt)) {
+      add('startAt', Validators.startTime(startAt, now: now));
+    }
     final venue = venueName.trim();
     if (venue.length < 2) {
       e['venueName'] = 'Add the venue or meeting spot name.';
@@ -100,7 +135,7 @@ class CreateActivityController extends ChangeNotifier {
     coverImageUrl: coverImageUrl,
   );
 
-  /// Publishes once; concurrent/duplicate taps are ignored while in flight.
+  /// Publishes (or saves edits) once; duplicate taps are ignored while in flight.
   Future<Activity?> submit({DateTime? now}) async {
     if (submitting) return null;
     if (!runValidation(now: now)) return null;
@@ -108,7 +143,10 @@ class CreateActivityController extends ChangeNotifier {
     submitError = null;
     notifyListeners();
     try {
-      return await _repo.create(buildDraft());
+      final draft = buildDraft();
+      return isEditing
+          ? await _repo.update(editing!.id, draft)
+          : await _repo.create(draft);
     } on AppException catch (e) {
       submitError = e.message;
       return null;

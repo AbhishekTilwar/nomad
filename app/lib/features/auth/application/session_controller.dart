@@ -177,6 +177,7 @@ class SessionController extends ChangeNotifier {
     List<String>? interests,
     List<String>? preferredActivityTypes,
     String? photoUrl,
+    bool removePhoto = false,
   }) async {
     _profile = await _profiles.updateProfile(
       displayName: displayName,
@@ -185,6 +186,7 @@ class SessionController extends ChangeNotifier {
       interests: interests,
       preferredActivityTypes: preferredActivityTypes,
       photoUrl: photoUrl,
+      removePhoto: removePhoto,
     );
     notifyListeners();
   }

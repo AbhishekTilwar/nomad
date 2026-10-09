@@ -3,6 +3,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
 import '../features/activities/data/activity_repository.dart';
+import '../features/activities/models/activity.dart';
 import '../features/create/presentation/create_activity_screen.dart';
 import '../features/create/presentation/location_picker_screen.dart';
 import '../features/discover/presentation/discover_screen.dart';
@@ -155,6 +156,11 @@ GoRouter buildRouter(
         builder: (_, s) =>
             ActivityDetailScreen(activityId: s.pathParameters['id']!),
         routes: [
+          GoRoute(
+            path: 'edit',
+            builder: (_, s) =>
+                CreateActivityScreen(editing: s.extra! as Activity),
+          ),
           GoRoute(
             path: 'chat',
             builder: (_, s) =>
