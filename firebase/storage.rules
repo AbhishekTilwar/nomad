@@ -1,0 +1,36 @@
+rules_version = '2';
+
+// Uploads are owner-only, image-only, <= 5 MB, and the object name must be a long random token
+// (e.g. a UUID the client generates) so URLs cannot be guessed or enumerated.
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function signedIn() { return request.auth != null; }
+    function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
+    // jpeg/png/webp/heic only (deliberately excludes image/svg+xml, which can carry script).
+    function validImage() {
+      return request.resource.size <= 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp|heic|heif)');
+    }
+    // >= 20 chars of [A-Za-z0-9_-] with a known image extension, e.g. 5f1c0e2a-....jpg
+    function safeName(name) {
+      return name.matches('[A-Za-z0-9_-]{20,}\\.(jpg|jpeg|png|webp|heic)');
+    }
+
+    match /users/{uid}/avatar/{fileName} {
+      allow read: if signedIn();
+      allow create, update: if isOwner(uid) && safeName(fileName) && validImage();
+      allow delete: if isOwner(uid);
+    }
+
+    match /activities/{uid}/covers/{fileName} {
+      allow read: if signedIn();
+      allow create, update: if isOwner(uid) && safeName(fileName) && validImage();
+      allow delete: if isOwner(uid);
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

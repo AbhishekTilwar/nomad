@@ -1,0 +1,17 @@
+{
+  "name": "nomadmingle-firebase-rules",
+  "version": "1.0.0",
+  "description": "Firestore/Storage rules + rules tests",
+  "scripts": {
+    "test": "firebase emulators:exec --only firestore,storage --project demo-nomadmingle \"node --test \"tests/*.test.js\"\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "UNLICENSED",
+  "type": "module",
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^6.0.0",
+    "firebase": "^13.0.0"
+  },
+  "private": true
+}

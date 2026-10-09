@@ -1,0 +1,49 @@
+# Render Blueprint (no Dockerfile: Render's native Node runtime builds with npm).
+# Repo is a monorepo, so rootDir points at /backend. Choose region/plan to taste; nothing here is a price promise.
+services:
+  - type: web
+    name: nomadmingle-api
+    runtime: node
+    rootDir: backend
+    region: singapore          # closest Render region to Mumbai/Pune; change if needed
+    plan: starter              # free instances sleep; pick the plan that fits your budget
+    buildCommand: npm ci --omit=dev
+    startCommand: node src/server.js
+    healthCheckPath: /health
+    autoDeploy: false          # deploy deliberately, after CI passes
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      - key: LOG_LEVEL
+        value: info
+      - key: TRUST_PROXY
+        value: "1"
+      - key: FIREBASE_PROJECT_ID
+        sync: false            # set in the dashboard
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+        sync: false            # secret: paste service-account JSON (or base64) in the dashboard ONLY
+      - key: ALLOWED_ORIGINS
+        sync: false            # e.g. https://admin.yourdomain.example (comma separated; mobile needs none)
+      - key: CRON_SECRET
+        generateValue: true    # >=24 chars; copy into the cron job's env
+      - key: CHECK_REVOKED_TOKENS
+        value: "true"
+
+  # Scheduled jobs: reminders + completing ended activities, every 15 minutes.
+  - type: cron
+    name: nomadmingle-jobs
+    runtime: node
+    rootDir: backend
+    region: singapore
+    schedule: "*/15 * * * *"
+    buildCommand: "true"
+    startCommand: >-
+      sh -c 'curl -fsS -X POST -H "x-cron-secret: $CRON_SECRET" "$API_URL/api/v1/internal/jobs/reminders" &&
+      curl -fsS -X POST -H "x-cron-secret: $CRON_SECRET" "$API_URL/api/v1/internal/jobs/complete-ended"'
+    envVars:
+      - key: API_URL
+        sync: false            # e.g. https://nomadmingle-api.onrender.com
+      - key: CRON_SECRET
+        sync: false            # same value as the web service

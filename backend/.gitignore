@@ -1,0 +1,9 @@
+.env
+.env.*
+!.env.example
+node_modules/
+service-account*.json
+*-service-account*.json
+*.pem
+coverage/
+npm-debug.log*

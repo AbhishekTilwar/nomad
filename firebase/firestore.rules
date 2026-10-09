@@ -1,0 +1,123 @@
+rules_version = '2';
+
+// Nomad Mingle Firestore rules.
+// Principle: clients READ what they are entitled to; ALL writes go through the backend API
+// (Admin SDK bypasses rules). See docs/DATA_MODEL.md "Write policy".
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------------------------------------------------------------- helpers
+    function signedIn() {
+      return request.auth != null;
+    }
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+    // Public profile mirror, written only by the backend.
+    function profileOf(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data;
+    }
+    // Signed in, has a profile, and is not suspended/deleted. Muted users may still READ.
+    function isActive() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && profileOf(request.auth.uid).accountStatus in ['active', 'muted'];
+    }
+    function memberDoc(activityId, uid) {
+      return get(/databases/$(database)/documents/activities/$(activityId)/members/$(uid));
+    }
+    function isApprovedMember(activityId) {
+      return exists(/databases/$(database)/documents/activities/$(activityId)/members/$(request.auth.uid))
+        && memberDoc(activityId, request.auth.uid).data.status == 'approved';
+    }
+    function activityOf(activityId) {
+      return get(/databases/$(database)/documents/activities/$(activityId)).data;
+    }
+    // Chat is live while scheduled; after cancel/complete it stays readable for 30 days.
+    function chatOpenForReading(activityId) {
+      return activityOf(activityId).status == 'scheduled'
+        || request.time < activityOf(activityId).updatedAt + duration.value(30, 'd');
+    }
+
+    // ---------------------------------------------------------------- users
+    match /users/{uid} {
+      // get only: any signed-in user may read a public profile by uid, but cannot enumerate users.
+      allow get: if signedIn();
+      allow list: if false;
+      allow write: if false;   // via PATCH /users/me (accountStatus/role can never be client-written)
+
+      match /private/{doc} {
+        allow read: if isSelf(uid);
+        allow write: if false;
+      }
+    }
+
+    // ---------------------------------------------------------------- activities
+    match /activities/{activityId} {
+      // Private activities are visible only to the host and members. List queries by clients
+      // must therefore include where('visibility', '==', 'public').
+      allow read: if isActive() && (
+        resource.data.visibility == 'public'
+        || resource.data.hostId == request.auth.uid
+        || exists(/databases/$(database)/documents/activities/$(activityId)/members/$(request.auth.uid))
+      );
+      allow write: if false;
+
+      match /members/{memberId} {
+        // Own membership doc, the host (sees requests), or approved attendees of a public activity.
+        allow read: if isActive() && (
+          memberId == request.auth.uid
+          || activityOf(activityId).hostId == request.auth.uid
+          || (resource.data.status == 'approved' && activityOf(activityId).visibility == 'public')
+        );
+        allow write: if false;
+      }
+
+      match /messages/{messageId} {
+        allow read: if isActive()
+          && resource.data.moderationStatus == 'visible'
+          && isApprovedMember(activityId)
+          && chatOpenForReading(activityId);
+        allow write: if false;   // POST /activities/:id/messages (membership + rate limits)
+      }
+    }
+
+    // "My activities" collection-group query: only your own membership docs.
+    match /{path=**}/members/{memberId} {
+      allow read: if isActive() && resource.data.userId == request.auth.uid;
+    }
+
+    // ---------------------------------------------------------------- community
+    match /communityRooms/global {
+      allow read: if isActive();
+      allow write: if false;
+
+      match /messages/{messageId} {
+        // Hidden/removed docs keep their text as evidence but are never readable by clients.
+        allow read: if isActive() && resource.data.moderationStatus == 'visible';
+        allow write: if false;   // POST /community/messages (rate limits)
+      }
+    }
+
+    // ---------------------------------------------------------------- per-user data
+    match /userBlocks/{uid}/blocked/{target} {
+      allow read: if isSelf(uid);
+      allow write: if false;
+    }
+    match /notifications/{id} {
+      allow read: if signedIn() && resource.data.userId == request.auth.uid;
+      allow write: if false;
+    }
+
+    // ---------------------------------------------------------------- backend-only
+    match /reports/{id} { allow read, write: if false; }
+    match /moderationActions/{id} { allow read, write: if false; }
+    match /userRateLimits/{id} { allow read, write: if false; }
+    match /deviceTokens/{id} { allow read, write: if false; }
+
+    // Default deny.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
