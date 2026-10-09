@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 
 import 'app_tokens.dart';
 
+/// Typeface: Inter (bundled in assets/fonts, SIL OFL).
+const kFontFamily = 'Inter';
+
 class AppTheme {
   const AppTheme._();
 
@@ -40,57 +43,58 @@ class AppTheme {
     scaffold: AppColors.sandDark,
   );
 
+  /// Type scale read off the design: 24 headings, 18 app-bar titles,
+  /// 16 card titles, 14 body, 12 captions.
+  static TextTheme _textTheme(ColorScheme c) {
+    TextStyle s(double size, FontWeight w, {double h = 1.4, Color? color}) =>
+        TextStyle(
+          fontFamily: kFontFamily,
+          fontSize: size,
+          fontWeight: w,
+          height: h,
+          color: color ?? c.onSurface,
+        );
+    return TextTheme(
+      displaySmall: s(32, FontWeight.w700, h: 1.2),
+      headlineMedium: s(24, FontWeight.w700, h: 1.25),
+      headlineSmall: s(20, FontWeight.w700, h: 1.3),
+      titleLarge: s(18, FontWeight.w600, h: 1.3),
+      titleMedium: s(16, FontWeight.w600, h: 1.35),
+      titleSmall: s(14, FontWeight.w600),
+      bodyLarge: s(15, FontWeight.w400, h: 1.5),
+      bodyMedium: s(14, FontWeight.w400, h: 1.45),
+      bodySmall: s(12, FontWeight.w400, h: 1.35, color: c.onSurfaceVariant),
+      labelLarge: s(15, FontWeight.w600, h: 1.2),
+      labelMedium: s(13, FontWeight.w500, h: 1.2),
+      labelSmall: s(11, FontWeight.w500, h: 1.2),
+    );
+  }
+
   static ThemeData _build(ColorScheme scheme, {required Color scaffold}) {
+    final text = _textTheme(scheme);
     final base = ThemeData(
       useMaterial3: true,
+      fontFamily: kFontFamily,
       colorScheme: scheme,
       scaffoldBackgroundColor: scaffold,
+      textTheme: text,
     );
-    final text = base.textTheme
-        .apply(bodyColor: scheme.onSurface, displayColor: scheme.onSurface)
-        .copyWith(
-          headlineMedium: const TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.w800,
-            height: 1.2,
-          ),
-          titleLarge: const TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            height: 1.25,
-          ),
-          titleMedium: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            height: 1.3,
-          ),
-          bodyLarge: const TextStyle(fontSize: 16, height: 1.45),
-          bodyMedium: const TextStyle(fontSize: 14, height: 1.45),
-          labelLarge: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.1,
-          ),
-        )
-        // Overridden styles above carry no colour; re-apply so text is visible.
-        .apply(bodyColor: scheme.onSurface, displayColor: scheme.onSurface);
-
-    final shape = RoundedRectangleBorder(
+    final btnShape = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(AppRadius.md),
     );
     OutlineInputBorder border(Color c, [double w = 1]) => OutlineInputBorder(
-      borderRadius: BorderRadius.circular(AppRadius.md),
+      borderRadius: BorderRadius.circular(10),
       borderSide: BorderSide(color: c, width: w),
     );
 
     return base.copyWith(
-      textTheme: text,
       appBarTheme: AppBarTheme(
         backgroundColor: scaffold,
         foregroundColor: scheme.onSurface,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
+        titleSpacing: 20,
         titleTextStyle: text.titleLarge,
       ),
       cardTheme: CardThemeData(
@@ -104,63 +108,105 @@ class AppTheme {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size.fromHeight(kMinTouchTarget + 4),
-          shape: shape,
+          minimumSize: const Size.fromHeight(48),
+          shape: btnShape,
+          elevation: 0,
           textStyle: text.labelLarge,
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size.fromHeight(kMinTouchTarget + 4),
-          shape: shape,
-          side: BorderSide(color: scheme.outline, width: 1.5),
+          minimumSize: const Size.fromHeight(48),
+          shape: btnShape,
+          foregroundColor: scheme.onSurface,
+          side: BorderSide(color: scheme.outline),
           textStyle: text.labelLarge,
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           minimumSize: const Size(kMinTouchTarget, kMinTouchTarget),
-          shape: shape,
+          shape: btnShape,
+          textStyle: text.labelMedium?.copyWith(fontWeight: FontWeight.w600),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: scheme.surface,
+        isDense: true,
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 16,
+          horizontal: 14,
+          vertical: 14,
         ),
+        hintStyle: text.bodyMedium?.copyWith(
+          color: scheme.onSurfaceVariant.withValues(alpha: 0.8),
+        ),
+        prefixIconColor: scheme.onSurfaceVariant,
+        suffixIconColor: scheme.onSurfaceVariant,
         border: border(scheme.outline),
         enabledBorder: border(scheme.outline),
-        focusedBorder: border(scheme.primary, 2),
+        disabledBorder: border(scheme.outline),
+        focusedBorder: border(scheme.primary, 1.5),
         errorBorder: border(scheme.error),
-        focusedErrorBorder: border(scheme.error, 2),
+        focusedErrorBorder: border(scheme.error, 1.5),
       ),
       chipTheme: base.chipTheme.copyWith(
-        selectedColor: scheme.primary.withValues(alpha: 0.14),
-        backgroundColor: scheme.surface,
-        secondaryLabelStyle: text.bodyMedium?.copyWith(color: scheme.primary),
-        checkmarkColor: scheme.primary,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.pill),
-          side: BorderSide(color: scheme.outline),
-        ),
-        labelStyle: text.bodyMedium,
+        shape: const StadiumBorder(),
+        labelStyle: text.labelMedium,
         side: BorderSide(color: scheme.outline),
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: scheme.surface,
-        indicatorColor: scheme.primary.withValues(alpha: 0.14),
-        height: 68,
-        labelTextStyle: WidgetStatePropertyAll(
-          text.bodyMedium?.copyWith(fontWeight: FontWeight.w600, fontSize: 12),
+        surfaceTintColor: Colors.transparent,
+        indicatorColor: Colors.transparent, // design: no pill, tint only
+        elevation: 0,
+        height: 66,
+        iconTheme: WidgetStateProperty.resolveWith(
+          (st) => IconThemeData(
+            size: 24,
+            color: st.contains(WidgetState.selected)
+                ? scheme.primary
+                : scheme.onSurfaceVariant,
+          ),
         ),
+        labelTextStyle: WidgetStateProperty.resolveWith(
+          (st) => text.labelSmall?.copyWith(
+            fontWeight: FontWeight.w500,
+            color: st.contains(WidgetState.selected)
+                ? scheme.primary
+                : scheme.onSurfaceVariant,
+          ),
+        ),
+      ),
+      sliderTheme: SliderThemeData(
+        activeTrackColor: scheme.primary,
+        inactiveTrackColor: scheme.outline,
+        thumbColor: scheme.primary,
+        trackHeight: 4,
+      ),
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: scheme.primary,
+        linearTrackColor: scheme.outline,
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: const WidgetStatePropertyAll(Colors.white),
+        trackColor: WidgetStateProperty.resolveWith(
+          (st) => st.contains(WidgetState.selected)
+              ? scheme.primary
+              : scheme.outline,
+        ),
+        trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        shape: shape,
+        shape: btnShape,
       ),
       dividerTheme: DividerThemeData(color: scheme.outline, space: 1),
+      listTileTheme: ListTileThemeData(
+        iconColor: scheme.onSurfaceVariant,
+        titleTextStyle: text.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+        subtitleTextStyle: text.bodySmall,
+      ),
     );
   }
 }

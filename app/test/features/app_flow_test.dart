@@ -4,6 +4,7 @@ import 'package:nomad_mingle/app/app.dart';
 import 'package:nomad_mingle/core/utils/app_exception.dart';
 import 'package:nomad_mingle/features/auth/data/auth_repository.dart';
 import 'package:nomad_mingle/features/profile/data/user_profile.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/fakes.dart';
 import 'chat/chat_test_support.dart' show FakeChatRepository;
@@ -23,19 +24,26 @@ const _profile = UserProfile(
   profileCompleted: true,
 );
 
+/// Phone-sized logical surface (the default 800x600 @3x is only 266x200).
+void usePhone(WidgetTester t) {
+  t.view.physicalSize = const Size(800, 1800);
+  t.view.devicePixelRatio = 1;
+  addTearDown(t.view.reset);
+}
+
 Future<void> settle(WidgetTester t) async {
-  for (var i = 0; i < 6; i++) {
+  for (var i = 0; i < 15; i++) {
     await t.pump(const Duration(milliseconds: 100));
   }
 }
 
 void main() {
-  testWidgets('signed out: welcome screen with both sign-in methods', (
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  testWidgets('signed out: welcome screen leads to login with Google', (
     t,
   ) async {
-    t.view.physicalSize = const Size(800, 1800);
-    t.view.devicePixelRatio = 1;
-    addTearDown(t.view.reset);
+    usePhone(t);
     await t.pumpWidget(
       NomadMingleApp(
         chat: FakeChatRepository(),
@@ -53,12 +61,15 @@ void main() {
     expect(find.text('I already have an account'), findsOneWidget);
     await t.tap(find.text('I already have an account'));
     await settle(t);
-    expect(find.text('Continue with Google'), findsOneWidget);
+    expect(find.text('Welcome Back'), findsOneWidget);
+    expect(find.text('Google'), findsOneWidget);
+    expect(find.text('Apple'), findsNothing);
   });
 
   testWidgets(
     'email sign-in shows friendly error, then succeeds into Explore',
     (t) async {
+      usePhone(t);
       final auth = FakeAuthRepository()
         ..failNext = const AuthFailure(
           'Email or password is incorrect.',
@@ -77,7 +88,7 @@ void main() {
       await settle(t);
 
       // Validation first.
-      await t.tap(find.text('Sign in').last);
+      await t.tap(find.widgetWithText(FilledButton, 'Login'));
       await settle(t);
       expect(find.text('Enter your email address.'), findsOneWidget);
       expect(auth.signInCalls, 0);
@@ -87,11 +98,11 @@ void main() {
         find.widgetWithText(TextFormField, 'Password'),
         'wrongpass',
       );
-      await t.tap(find.text('Sign in').last);
+      await t.tap(find.widgetWithText(FilledButton, 'Login'));
       await settle(t);
       expect(find.text('Email or password is incorrect.'), findsOneWidget);
 
-      await t.tap(find.text('Sign in').last);
+      await t.tap(find.widgetWithText(FilledButton, 'Login'));
       await settle(t);
       expect(find.text('Explore'), findsWidgets); // bottom nav + landed
       expect(find.byType(NavigationBar), findsOneWidget);
@@ -99,6 +110,7 @@ void main() {
   );
 
   testWidgets('onboarding rejects under-18 date of birth', (t) async {
+    usePhone(t);
     final auth = FakeAuthRepository(_user);
     await t.pumpWidget(
       NomadMingleApp(
@@ -122,6 +134,7 @@ void main() {
   testWidgets(
     'bottom navigation has exactly the five destinations, no community tab',
     (t) async {
+      usePhone(t);
       await t.pumpWidget(
         NomadMingleApp(
           chat: FakeChatRepository(),
@@ -141,6 +154,7 @@ void main() {
   );
 
   testWidgets('Explore: map/list toggle, list shows activities', (t) async {
+    usePhone(t);
     await t.pumpWidget(
       NomadMingleApp(
         chat: FakeChatRepository(),
@@ -167,6 +181,7 @@ void main() {
   });
 
   testWidgets('Explore: empty and error states, retry recovers', (t) async {
+    usePhone(t);
     final repo = FakeActivityRepository()
       ..error = const AppException('No internet connection.', retryable: true);
     await t.pumpWidget(
@@ -180,7 +195,8 @@ void main() {
     await settle(t);
     expect(find.text('No internet connection.'), findsOneWidget);
     repo.error = null;
-    await t.tap(find.text('Try again'));
+    await t.pump(const Duration(seconds: 2)); // let the route transition finish
+    await t.tap(find.widgetWithText(TextButton, 'Try again'));
     await settle(t);
     await t.tap(find.byTooltip('Show list'));
     await settle(t);
@@ -190,9 +206,7 @@ void main() {
   testWidgets('Profile tab shows data and sign out returns to welcome', (
     t,
   ) async {
-    t.view.physicalSize = const Size(800, 1800);
-    t.view.devicePixelRatio = 1;
-    addTearDown(t.view.reset);
+    usePhone(t);
     await t.pumpWidget(
       NomadMingleApp(
         chat: FakeChatRepository(),

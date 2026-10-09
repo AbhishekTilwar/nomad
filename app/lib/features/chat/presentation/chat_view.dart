@@ -356,11 +356,19 @@ class _SystemLine extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
       child: Center(
-        child: Text(
-          text,
-          textAlign: TextAlign.center,
-          style: t.textTheme.bodySmall?.copyWith(
-            color: t.colorScheme.onSurfaceVariant,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppColors.field,
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+          ),
+          child: Text(
+            text,
+            textAlign: TextAlign.center,
+            style: t.textTheme.bodySmall?.copyWith(
+              fontSize: 11,
+              color: t.colorScheme.onSurfaceVariant,
+            ),
           ),
         ),
       ),

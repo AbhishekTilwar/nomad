@@ -14,6 +14,7 @@ import '../../../core/widgets/error_state.dart';
 import '../../../core/widgets/join_activity_button.dart';
 import '../../../core/widgets/loading_skeleton.dart';
 import '../../../core/widgets/report_action_sheet.dart';
+import '../../../core/widgets/secondary_button.dart';
 import '../../../core/widgets/user_avatar.dart';
 import '../../profile/data/user_profile.dart';
 import '../../safety/data/safety_repository.dart';
@@ -100,14 +101,14 @@ class _DetailViewState extends State<_DetailView> {
     final a = c.activity;
 
     // Surface action results once.
-    final msg = c.actionMessage;
-    if (msg != null) {
+    if (c.actionMessage != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         final m = c.takeMessage();
         if (m != null) {
-          final messenger = ScaffoldMessenger.of(context);
-          messenger.showSnackBar(SnackBar(content: Text(m)));
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(m)));
         }
       });
     }
@@ -127,23 +128,47 @@ class _DetailViewState extends State<_DetailView> {
     }
 
     final t = Theme.of(context);
-    final muted = t.textTheme.bodyMedium?.copyWith(
-      color: t.colorScheme.onSurfaceVariant,
-    );
     final color = CategoryStyle.color(a.category);
     final joinState = joinUiStateFor(a);
+    final isMember = a.isHost || a.membership == MembershipStatus.approved;
+    final capFraction = a.capacity == 0
+        ? 0.0
+        : (a.participantCount / a.capacity).clamp(0.0, 1.0);
+
+    Widget fact(IconData icon, String text, {String? sub}) => Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: t.colorScheme.onSurfaceVariant),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(text, style: t.textTheme.bodyMedium),
+                if (sub != null && sub.isNotEmpty)
+                  Text(sub, style: t.textTheme.bodySmall),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
+        leadingWidth: 56,
         leading: Padding(
-          padding: const EdgeInsets.all(6),
+          padding: const EdgeInsets.all(8),
           child: IconButton.filled(
             tooltip: 'Back',
             style: IconButton.styleFrom(
               backgroundColor: Colors.white,
               foregroundColor: AppColors.ink,
+              padding: EdgeInsets.zero,
             ),
             icon: const Icon(Icons.arrow_back, size: 20),
             onPressed: () =>
@@ -188,15 +213,17 @@ class _DetailViewState extends State<_DetailView> {
                 ),
             ],
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: RefreshIndicator(
         onRefresh: c.load,
+        edgeOffset: 100,
         child: ListView(
-          padding: const EdgeInsets.only(bottom: 120),
+          padding: const EdgeInsets.only(bottom: 24),
           children: [
             SizedBox(
-              height: 250,
+              height: 270,
               child: a.coverImageUrl != null
                   ? CachedNetworkImage(
                       imageUrl: a.coverImageUrl!,
@@ -206,176 +233,195 @@ class _DetailViewState extends State<_DetailView> {
                     )
                   : _HeroFallback(color, a.category),
             ),
-            Padding(
-              padding: AppSpacing.page.copyWith(top: AppSpacing.lg),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        CategoryStyle.icon(a.category),
-                        size: 18,
-                        color: color,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        interestLabel(a.category),
-                        style: t.textTheme.bodyMedium?.copyWith(
-                          color: color,
-                          fontWeight: FontWeight.w700,
+            // Content sheet overlaps the hero with rounded top corners.
+            Transform.translate(
+              offset: const Offset(0, -24),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: t.scaffoldBackgroundColor,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(24),
+                  ),
+                ),
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(a.title, style: t.textTheme.headlineSmall),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      children: [
+                        _Tag(interestLabel(a.category).split(' ').first, color),
+                        _Tag(
+                          a.isFree ? 'Free' : 'Paid',
+                          a.isFree ? AppColors.success : AppColors.warning,
                         ),
-                      ),
-                      if (a.status != ActivityStatus.scheduled) ...[
-                        const SizedBox(width: 8),
-                        Chip(
-                          label: Text(
+                        if (a.isPrivate) _Tag('Private', t.colorScheme.primary),
+                        if (a.status != ActivityStatus.scheduled)
+                          _Tag(
                             a.status == ActivityStatus.cancelled
                                 ? 'Cancelled'
                                 : 'Completed',
+                            AppColors.danger,
                           ),
-                          visualDensity: VisualDensity.compact,
-                        ),
                       ],
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(a.title, style: t.textTheme.headlineMedium),
-                  const SizedBox(height: AppSpacing.lg),
-                  _Fact(
-                    Icons.schedule,
-                    Formatters.activityWhen(a.startAt),
-                    'Ends ${Formatters.activityWhen(a.endAt)}',
-                  ),
-                  _Fact(
-                    Icons.place_outlined,
-                    a.venueName,
-                    [
-                      if (a.distanceKm != null)
-                        Formatters.distance(a.distanceKm),
-                      a.city,
-                    ].join(' · '),
-                  ),
-                  _Fact(
-                    Icons.group_outlined,
-                    '${a.participantCount} going',
-                    a.isFull ? 'No spots left' : '${a.spotsLeft} spots left',
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    ),
+                    const SizedBox(height: 16),
+                    fact(
+                      Icons.calendar_today_outlined,
+                      Formatters.activityRange(a.startAt, a.endAt),
+                    ),
+                    fact(
+                      Icons.place_outlined,
+                      a.venueName,
+                      sub: [
+                        a.city.isEmpty
+                            ? ''
+                            : a.city[0].toUpperCase() + a.city.substring(1),
+                        if (a.distanceKm != null)
+                          Formatters.distance(a.distanceKm),
+                      ].where((s) => s.isNotEmpty).join(' · '),
+                    ),
+                    Row(
                       children: [
-                        Row(
-                          children: [
-                            Text('Capacity', style: t.textTheme.titleMedium),
-                            const Spacer(),
-                            Text(
-                              '${a.participantCount} / ${a.capacity}',
-                              style: t.textTheme.titleMedium,
-                            ),
-                          ],
+                        UserAvatar(
+                          name: a.hostDisplayName,
+                          photoUrl: a.hostPhotoUrl,
+                          size: 24,
                         ),
-                        const SizedBox(height: 6),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(AppRadius.pill),
-                          child: LinearProgressIndicator(
-                            minHeight: 8,
-                            value: a.capacity == 0
-                                ? 0
-                                : (a.participantCount / a.capacity).clamp(0, 1),
-                          ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${a.participantCount} going',
+                          style: t.textTheme.bodyMedium,
                         ),
                       ],
                     ),
-                  ),
-                  _Fact(
-                    Icons.payments_outlined,
-                    a.isFree ? 'Free' : 'Paid plan',
-                    a.costDescription.isEmpty ? null : a.costDescription,
-                  ),
-                  _Fact(
-                    Icons.verified_user_outlined,
-                    a.approvalRequired
-                        ? 'Host approves requests'
-                        : 'Open to join',
-                    a.isPrivate ? 'Private plan' : 'Public plan',
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  Text('About', style: t.textTheme.titleMedium),
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(a.description, style: t.textTheme.bodyLarge),
-                  const SizedBox(height: AppSpacing.xl),
-                  Row(
-                    children: [
-                      UserAvatar(
-                        name: a.hostDisplayName,
-                        photoUrl: a.hostPhotoUrl,
-                        size: 44,
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Hosted by', style: muted),
-                            Text(
-                              a.hostDisplayName,
-                              style: t.textTheme.titleMedium,
-                            ),
-                          ],
-                        ),
-                      ),
+                    if (!a.isFree && a.costDescription.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      fact(Icons.payments_outlined, a.costDescription),
                     ],
-                  ),
-                  if (a.safetyNotes.isNotEmpty ||
-                      a.cancellationPolicy.isNotEmpty) ...[
-                    const SizedBox(height: AppSpacing.xl),
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(AppSpacing.lg),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: t.colorScheme.outline),
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
+                      ),
+                      child: Row(
+                        children: [
+                          UserAvatar(
+                            name: a.hostDisplayName,
+                            photoUrl: a.hostPhotoUrl,
+                            size: 40,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Hosted by ${a.hostDisplayName}',
+                                  style: t.textTheme.titleSmall,
+                                ),
+                                Text(
+                                  a.approvalRequired
+                                      ? 'Host approves requests'
+                                      : 'Open to join',
+                                  style: t.textTheme.bodySmall,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(a.description, style: t.textTheme.bodyMedium),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Text('Capacity', style: t.textTheme.titleSmall),
+                        const Spacer(),
+                        Text(
+                          '${a.participantCount} / ${a.capacity}',
+                          style: t.textTheme.titleSmall,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
+                      child: LinearProgressIndicator(
+                        minHeight: 6,
+                        value: capFraction,
+                      ),
+                    ),
+                    if (a.safetyNotes.isNotEmpty ||
+                        a.cancellationPolicy.isNotEmpty) ...[
+                      const SizedBox(height: 20),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppColors.tint,
+                          borderRadius: BorderRadius.circular(AppRadius.lg),
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
                               children: [
-                                const Icon(
+                                Icon(
                                   Icons.health_and_safety_outlined,
-                                  size: 20,
+                                  size: 18,
+                                  color: t.colorScheme.primary,
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
                                   'Safety and notes',
-                                  style: t.textTheme.titleMedium,
+                                  style: t.textTheme.titleSmall,
                                 ),
                               ],
                             ),
                             if (a.safetyNotes.isNotEmpty) ...[
-                              const SizedBox(height: AppSpacing.sm),
-                              Text(a.safetyNotes),
+                              const SizedBox(height: 6),
+                              Text(
+                                a.safetyNotes,
+                                style: t.textTheme.bodyMedium,
+                              ),
                             ],
                             if (a.cancellationPolicy.isNotEmpty) ...[
-                              const SizedBox(height: AppSpacing.sm),
+                              const SizedBox(height: 6),
                               Text(
                                 'Cancellation: ${a.cancellationPolicy}',
-                                style: muted,
+                                style: t.textTheme.bodySmall,
                               ),
                             ],
                           ],
                         ),
                       ),
+                    ],
+                    const SizedBox(height: 20),
+                    Text('Location', style: t.textTheme.titleSmall),
+                    const SizedBox(height: 8),
+                    _MiniMap(activity: a),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Meet in a public place and let a friend know where you\'re going.',
+                      style: t.textTheme.bodySmall,
                     ),
+                    if (isMember && a.status == ActivityStatus.scheduled) ...[
+                      const SizedBox(height: 16),
+                      SecondaryButton(
+                        icon: Icons.chat_bubble_outline,
+                        label: 'Open group chat',
+                        onPressed: () => context.push('/activity/${a.id}/chat'),
+                      ),
+                    ],
                   ],
-                  const SizedBox(height: AppSpacing.xl),
-                  Text('Location', style: t.textTheme.titleMedium),
-                  const SizedBox(height: AppSpacing.sm),
-                  _MiniMap(activity: a),
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(
-                    'Meet in a public place and let a friend know where you\'re going.',
-                    style: muted,
-                  ),
-                ],
+                ),
               ),
             ),
           ],
@@ -403,41 +449,27 @@ class _DetailViewState extends State<_DetailView> {
   }
 }
 
-class _Fact extends StatelessWidget {
-  const _Fact(this.icon, this.title, this.subtitle);
-  final IconData icon;
-  final String title;
-  final String? subtitle;
+class _Tag extends StatelessWidget {
+  const _Tag(this.text, this.color);
+  final String text;
+  final Color color;
 
   @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.md),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 22, color: t.colorScheme.primary),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: t.textTheme.titleMedium),
-                if (subtitle != null && subtitle!.isNotEmpty)
-                  Text(
-                    subtitle!,
-                    style: t.textTheme.bodyMedium?.copyWith(
-                      color: t.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(6),
+    ),
+    child: Text(
+      text,
+      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+        color: color,
+        fontWeight: FontWeight.w600,
+        fontSize: 12,
       ),
-    );
-  }
+    ),
+  );
 }
 
 /// Static (non-interactive) map showing the venue only; nobody's live location.
@@ -451,7 +483,7 @@ class _MiniMap extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppRadius.lg),
       child: SizedBox(
-        height: 160,
+        height: 150,
         child: FlutterMap(
           options: MapOptions(
             initialCenter: activity.position,
@@ -469,8 +501,8 @@ class _MiniMap extends StatelessWidget {
               markers: [
                 Marker(
                   point: activity.position,
-                  width: ActivityMarker.size,
-                  height: ActivityMarker.size + 8,
+                  width: ActivityMarker.width,
+                  height: ActivityMarker.height,
                   alignment: Alignment.topCenter,
                   child: ActivityMarker(category: activity.category),
                 ),
@@ -498,7 +530,7 @@ class _HeroFallback extends StatelessWidget {
       gradient: LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [color.withValues(alpha: 0.85), color.withValues(alpha: 0.4)],
+        colors: [color.withValues(alpha: 0.9), color.withValues(alpha: 0.45)],
       ),
     ),
     child: Center(

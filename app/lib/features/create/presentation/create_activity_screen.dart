@@ -11,14 +11,14 @@ import '../../../core/theme/app_tokens.dart';
 import '../../../core/utils/app_exception.dart';
 import '../../../core/widgets/activity_card.dart';
 import '../../../core/widgets/form_field.dart';
-import '../../../core/widgets/interest_chip.dart';
+import '../../../core/widgets/app_chip.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../../core/widgets/secondary_button.dart';
 import '../../activities/data/activity_repository.dart';
 import '../../activities/models/activity.dart';
 import '../../auth/application/session_controller.dart';
-import '../../profile/data/user_profile.dart';
 import '../../explore/presentation/explore_controller.dart';
+import '../../profile/data/user_profile.dart';
 import 'create_activity_controller.dart';
 
 class CreateActivityScreen extends StatelessWidget {
@@ -48,22 +48,26 @@ class _CreateViewState extends State<_CreateView> {
   final _title = TextEditingController();
   final _description = TextEditingController();
   final _venue = TextEditingController();
+  final _maxMembers = TextEditingController(text: '8');
   final _costDesc = TextEditingController();
   final _safety = TextEditingController();
   final _cancel = TextEditingController();
   final _scroll = ScrollController();
   bool _uploading = false;
 
+  List<TextEditingController> get _all => [
+    _title,
+    _description,
+    _venue,
+    _maxMembers,
+    _costDesc,
+    _safety,
+    _cancel,
+  ];
+
   @override
   void dispose() {
-    for (final c in [
-      _title,
-      _description,
-      _venue,
-      _costDesc,
-      _safety,
-      _cancel,
-    ]) {
+    for (final c in _all) {
       c.dispose();
     }
     _scroll.dispose();
@@ -208,16 +212,10 @@ class _CreateViewState extends State<_CreateView> {
   }
 
   void _resetForm(CreateActivityController c) {
-    for (final t in [
-      _title,
-      _description,
-      _venue,
-      _costDesc,
-      _safety,
-      _cancel,
-    ]) {
+    for (final t in _all) {
       t.clear();
     }
+    _maxMembers.text = '8';
     c.update(() {
       c.title = '';
       c.description = '';
@@ -242,141 +240,141 @@ class _CreateViewState extends State<_CreateView> {
     final c = context.watch<CreateActivityController>();
     final t = Theme.of(context);
     final err = c.errors;
+    const gap = SizedBox(height: 16);
 
-    Widget section(String title) => Padding(
-      padding: const EdgeInsets.only(top: AppSpacing.xl, bottom: AppSpacing.sm),
-      child: Text(title, style: t.textTheme.titleMedium),
+    Widget section(String s) => Padding(
+      padding: const EdgeInsets.only(top: 24, bottom: 10),
+      child: Text(s, style: t.textTheme.titleMedium),
     );
 
-    Widget errorText(String key) => err[key] == null
-        ? const SizedBox.shrink()
-        : Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Text(
-              err[key]!,
-              style: TextStyle(color: t.colorScheme.error),
-            ),
-          );
-
     return Scaffold(
-      appBar: AppBar(title: const Text('Host a plan')),
+      appBar: AppBar(
+        leading: IconButton(
+          tooltip: 'Back',
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () =>
+              context.canPop() ? context.pop() : context.go('/explore'),
+        ),
+        title: const Text('Create a Meetup'),
+      ),
       body: SafeArea(
         child: ListView(
           controller: _scroll,
-          padding: AppSpacing.page.copyWith(bottom: 32),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           children: [
             AppFormField(
               label: 'Title',
+              hint: 'e.g. Weekend Trek to Lonavala',
               controller: _title,
               maxLength: 80,
               onChanged: (v) => c.title = v,
               validator: (_) => err['title'],
               textInputAction: TextInputAction.next,
             ),
-            const SizedBox(height: AppSpacing.sm),
+            gap,
+            AppDropdownField<String>(
+              label: 'Category',
+              hint: 'Select category',
+              value: c.category,
+              items: [
+                for (final i in kInterests)
+                  DropdownMenuItem(value: i.id, child: Text(i.label)),
+              ],
+              onChanged: (v) => c.update(() => c.category = v),
+              validator: (_) => err['category'],
+            ),
+            gap,
             AppFormField(
-              label: 'What\'s the plan?',
+              label: 'Date & Time',
+              hint: 'Select date & time',
+              initialValue: c.startAt == null
+                  ? ''
+                  : DateFormat('EEE, d MMM · h:mm a').format(c.startAt!),
+              readOnly: true,
+              onTap: () => _pickDateTime(c),
+              suffixIcon: const Icon(Icons.calendar_today_outlined, size: 20),
+              validator: (_) => err['startAt'],
+            ),
+            gap,
+            DropdownButtonFormField<int>(
+              initialValue: c.durationMinutes,
+              decoration: const InputDecoration(),
+              items: const [
+                DropdownMenuItem(value: 60, child: Text('Duration: 1 hour')),
+                DropdownMenuItem(value: 120, child: Text('Duration: 2 hours')),
+                DropdownMenuItem(value: 180, child: Text('Duration: 3 hours')),
+                DropdownMenuItem(value: 240, child: Text('Duration: 4 hours')),
+                DropdownMenuItem(value: 360, child: Text('Duration: 6 hours')),
+                DropdownMenuItem(
+                  value: 600,
+                  child: Text('Duration: most of the day'),
+                ),
+              ],
+              onChanged: (v) => c.update(() => c.durationMinutes = v ?? 120),
+            ),
+            gap,
+            AppFormField(
+              label: 'Venue',
+              hint: 'e.g. Cafe Leopold, Colaba',
+              controller: _venue,
+              maxLength: 100,
+              onChanged: (v) => c.venueName = v,
+              validator: (_) => err['venueName'],
+            ),
+            gap,
+            AppFormField(
+              label: 'Location',
+              hint: 'Choose on map',
+              initialValue: c.location == null
+                  ? ''
+                  : 'Pinned (${c.location!.latitude.toStringAsFixed(4)}, ${c.location!.longitude.toStringAsFixed(4)})',
+              readOnly: true,
+              prefixIcon: Icons.place_outlined,
+              onTap: () => _pickLocation(c),
+              validator: (_) => err['location'],
+            ),
+            gap,
+            AppFormField(
+              label: 'Description',
+              hint: 'Tell people about your plan...',
               controller: _description,
               maxLines: 4,
               maxLength: 1000,
               onChanged: (v) => c.description = v,
               validator: (_) => err['description'],
             ),
-            section('Category'),
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: [
-                for (final i in kInterests)
-                  InterestChip(
-                    interestId: i.id,
-                    selected: c.category == i.id,
-                    onSelected: (_) => c.update(() => c.category = i.id),
-                  ),
-              ],
-            ),
-            errorText('category'),
-            section('When'),
-            OutlinedButton.icon(
-              icon: const Icon(Icons.event),
-              onPressed: () => _pickDateTime(c),
-              label: Text(
-                c.startAt == null
-                    ? 'Pick date and time'
-                    : DateFormat('EEE, d MMM · h:mm a').format(c.startAt!),
-              ),
-            ),
-            errorText('startAt'),
-            const SizedBox(height: AppSpacing.md),
-            DropdownButtonFormField<int>(
-              initialValue: c.durationMinutes,
-              decoration: const InputDecoration(
-                labelText: 'Approximate duration',
-              ),
-              items: const [
-                DropdownMenuItem(value: 60, child: Text('1 hour')),
-                DropdownMenuItem(value: 120, child: Text('2 hours')),
-                DropdownMenuItem(value: 180, child: Text('3 hours')),
-                DropdownMenuItem(value: 240, child: Text('4 hours')),
-                DropdownMenuItem(value: 360, child: Text('6 hours')),
-                DropdownMenuItem(value: 600, child: Text('Most of the day')),
-              ],
-              onChanged: (v) => c.update(() => c.durationMinutes = v ?? 120),
-            ),
-            section('Where'),
+            gap,
             AppFormField(
-              label: 'Venue or meeting spot',
-              controller: _venue,
-              maxLength: 100,
-              onChanged: (v) => c.venueName = v,
-              validator: (_) => err['venueName'],
+              label: 'Max Members',
+              hint: 'e.g. 10',
+              controller: _maxMembers,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              onChanged: (v) => c.capacity = int.tryParse(v) ?? 0,
+              validator: (_) => err['capacity'],
+              helper: 'Including you. Between 2 and 50.',
             ),
-            const SizedBox(height: AppSpacing.sm),
-            OutlinedButton.icon(
-              icon: const Icon(Icons.place_outlined),
-              onPressed: () => _pickLocation(c),
-              label: Text(
-                c.location == null
-                    ? 'Choose on map'
-                    : 'Location set (${c.location!.latitude.toStringAsFixed(4)}, ${c.location!.longitude.toStringAsFixed(4)})',
+            section('Cost'),
+            AppSegmented<CostType>(
+              options: const {CostType.free: 'Free', CostType.paid: 'Paid'},
+              value: c.costType,
+              onChanged: (v) => c.update(() => c.costType = v),
+            ),
+            if (c.costType == CostType.paid) ...[
+              gap,
+              AppFormField(
+                label: 'Expected cost',
+                hint: 'e.g. about ₹500 each, paid at the venue',
+                controller: _costDesc,
+                maxLength: 200,
+                onChanged: (v) => c.costDescription = v,
+                validator: (_) => err['costDescription'],
+                helper:
+                    'Nomad Mingle doesn\'t collect payments. Everyone pays the venue directly.',
               ),
-            ),
-            errorText('location'),
-            section('People'),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Capacity (including you)',
-                    style: t.textTheme.bodyLarge,
-                  ),
-                ),
-                IconButton.outlined(
-                  tooltip: 'Fewer spots',
-                  onPressed: c.capacity > 2
-                      ? () => c.update(() => c.capacity--)
-                      : null,
-                  icon: const Icon(Icons.remove),
-                ),
-                SizedBox(
-                  width: 48,
-                  child: Text(
-                    '${c.capacity}',
-                    textAlign: TextAlign.center,
-                    style: t.textTheme.titleMedium,
-                  ),
-                ),
-                IconButton.outlined(
-                  tooltip: 'More spots',
-                  onPressed: c.capacity < 50
-                      ? () => c.update(() => c.capacity++)
-                      : null,
-                  icon: const Icon(Icons.add),
-                ),
-              ],
-            ),
-            errorText('capacity'),
+            ],
+            section('Who can join'),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('I approve each request'),
@@ -393,39 +391,20 @@ class _CreateViewState extends State<_CreateView> {
               value: c.isPrivate,
               onChanged: (v) => c.update(() => c.isPrivate = v),
             ),
-            section('Cost'),
-            SegmentedButton<CostType>(
-              segments: const [
-                ButtonSegment(value: CostType.free, label: Text('Free')),
-                ButtonSegment(value: CostType.paid, label: Text('Costs money')),
-              ],
-              selected: {c.costType},
-              onSelectionChanged: (s) => c.update(() => c.costType = s.first),
-            ),
-            if (c.costType == CostType.paid) ...[
-              const SizedBox(height: AppSpacing.md),
-              AppFormField(
-                label: 'Expected cost',
-                hint: 'e.g. about ₹500 each, paid at the venue',
-                controller: _costDesc,
-                maxLength: 200,
-                onChanged: (v) => c.costDescription = v,
-                validator: (_) => err['costDescription'],
-                helper:
-                    'Nomad Mingle doesn\'t collect payments. Everyone pays the venue directly.',
-              ),
-            ],
             section('Cover photo (optional)'),
             if (c.coverImageUrl != null)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(AppRadius.md),
-                child: Image.network(
-                  c.coverImageUrl!,
-                  height: 140,
-                  fit: BoxFit.cover,
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  child: Image.network(
+                    c.coverImageUrl!,
+                    height: 140,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
                 ),
               ),
-            const SizedBox(height: AppSpacing.sm),
             SecondaryButton(
               icon: Icons.photo_outlined,
               label: c.coverImageUrl == null ? 'Add photo' : 'Change photo',
@@ -442,7 +421,7 @@ class _CreateViewState extends State<_CreateView> {
               onChanged: (v) => c.safetyNotes = v,
               validator: (_) => err['safetyNotes'],
             ),
-            const SizedBox(height: AppSpacing.sm),
+            gap,
             AppFormField(
               label: 'Cancellation policy',
               controller: _cancel,
@@ -450,11 +429,10 @@ class _CreateViewState extends State<_CreateView> {
               maxLength: 500,
               onChanged: (v) => c.cancellationPolicy = v,
               validator: (_) => err['cancellationPolicy'],
-              inputFormatters: [LengthLimitingTextInputFormatter(500)],
             ),
-            const SizedBox(height: AppSpacing.xl),
+            const SizedBox(height: 24),
             PrimaryButton(
-              label: 'Preview and publish',
+              label: 'Create Plan',
               loading: c.submitting,
               onPressed: () => _preview(c),
             ),

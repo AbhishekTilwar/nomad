@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/config/map_config.dart';
@@ -7,10 +6,11 @@ import '../../../core/theme/app_tokens.dart';
 import '../../../core/utils/app_exception.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/form_field.dart';
-import '../../../core/widgets/interest_chip.dart';
+import '../../../core/widgets/app_chip.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../auth/application/session_controller.dart';
-import '../../profile/data/user_profile.dart';
+import 'dob_field.dart';
+import 'interest_picker.dart';
 
 const kPreferenceOptions = <String, String>{
   'small_groups': 'Small groups',
@@ -34,10 +34,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final _step2 = GlobalKey<FormState>();
   final _name = TextEditingController();
   final _bio = TextEditingController();
-  final _dobText = TextEditingController();
   DateTime? _dob;
-  String? _dobError;
-  String _city = MapConfig.cities.first.id;
+  String? _city;
   final _interests = <String>{};
   final _prefs = <String>{};
   int _step = 0;
@@ -55,34 +53,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void dispose() {
     _name.dispose();
     _bio.dispose();
-    _dobText.dispose();
     super.dispose();
-  }
-
-  Future<void> _pickDob() async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _dob ?? DateTime(now.year - 25, now.month, now.day),
-      firstDate: DateTime(now.year - 100),
-      lastDate: now,
-      helpText: 'Date of birth',
-    );
-    if (picked != null) {
-      setState(() {
-        _dob = picked;
-        _dobText.text = DateFormat.yMMMMd().format(picked);
-        _dobError = Validators.dateOfBirth(picked);
-      });
-    }
   }
 
   void _next() {
     if (_step == 0) {
-      final ok = _step1.currentState!.validate();
-      final dobErr = Validators.dateOfBirth(_dob);
-      setState(() => _dobError = dobErr);
-      if (!ok || dobErr != null) return;
+      if (!_step1.currentState!.validate()) return;
     } else if (_step == 1) {
       if (!_step2.currentState!.validate()) return;
     }
@@ -90,9 +66,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _finish() async {
-    if (_interests.isEmpty) {
+    if (_interests.length < kMinInterests) {
       setState(
-        () => _error = 'Pick at least one interest so we can suggest plans.',
+        () => _error =
+            'Choose at least $kMinInterests interests so we can suggest plans.',
       );
       return;
     }
@@ -104,7 +81,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       await context.read<SessionController>().completeOnboarding(
         displayName: _name.text,
         dateOfBirth: _dob!,
-        city: _city,
+        city: _city!,
         bio: _bio.text,
         interests: _interests.toList(),
         preferredActivityTypes: _prefs.toList(),
@@ -126,41 +103,72 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         if (!didPop) setState(() => _step--);
       },
       child: Scaffold(
-        appBar: AppBar(
-          title: Text('Step ${_step + 1} of 3'),
-          leading: _step == 0
-              ? null
-              : IconButton(
-                  tooltip: 'Back',
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () => setState(() => _step--),
-                ),
-          actions: [
-            TextButton(
-              onPressed: () => context.read<SessionController>().signOut(),
-              child: const Text('Sign out'),
-            ),
-          ],
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(4),
-            child: LinearProgressIndicator(value: (_step + 1) / 3),
-          ),
-        ),
         body: SafeArea(
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 480),
-              child: SingleChildScrollView(
-                padding: AppSpacing.page.copyWith(top: 24, bottom: 24),
-                keyboardDismissBehavior:
-                    ScrollViewKeyboardDismissBehavior.onDrag,
-                child: AnimatedSwitcher(
-                  duration: AppMotion.normal,
-                  child: KeyedSubtree(
-                    key: ValueKey(_step),
-                    child: _buildStep(t),
+              constraints: const BoxConstraints(maxWidth: 440),
+              child: Column(
+                children: [
+                  SizedBox(
+                    height: 48,
+                    child: Row(
+                      children: [
+                        const SizedBox(width: 12),
+                        if (_step == 0)
+                          const SizedBox(width: 48)
+                        else
+                          IconButton(
+                            tooltip: 'Back',
+                            icon: const Icon(
+                              Icons.arrow_back_ios_new,
+                              size: 20,
+                            ),
+                            onPressed: () => setState(() => _step--),
+                          ),
+                        Expanded(
+                          child: Text(
+                            'Step ${_step + 1} of 3',
+                            textAlign: TextAlign.center,
+                            style: t.textTheme.labelMedium?.copyWith(
+                              color: AppColors.inkMuted,
+                            ),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () =>
+                              context.read<SessionController>().signOut(),
+                          child: const Text('Sign out'),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                    ),
                   ),
-                ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: (_step + 1) / 3,
+                        minHeight: 6,
+                        backgroundColor: AppColors.tint,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
+                      child: AnimatedSwitcher(
+                        duration: AppMotion.normal,
+                        child: KeyedSubtree(
+                          key: ValueKey(_step),
+                          child: _buildStep(t),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -168,6 +176,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       ),
     );
   }
+
+  Widget _heading(ThemeData t, String title, [String? sub]) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(title, style: t.textTheme.headlineMedium),
+      if (sub != null) ...[
+        const SizedBox(height: 6),
+        Text(
+          sub,
+          style: t.textTheme.bodyMedium?.copyWith(color: AppColors.inkMuted),
+        ),
+      ],
+      const SizedBox(height: 28),
+    ],
+  );
 
   Widget _buildStep(ThemeData t) {
     switch (_step) {
@@ -177,36 +200,30 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Let\'s get you set up', style: t.textTheme.headlineMedium),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
+              _heading(
+                t,
+                'Let\'s get you set up',
                 'Your name is shown to other members.',
-                style: t.textTheme.bodyLarge?.copyWith(
-                  color: t.colorScheme.onSurfaceVariant,
-                ),
               ),
-              const SizedBox(height: AppSpacing.xl),
               AppFormField(
                 label: 'Display name',
+                showLabel: false,
                 controller: _name,
                 validator: Validators.displayName,
                 textInputAction: TextInputAction.next,
                 autofillHints: const [AutofillHints.givenName],
+                prefixIcon: Icons.person_outline,
               ),
-              const SizedBox(height: AppSpacing.lg),
-              TextFormField(
-                controller: _dobText,
-                readOnly: true,
-                onTap: _pickDob,
-                decoration: InputDecoration(
-                  labelText: 'Date of birth',
-                  helperText:
-                      'You must be 18 or older. Never shown on your profile.',
-                  errorText: _dobError,
-                  suffixIcon: const Icon(Icons.calendar_today_outlined),
+              const SizedBox(height: 12),
+              DobFormField(onChanged: (d) => _dob = d),
+              const SizedBox(height: 8),
+              Text(
+                'You must be 18 or older. Never shown on your profile.',
+                style: t.textTheme.bodySmall?.copyWith(
+                  color: AppColors.inkMuted,
                 ),
               ),
-              const SizedBox(height: AppSpacing.xl),
+              const SizedBox(height: 24),
               PrimaryButton(label: 'Continue', onPressed: _next),
             ],
           ),
@@ -217,36 +234,34 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Where are you based?', style: t.textTheme.headlineMedium),
-              const SizedBox(height: AppSpacing.lg),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final c in MapConfig.cities)
-                    ChoiceChip(
-                      label: Text(c.name),
-                      selected: _city == c.id,
-                      onSelected: (_) => setState(() => _city = c.id),
-                    ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
+              _heading(
+                t,
+                'Where are you based?',
                 'This sets your starting map view. We only use your device location if you allow it, and never share it.',
-                style: t.textTheme.bodySmall?.copyWith(
-                  color: t.colorScheme.onSurfaceVariant,
-                ),
               ),
-              const SizedBox(height: AppSpacing.xl),
+              AppDropdownField<String>(
+                label: 'Select Location',
+                showLabel: false,
+                prefixIcon: Icons.location_on_outlined,
+                value: _city,
+                validator: (v) => v == null ? 'Select your city.' : null,
+                items: [
+                  for (final c in MapConfig.cities)
+                    DropdownMenuItem(value: c.id, child: Text(c.name)),
+                ],
+                onChanged: (v) => setState(() => _city = v),
+              ),
+              const SizedBox(height: 12),
               AppFormField(
                 label: 'Short bio (optional)',
+                showLabel: false,
+                hint: 'Short bio (optional)',
                 controller: _bio,
                 validator: Validators.bio,
                 maxLines: 4,
                 maxLength: 300,
               ),
-              const SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: 12),
               PrimaryButton(label: 'Continue', onPressed: _next),
             ],
           ),
@@ -255,41 +270,36 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('What are you into?', style: t.textTheme.headlineMedium),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
+            _heading(
+              t,
+              'What are you into?',
               'Pick a few. You can change these anytime.',
-              style: t.textTheme.bodyLarge?.copyWith(
-                color: t.colorScheme.onSurfaceVariant,
+            ),
+            const InterestsHeader(),
+            const SizedBox(height: 10),
+            InterestPicker(
+              selected: _interests,
+              onToggle: (id, on) => setState(
+                () => on ? _interests.add(id) : _interests.remove(id),
               ),
             ),
-            const SizedBox(height: AppSpacing.lg),
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: [
-                for (final i in kInterests)
-                  InterestChip(
-                    interestId: i.id,
-                    selected: _interests.contains(i.id),
-                    onSelected: (v) => setState(
-                      () => v ? _interests.add(i.id) : _interests.remove(i.id),
-                    ),
-                  ),
-              ],
+            const SizedBox(height: 24),
+            Text(
+              'Plans you prefer',
+              style: t.textTheme.labelMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
-            const SizedBox(height: AppSpacing.xl),
-            Text('Plans you prefer', style: t.textTheme.titleMedium),
-            const SizedBox(height: AppSpacing.sm),
+            const SizedBox(height: 10),
             Wrap(
               spacing: 8,
-              runSpacing: 4,
+              runSpacing: 10,
               children: [
                 for (final e in kPreferenceOptions.entries)
-                  FilterChip(
-                    label: Text(e.value),
+                  AppChip(
+                    label: e.value,
                     selected: _prefs.contains(e.key),
-                    showCheckmark: false,
+                    style: AppChipStyle.tinted,
                     onSelected: (v) => setState(
                       () => v ? _prefs.add(e.key) : _prefs.remove(e.key),
                     ),
@@ -297,7 +307,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ],
             ),
             if (_error != null) ...[
-              const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: 12),
               Semantics(
                 liveRegion: true,
                 child: Text(
@@ -306,7 +316,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
               ),
             ],
-            const SizedBox(height: AppSpacing.xl),
+            const SizedBox(height: 24),
             PrimaryButton(label: 'Finish', loading: _busy, onPressed: _finish),
           ],
         );

@@ -5,23 +5,25 @@ class AppColors {
   const AppColors._();
 
   // Brand: indigo on soft lavender surfaces.
-  static const primary = Color(0xFF5B4FE0);
-  static const primaryDark = Color(0xFF9A93FF);
+  static const primary = Color(0xFF4F46E5);
+  static const primaryDark = Color(0xFF818CF8);
   static const onPrimary = Colors.white;
   static const secondary = Color(0xFF3B6FE0);
   static const secondaryDark = Color(0xFF8DB1FF);
 
-  static const sand = Color(0xFFF6F6FC);
+  static const sand = Color(0xFFFFFFFF); // screens are white in the design
   static const sandDark = Color(0xFF12121C);
   static const surface = Colors.white;
   static const surfaceDark = Color(0xFF1C1C2A);
 
-  static const ink = Color(0xFF1E2140);
-  static const inkMuted = Color(0xFF666B8A);
+  static const ink = Color(0xFF111827);
+  static const inkMuted = Color(0xFF6B7280);
   static const inkDark = Color(0xFFF1F1FA);
   static const inkMutedDark = Color(0xFFA9ACC6);
 
-  static const outline = Color(0xFFE3E4F1);
+  static const outline = Color(0xFFE5E7EB);
+  static const field = Color(0xFFF9FAFB);
+  static const tint = Color(0xFFEEF0FF); // light indigo wash
   static const outlineDark = Color(0xFF34354A);
 
   static const success = Color(0xFF1E8A4C);

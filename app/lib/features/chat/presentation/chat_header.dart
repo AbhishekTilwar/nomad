@@ -70,7 +70,7 @@ class ChatHeaderTitle extends StatelessWidget {
         if (people.isEmpty)
           CircleAvatar(
             radius: 16,
-            backgroundColor: t.colorScheme.primary.withValues(alpha: 0.12),
+            backgroundColor: AppColors.tint,
             child: Icon(fallbackIcon, size: 18, color: t.colorScheme.primary),
           )
         else
@@ -84,7 +84,10 @@ class ChatHeaderTitle extends StatelessWidget {
                 title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: t.textTheme.titleMedium,
+                style: t.textTheme.titleMedium?.copyWith(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               if (subtitle.isNotEmpty)
                 Text(
@@ -92,6 +95,7 @@ class ChatHeaderTitle extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: t.textTheme.bodySmall?.copyWith(
+                    fontSize: 12,
                     color: t.colorScheme.onSurfaceVariant,
                   ),
                 ),

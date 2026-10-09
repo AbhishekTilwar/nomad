@@ -7,15 +7,16 @@ import 'package:provider/provider.dart';
 import '../../../core/config/map_config.dart';
 import '../../../core/services/location_service.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../../core/utils/category_style.dart';
 import '../../../core/widgets/activity_card.dart';
+import '../../../core/widgets/app_chip.dart';
 import '../../../core/widgets/activity_marker.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/error_state.dart';
 import '../../../core/widgets/loading_skeleton.dart';
 import '../../../core/widgets/map_preview_card.dart';
-import '../../profile/data/user_profile.dart';
 import 'explore_controller.dart';
-import 'filter_sheet.dart';
+import 'filter_screen.dart';
 
 /// Categories shown as quick chips (the full set lives in the filter sheet).
 const _quickCategories = ['food', 'travel', 'sports', 'art', 'hiking', 'music'];
@@ -23,77 +24,156 @@ const _quickCategories = ['food', 'travel', 'sports', 'art', 'hiking', 'music'];
 class ExploreScreen extends StatelessWidget {
   const ExploreScreen({super.key, this.communityAction});
 
-  /// Entry point to the global Mingle Community chat (small icon in the app bar).
+  /// Entry point to the global Mingle Community chat (small icon in the header).
   final Widget? communityAction;
 
   @override
   Widget build(BuildContext context) {
     final c = context.watch<ExploreController>();
-    final t = Theme.of(context);
+    final isMap = c.view == ExploreView.map;
+    final header = _Header(controller: c, communityAction: communityAction);
     return Scaffold(
-      appBar: AppBar(
-        titleSpacing: 16,
-        title: Align(
-          alignment: Alignment.centerLeft,
-          child: PopupMenuButton<String>(
-            tooltip: 'Change city',
-            initialValue: c.cityId,
-            onSelected: c.setCity,
-            itemBuilder: (_) => [
-              for (final city in MapConfig.cities)
-                PopupMenuItem(value: city.id, child: Text(city.name)),
-            ],
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: t.colorScheme.surface,
-                borderRadius: BorderRadius.circular(AppRadius.pill),
-                border: Border.all(color: t.colorScheme.outline),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
+      body: isMap
+          ? Stack(
+              fit: StackFit.expand,
+              children: [
+                Positioned.fill(child: _Body(controller: c)),
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: SafeArea(bottom: false, child: header),
+                ),
+              ],
+            )
+          : SafeArea(
+              bottom: false,
+              child: Column(
                 children: [
-                  Icon(Icons.place, size: 18, color: t.colorScheme.primary),
-                  const SizedBox(width: 4),
-                  Text(c.city.name, style: t.textTheme.labelLarge),
-                  const Icon(Icons.keyboard_arrow_down, size: 20),
+                  header,
+                  Expanded(child: _Body(controller: c)),
                 ],
               ),
             ),
-          ),
-        ),
-        actions: [
-          IconButton(
-            tooltip: c.view == ExploreView.map ? 'Show list' : 'Show map',
-            icon: Icon(
-              c.view == ExploreView.map
-                  ? Icons.view_list_outlined
-                  : Icons.map_outlined,
-            ),
-            onPressed: () => c.setView(
-              c.view == ExploreView.map ? ExploreView.list : ExploreView.map,
-            ),
-          ),
-          IconButton(
-            tooltip: 'Search plans',
-            icon: const Icon(Icons.search),
-            onPressed: () => context.go('/discover'),
-          ),
-          communityAction ??
-              IconButton(
+    );
+  }
+}
+
+/// City pill + round action buttons + category chips, floating over the map
+/// (solid white in list mode).
+class _Header extends StatelessWidget {
+  const _Header({required this.controller, this.communityAction});
+  final ExploreController controller;
+  final Widget? communityAction;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = controller;
+    final t = Theme.of(context);
+    final isMap = c.view == ExploreView.map;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          child: Row(
+            children: [
+              PopupMenuButton<String>(
+                tooltip: 'Change city',
+                initialValue: c.cityId,
+                onSelected: c.setCity,
+                itemBuilder: (_) => [
+                  for (final city in MapConfig.cities)
+                    PopupMenuItem(value: city.id, child: Text(city.name)),
+                ],
+                child: Container(
+                  height: 36,
+                  padding: const EdgeInsets.only(left: 10, right: 6),
+                  decoration: BoxDecoration(
+                    color: t.colorScheme.surface,
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                    border: Border.all(color: t.colorScheme.outline),
+                    boxShadow: isMap ? AppShadows.card : null,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.place, size: 16, color: t.colorScheme.primary),
+                      const SizedBox(width: 4),
+                      Text(
+                        c.city.name,
+                        style: t.textTheme.labelMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const Icon(Icons.keyboard_arrow_down, size: 18),
+                    ],
+                  ),
+                ),
+              ),
+              const Spacer(),
+              _RoundAction(
+                tooltip: isMap ? 'Show list' : 'Show map',
+                icon: isMap ? Icons.view_list_outlined : Icons.map_outlined,
+                onPressed: () =>
+                    c.setView(isMap ? ExploreView.list : ExploreView.map),
+              ),
+              const SizedBox(width: 8),
+              _RoundAction(
+                tooltip: 'Search plans',
+                icon: Icons.search,
+                onPressed: () => context.go('/discover'),
+              ),
+              const SizedBox(width: 8),
+              _RoundAction(
                 tooltip: 'Mingle Community',
-                icon: const Icon(Icons.forum_outlined),
+                icon: Icons.forum_outlined,
+                child: communityAction,
                 onPressed: () => context.push('/community'),
               ),
-          const SizedBox(width: 4),
-        ],
+            ],
+          ),
+        ),
+        _Chips(controller: c),
+      ],
+    );
+  }
+}
+
+class _RoundAction extends StatelessWidget {
+  const _RoundAction({
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+    this.child,
+  });
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  /// Replaces the default icon button (e.g. the unread-badge community button).
+  final Widget? child;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: t.colorScheme.surface,
+        shape: BoxShape.circle,
+        border: Border.all(color: t.colorScheme.outline),
+        boxShadow: AppShadows.card,
       ),
-      body: Column(
-        children: [
-          _Chips(controller: c),
-          Expanded(child: _Body(controller: c)),
-        ],
-      ),
+      child:
+          child ??
+          IconButton(
+            tooltip: tooltip,
+            padding: EdgeInsets.zero,
+            icon: Icon(icon, size: 20),
+            onPressed: onPressed,
+          ),
     );
   }
 }
@@ -106,49 +186,53 @@ class _Chips extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = controller;
     return SizedBox(
-      height: 52,
+      height: 44,
       child: ListView(
         scrollDirection: Axis.horizontal,
-        padding: AppSpacing.page,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        clipBehavior: Clip.none,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: Badge(
-              isLabelVisible: c.hasActiveFilters,
-              smallSize: 9,
-              child: IconButton.outlined(
-                tooltip: 'Filters',
-                icon: const Icon(Icons.tune),
-                onPressed: () => FilterSheet.show(context, c),
-              ),
+          _gap(
+            AppChip(
+              label: 'All',
+              selected: c.categories.isEmpty && !c.freeOnly,
+              onSelected: (_) {
+                c.clearCategories();
+                c.setFreeOnly(false);
+              },
             ),
           ),
-          _chip('All', c.categories.isEmpty && !c.freeOnly, (_) {
-            c.clearCategories();
-            c.setFreeOnly(false);
-          }),
           for (final id in _quickCategories)
-            _chip(
-              interestLabel(id).split(' ').first,
-              c.categories.contains(id),
-              (_) => c.toggleCategory(id),
+            _gap(
+              AppChip(
+                label: CategoryStyle.shortLabels[id] ?? id,
+                selected: c.categories.contains(id),
+                onSelected: (_) => c.toggleCategory(id),
+              ),
             ),
-          _chip('Free', c.freeOnly, c.setFreeOnly),
+          _gap(
+            AppChip(
+              label: 'Free',
+              selected: c.freeOnly,
+              onSelected: c.setFreeOnly,
+            ),
+          ),
+          Badge(
+            isLabelVisible: c.hasActiveFilters,
+            smallSize: 9,
+            child: AppChip(
+              label: 'Filters',
+              icon: Icons.tune,
+              onSelected: (_) => FilterScreen.open(context, c),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _chip(String label, bool selected, ValueChanged<bool> onSelected) =>
-      Padding(
-        padding: const EdgeInsets.only(right: 8),
-        child: FilterChip(
-          label: Text(label),
-          selected: selected,
-          showCheckmark: false,
-          onSelected: onSelected,
-        ),
-      );
+  Widget _gap(Widget w) =>
+      Padding(padding: const EdgeInsets.only(right: 8), child: w);
 }
 
 class _Body extends StatelessWidget {
@@ -158,11 +242,15 @@ class _Body extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = controller;
-    if (c.state == LoadState.loading && c.items.isEmpty) {
-      return LoadingSkeleton.list();
-    }
-    if (c.state == LoadState.error && c.items.isEmpty) {
-      return ErrorState(message: c.error, onRetry: c.load);
+    // Map view always renders the map (it shows its own progress/error UI);
+    // list view shows skeleton / error states.
+    if (c.view == ExploreView.list) {
+      if (c.state == LoadState.loading && c.items.isEmpty) {
+        return LoadingSkeleton.list();
+      }
+      if (c.state == LoadState.error && c.items.isEmpty) {
+        return ErrorState(message: c.error, onRetry: c.load);
+      }
     }
     if (c.view == ExploreView.list) {
       final list = c.visible;
@@ -306,8 +394,8 @@ class _MapViewState extends State<_MapView> {
                 for (final a in items)
                   Marker(
                     point: a.position,
-                    width: ActivityMarker.size,
-                    height: ActivityMarker.size + 8,
+                    width: ActivityMarker.width,
+                    height: ActivityMarker.height,
                     alignment: Alignment.topCenter,
                     child: GestureDetector(
                       onTap: () => c.select(a.id),
@@ -342,7 +430,7 @@ class _MapViewState extends State<_MapView> {
         ),
         if (_tilesFailing)
           Positioned(
-            top: 8,
+            top: MediaQuery.paddingOf(context).top + 104,
             left: 16,
             right: 16,
             child: Material(
@@ -361,7 +449,7 @@ class _MapViewState extends State<_MapView> {
           ),
         if (c.state == LoadState.loaded && items.isEmpty)
           Positioned(
-            top: 8,
+            top: MediaQuery.paddingOf(context).top + 104,
             left: 16,
             right: 16,
             child: Card(
@@ -371,7 +459,26 @@ class _MapViewState extends State<_MapView> {
               ),
             ),
           ),
-        if (c.state == LoadState.loading && c.items.isNotEmpty)
+        if (c.state == LoadState.error)
+          Positioned(
+            top: MediaQuery.paddingOf(context).top + 104,
+            left: 16,
+            right: 16,
+            child: Material(
+              color: t.colorScheme.errorContainer,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              child: ListTile(
+                dense: true,
+                leading: const Icon(Icons.cloud_off_outlined),
+                title: Text(c.error ?? 'Couldn\'t load plans'),
+                trailing: TextButton(
+                  onPressed: c.load,
+                  child: const Text('Try again'),
+                ),
+              ),
+            ),
+          ),
+        if (c.state == LoadState.loading)
           const Positioned(
             top: 0,
             left: 0,

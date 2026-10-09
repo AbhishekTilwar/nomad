@@ -72,10 +72,16 @@ class _ActivityChatScreenState extends State<ActivityChatScreen> {
           ),
         ),
         actions: [
-          IconButton(
-            tooltip: 'Community guidelines',
-            icon: const Icon(Icons.info_outline),
-            onPressed: () => context.push('/legal/guidelines'),
+          PopupMenuButton<String>(
+            tooltip: 'More options',
+            icon: const Icon(Icons.more_vert),
+            onSelected: (_) => context.push('/legal/guidelines'),
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'guidelines',
+                child: Text('Community guidelines'),
+              ),
+            ],
           ),
         ],
       ),

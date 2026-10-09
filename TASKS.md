@@ -13,6 +13,8 @@ _Last updated: 2026-10-10. Only items marked ✅ were actually run/verified; see
 
 - ✅ Phase 5/6 client: Mingle Community (Explore app-bar icon, full-screen route), activity group chat, Chats tab, unread dot, `GET /users/me/activities`; UI restyled to the indigo mockup; Explore loads by viewport and focuses newly posted plans
 
+- ✅ UI restyled to the design mockup (Inter font, indigo tokens, label-above fields, pill chips, floating Explore header, full-screen filters, teardrop pins). Checked on emulator: Explore, Discover, Chats, Profile, Plan details. NOT yet checked on a device: splash/intro/login/sign-up, Filter, Create, Settings, Safety, Location, Notifications, group chat.
+
 ## In progress
 - Nothing running
 
@@ -44,7 +46,7 @@ _Last updated: 2026-10-10. Only items marked ✅ were actually run/verified; see
 | Suite | Command | Result |
 |---|---|---|
 | Flutter static analysis | `flutter analyze` | ✅ no issues |
-| Flutter tests | `flutter test` | ✅ 129 passed |
+| Flutter tests | `flutter test` | ✅ 148 passed |
 | Flutter web build | `flutter build web --dart-define=USE_EMULATOR=true` | ✅ built |
 | Android debug build | `flutter build apk --debug` | ✅ built |
 | Backend unit/integration (in-memory Firestore fake) | `cd backend && npm test` | ✅ 67 passed (re-run by me); 70 per chat subagent after new endpoint, not re-run by me |

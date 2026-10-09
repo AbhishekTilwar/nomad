@@ -2,42 +2,33 @@ import 'package:flutter/material.dart';
 
 import '../../features/profile/data/user_profile.dart';
 import '../utils/category_style.dart';
+import 'app_chip.dart';
 
-/// Selectable chip when [onSelected] is set, otherwise a read-only label.
+/// Interest/category pill. Selectable when [onSelected] is set, otherwise a
+/// quiet read-only pill (profile). Uses the short design labels.
 class InterestChip extends StatelessWidget {
   const InterestChip({
     super.key,
     required this.interestId,
     this.selected = false,
     this.onSelected,
+    this.style,
   });
 
   final String interestId;
   final bool selected;
   final ValueChanged<bool>? onSelected;
+  final AppChipStyle? style;
 
   @override
   Widget build(BuildContext context) {
-    final color = CategoryStyle.color(interestId);
-    final label = interestLabel(interestId);
-    if (onSelected == null) {
-      return Chip(
-        avatar: Icon(CategoryStyle.icon(interestId), size: 16, color: color),
-        label: Text(label),
-        visualDensity: VisualDensity.compact,
-      );
-    }
-    return FilterChip(
-      avatar: Icon(
-        CategoryStyle.icon(interestId),
-        size: 18,
-        color: selected ? null : color,
-      ),
-      label: Text(label),
+    final readOnly = onSelected == null;
+    return AppChip(
+      label: CategoryStyle.shortLabels[interestId] ?? interestLabel(interestId),
+      icon: readOnly ? null : CategoryStyle.icon(interestId),
       selected: selected,
       onSelected: onSelected,
-      showCheckmark: false,
-      materialTapTargetSize: MaterialTapTargetSize.padded,
+      style: style ?? (readOnly ? AppChipStyle.quiet : AppChipStyle.tinted),
     );
   }
 }

@@ -11,11 +11,13 @@ import '../features/explore/presentation/explore_controller.dart';
 import '../features/activities/presentation/activity_detail_screen.dart';
 import '../features/activities/presentation/manage_members_screen.dart';
 import '../features/auth/application/session_controller.dart';
-import '../features/auth/presentation/email_auth_screen.dart';
 import '../features/auth/presentation/forgot_password_screen.dart';
+import '../features/auth/presentation/login_screen.dart';
+import '../features/auth/presentation/sign_up_screen.dart';
 import '../features/auth/presentation/verify_email_screen.dart';
 import '../features/auth/presentation/welcome_screen.dart';
 import '../features/explore/presentation/explore_screen.dart';
+import '../features/onboarding/presentation/intro_screen.dart';
 import '../features/onboarding/presentation/onboarding_screen.dart';
 import '../features/profile/presentation/edit_profile_screen.dart';
 import '../features/profile/presentation/profile_screen.dart';
@@ -30,7 +32,13 @@ import '../features/shell/status_screens.dart';
 
 /// Pure redirect rule, exported for unit tests.
 String? redirectFor(SessionStatus status, String location) {
-  const publicAuth = {'/welcome', '/sign-in', '/register', '/forgot-password'};
+  const publicAuth = {
+    '/welcome',
+    '/intro',
+    '/sign-in',
+    '/register',
+    '/forgot-password',
+  };
   final isLegal = location.startsWith('/legal/');
   switch (status) {
     case SessionStatus.initializing:
@@ -50,6 +58,7 @@ String? redirectFor(SessionStatus status, String location) {
       const gate = {
         '/splash',
         '/welcome',
+        '/intro',
         '/sign-in',
         '/register',
         '/forgot-password',
@@ -73,11 +82,9 @@ GoRouter buildRouter(
     routes: [
       GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
       GoRoute(path: '/welcome', builder: (_, _) => const WelcomeScreen()),
-      GoRoute(path: '/sign-in', builder: (_, _) => const EmailAuthScreen()),
-      GoRoute(
-        path: '/register',
-        builder: (_, _) => const EmailAuthScreen(register: true),
-      ),
+      GoRoute(path: '/intro', builder: (_, _) => const IntroScreen()),
+      GoRoute(path: '/sign-in', builder: (_, _) => const LoginScreen()),
+      GoRoute(path: '/register', builder: (_, _) => const SignUpScreen()),
       GoRoute(
         path: '/forgot-password',
         builder: (_, _) => const ForgotPasswordScreen(),

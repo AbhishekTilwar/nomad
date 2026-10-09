@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../core/theme/app_tokens.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/form_field.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../data/auth_repository.dart';
+import 'auth_layout.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -55,59 +55,47 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
-    return Scaffold(
-      appBar: AppBar(title: const Text('Reset password')),
-      body: SafeArea(
-        child: Padding(
-          padding: AppSpacing.page,
-          child: _sent
-              ? Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.mark_email_read_outlined, size: 56),
-                    const SizedBox(height: AppSpacing.lg),
-                    Text('Check your inbox', style: t.textTheme.titleLarge),
-                    const SizedBox(height: AppSpacing.sm),
-                    const Text(
-                      'If an account exists for that address, we\'ve sent a link to reset your password.',
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                )
-              : Form(
-                  key: _form,
-                  child: ListView(
-                    children: [
-                      const SizedBox(height: AppSpacing.lg),
-                      const Text(
-                        'Enter your email and we\'ll send you a reset link.',
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-                      AppFormField(
-                        label: 'Email',
-                        controller: _email,
-                        validator: Validators.email,
-                        keyboardType: TextInputType.emailAddress,
-                        onSubmitted: (_) => _submit(),
-                      ),
-                      if (_error != null) ...[
-                        const SizedBox(height: AppSpacing.md),
-                        Text(
-                          _error!,
-                          style: TextStyle(color: t.colorScheme.error),
-                        ),
-                      ],
-                      const SizedBox(height: AppSpacing.xl),
-                      PrimaryButton(
-                        label: 'Send reset link',
-                        loading: _busy,
-                        onPressed: _submit,
-                      ),
-                    ],
-                  ),
-                ),
+    if (_sent) {
+      return AuthPage(
+        title: 'Check your inbox',
+        subtitle:
+            'If an account exists for that address, we\'ve sent a link to reset your password.',
+        children: [
+          const SizedBox(height: 8),
+          Icon(
+            Icons.mark_email_read_outlined,
+            size: 56,
+            color: t.colorScheme.primary,
+          ),
+        ],
+      );
+    }
+    return AuthPage(
+      title: 'Reset Password',
+      subtitle: 'Enter your email and we\'ll send you a reset link.',
+      children: [
+        Form(
+          key: _form,
+          child: AppFormField(
+            label: 'Email',
+            showLabel: false,
+            controller: _email,
+            validator: Validators.email,
+            keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.done,
+            autofillHints: const [AutofillHints.email],
+            prefixIcon: Icons.mail_outline,
+            onSubmitted: (_) => _submit(),
+          ),
         ),
-      ),
+        if (_error != null) ...[const SizedBox(height: 12), AuthError(_error!)],
+        const SizedBox(height: 24),
+        PrimaryButton(
+          label: 'Send reset link',
+          loading: _busy,
+          onPressed: _submit,
+        ),
+      ],
     );
   }
 }

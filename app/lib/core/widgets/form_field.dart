@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// Labelled text field with consistent styling; passwords get a visibility toggle.
+/// Design field: optional bold label ABOVE the input, grey hint inside,
+/// optional leading icon. Passwords get a visibility toggle.
+///
+/// [showLabel] false renders hint-only (login / sign-up screens) while keeping
+/// [label] as the accessible name.
 class AppFormField extends StatefulWidget {
   const AppFormField({
     super.key,
@@ -21,10 +25,15 @@ class AppFormField extends StatefulWidget {
     this.enabled = true,
     this.inputFormatters,
     this.prefixIcon,
+    this.suffixIcon,
     this.readOnly = false,
     this.onTap,
+    this.showLabel = true,
+    this.initialValue,
   });
 
+  /// Used only when no [controller] is supplied (read-only display fields).
+  final String? initialValue;
   final String label;
   final TextEditingController? controller;
   final String? Function(String?)? validator;
@@ -41,8 +50,10 @@ class AppFormField extends StatefulWidget {
   final bool enabled;
   final List<TextInputFormatter>? inputFormatters;
   final IconData? prefixIcon;
+  final Widget? suffixIcon;
   final bool readOnly;
   final VoidCallback? onTap;
+  final bool showLabel;
 
   @override
   State<AppFormField> createState() => _AppFormFieldState();
@@ -53,8 +64,11 @@ class _AppFormFieldState extends State<AppFormField> {
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
+    final t = Theme.of(context);
+    final field = TextFormField(
+      key: widget.controller == null ? ValueKey(widget.initialValue) : null,
       controller: widget.controller,
+      initialValue: widget.controller == null ? widget.initialValue : null,
       validator: widget.validator,
       obscureText: _hidden,
       enabled: widget.enabled,
@@ -69,11 +83,14 @@ class _AppFormFieldState extends State<AppFormField> {
       onFieldSubmitted: widget.onSubmitted,
       inputFormatters: widget.inputFormatters,
       autovalidateMode: AutovalidateMode.onUserInteraction,
+      style: t.textTheme.bodyMedium,
       decoration: InputDecoration(
-        labelText: widget.label,
-        hintText: widget.hint,
+        hintText: widget.hint ?? (widget.showLabel ? null : widget.label),
         helperText: widget.helper,
-        prefixIcon: widget.prefixIcon == null ? null : Icon(widget.prefixIcon),
+        helperMaxLines: 3,
+        prefixIcon: widget.prefixIcon == null
+            ? null
+            : Icon(widget.prefixIcon, size: 20),
         suffixIcon: widget.obscure
             ? IconButton(
                 tooltip: _hidden ? 'Show password' : 'Hide password',
@@ -81,10 +98,95 @@ class _AppFormFieldState extends State<AppFormField> {
                   _hidden
                       ? Icons.visibility_outlined
                       : Icons.visibility_off_outlined,
+                  size: 20,
                 ),
                 onPressed: () => setState(() => _hidden = !_hidden),
               )
-            : null,
+            : widget.suffixIcon,
+      ),
+    );
+    return Semantics(
+      label: widget.label,
+      textField: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (widget.showLabel) ...[
+            ExcludeSemantics(
+              child: Text(
+                widget.label,
+                style: t.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+          ],
+          field,
+        ],
+      ),
+    );
+  }
+}
+
+/// Dropdown styled like [AppFormField] (label above, hint inside).
+class AppDropdownField<T> extends StatelessWidget {
+  const AppDropdownField({
+    super.key,
+    required this.label,
+    required this.items,
+    required this.value,
+    required this.onChanged,
+    this.hint,
+    this.prefixIcon,
+    this.showLabel = true,
+    this.validator,
+  });
+
+  final String label;
+  final String? hint;
+  final List<DropdownMenuItem<T>> items;
+  final T? value;
+  final ValueChanged<T?> onChanged;
+  final IconData? prefixIcon;
+  final bool showLabel;
+  final String? Function(T?)? validator;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    return Semantics(
+      label: label,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (showLabel) ...[
+            ExcludeSemantics(
+              child: Text(
+                label,
+                style: t.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+          ],
+          DropdownButtonFormField<T>(
+            initialValue: value,
+            items: items,
+            onChanged: onChanged,
+            validator: validator,
+            isExpanded: true,
+            style: t.textTheme.bodyMedium,
+            icon: const Icon(Icons.keyboard_arrow_down),
+            decoration: InputDecoration(
+              hintText: hint ?? (showLabel ? null : label),
+              prefixIcon: prefixIcon == null
+                  ? null
+                  : Icon(prefixIcon, size: 20),
+            ),
+          ),
+        ],
       ),
     );
   }

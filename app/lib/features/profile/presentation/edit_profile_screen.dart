@@ -6,6 +6,7 @@ import '../../../core/config/map_config.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/utils/app_exception.dart';
 import '../../../core/utils/validators.dart';
+import '../../../core/widgets/app_chip.dart';
 import '../../../core/widgets/form_field.dart';
 import '../../../core/widgets/interest_chip.dart';
 import '../../../core/widgets/primary_button.dart';
@@ -79,7 +80,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Widget build(BuildContext context) {
     final t = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Edit profile')),
+      appBar: AppBar(title: const Text('Edit Profile')),
       body: SafeArea(
         child: Form(
           key: _form,
@@ -105,10 +106,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               const SizedBox(height: AppSpacing.sm),
               Wrap(
                 spacing: 8,
+                runSpacing: 8,
                 children: [
                   for (final c in MapConfig.cities)
-                    ChoiceChip(
-                      label: Text(c.name),
+                    AppChip(
+                      label: c.name,
                       selected: _city == c.id,
                       onSelected: (_) => setState(() => _city = c.id),
                     ),
@@ -119,7 +121,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               const SizedBox(height: AppSpacing.sm),
               Wrap(
                 spacing: 8,
-                runSpacing: 4,
+                runSpacing: 8,
                 children: [
                   for (final i in kInterests)
                     InterestChip(
@@ -137,13 +139,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               const SizedBox(height: AppSpacing.sm),
               Wrap(
                 spacing: 8,
-                runSpacing: 4,
+                runSpacing: 8,
                 children: [
                   for (final e in kPreferenceOptions.entries)
-                    FilterChip(
-                      label: Text(e.value),
+                    AppChip(
+                      label: e.value,
+                      style: AppChipStyle.tinted,
                       selected: _prefs.contains(e.key),
-                      showCheckmark: false,
                       onSelected: (v) => setState(
                         () => v ? _prefs.add(e.key) : _prefs.remove(e.key),
                       ),

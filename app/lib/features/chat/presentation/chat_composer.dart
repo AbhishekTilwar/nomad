@@ -74,9 +74,13 @@ class _ChatComposerState extends State<ChatComposer> {
     return SafeArea(
       top: false,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: AppColors.outline)),
+        ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Expanded(
               child: ValueListenableBuilder<TextEditingValue>(
@@ -89,9 +93,9 @@ class _ChatComposerState extends State<ChatComposer> {
                     maxLines: 5,
                     textCapitalization: TextCapitalization.sentences,
                     decoration: InputDecoration(
-                      hintText: 'Message',
+                      hintText: 'Type a message...',
                       filled: true,
-                      fillColor: scheme.surface,
+                      fillColor: AppColors.field,
                       isDense: true,
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -105,11 +109,15 @@ class _ChatComposerState extends State<ChatComposer> {
                           : null,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(AppRadius.xl),
-                        borderSide: BorderSide(color: scheme.outline),
+                        borderSide: const BorderSide(color: AppColors.outline),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.xl),
+                        borderSide: BorderSide(color: scheme.primary),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(AppRadius.xl),
-                        borderSide: BorderSide(color: scheme.outline),
+                        borderSide: const BorderSide(color: AppColors.outline),
                       ),
                     ),
                   );
@@ -122,7 +130,11 @@ class _ChatComposerState extends State<ChatComposer> {
               builder: (_, v, _) => IconButton.filled(
                 tooltip: 'Send message',
                 onPressed: Validators.message(v.text) != null ? null : _send,
-                icon: const Icon(Icons.arrow_upward_rounded),
+                style: IconButton.styleFrom(
+                  fixedSize: const Size(44, 44),
+                  minimumSize: const Size(44, 44),
+                ),
+                icon: const Icon(Icons.send_rounded, size: 20),
               ),
             ),
           ],

@@ -178,6 +178,31 @@ void main() {
       );
       expect(find.text('Dev Patel'), findsOneWidget);
       expect(find.text('Anyone up for a trek this weekend?'), findsOneWidget);
+      expect(find.byType(UserAvatar), findsOneWidget);
+      expect(find.byKey(const ValueKey('sent-ticks')), findsNothing);
+      final deco =
+          t
+                  .widget<Container>(
+                    find
+                        .descendant(
+                          of: find.byType(CommunityMessageBubble),
+                          matching: find.byType(Container),
+                        )
+                        .last,
+                  )
+                  .decoration!
+              as BoxDecoration;
+      expect(deco.color, Colors.white);
+      expect(deco.border, isNotNull);
+    });
+    testWidgets('mine: indigo bubble, no avatar, double ticks when sent', (
+      t,
+    ) async {
+      await t.pumpWidget(
+        wrap(CommunityMessageBubble(message: msg, isMine: true)),
+      );
+      expect(find.byType(UserAvatar), findsNothing);
+      expect(find.byKey(const ValueKey('sent-ticks')), findsOneWidget);
     });
     testWidgets('mine: hides sender name; pending shows Sending', (t) async {
       final pending = ChatMessage(

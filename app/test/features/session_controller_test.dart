@@ -1,7 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:nomad_mingle/app/router.dart';
 import 'package:nomad_mingle/core/utils/app_exception.dart';
 import 'package:nomad_mingle/features/auth/application/session_controller.dart';
+import 'package:nomad_mingle/features/auth/application/signup_draft.dart';
 import 'package:nomad_mingle/features/auth/data/auth_repository.dart';
 import 'package:nomad_mingle/features/profile/data/user_profile.dart';
 
@@ -166,10 +168,13 @@ void main() {
     test('signed out users are sent to welcome except on auth routes', () {
       expect(redirectFor(SessionStatus.signedOut, '/explore'), '/welcome');
       expect(redirectFor(SessionStatus.signedOut, '/sign-in'), isNull);
+      expect(redirectFor(SessionStatus.signedOut, '/intro'), isNull);
+      expect(redirectFor(SessionStatus.signedOut, '/register'), isNull);
       expect(redirectFor(SessionStatus.signedOut, '/legal/terms'), isNull);
     });
     test('ready users cannot linger on auth screens', () {
       expect(redirectFor(SessionStatus.ready, '/welcome'), '/explore');
+      expect(redirectFor(SessionStatus.ready, '/intro'), '/explore');
       expect(redirectFor(SessionStatus.ready, '/chats'), isNull);
     });
     test('onboarding and verification gates', () {
@@ -182,6 +187,80 @@ void main() {
         '/verify-email',
       );
       expect(redirectFor(SessionStatus.initializing, '/welcome'), '/splash');
+    });
+  });
+
+  group('sign-up draft', () {
+    final draft = SignupDraft(
+      name: 'Asha Rao',
+      dateOfBirth: DateTime(1998, 4, 2),
+      city: 'mumbai',
+      interests: const ['food', 'travel', 'music'],
+    );
+
+    setUp(() => SharedPreferences.setMockInitialValues({}));
+
+    test('password user without a profile gets one from the draft', () async {
+      await const SignupDraftStore().save(draft);
+      final repo = FakeProfileRepository();
+      final s = SessionController(
+        auth: FakeAuthRepository(_pwUser),
+        profiles: repo,
+      );
+      await pump();
+      await pump();
+      expect(s.status, SessionStatus.ready);
+      expect(s.profile?.displayName, 'Asha Rao');
+      expect(s.profile?.city, 'mumbai');
+      expect(repo.lastDob, DateTime(1998, 4, 2));
+      expect(await const SignupDraftStore().load(), isNull);
+      s.dispose();
+    });
+
+    test(
+      'Google user keeps the onboarding flow and draft is ignored',
+      () async {
+        await const SignupDraftStore().save(draft);
+        final s = SessionController(
+          auth: FakeAuthRepository(
+            const AuthUser(uid: 'g', email: 'g@x.com', emailVerified: true),
+          ),
+          profiles: FakeProfileRepository(),
+        );
+        await pump();
+        await pump();
+        expect(s.status, SessionStatus.needsOnboarding);
+        s.dispose();
+      },
+    );
+
+    test('invalid (under-18) draft is discarded, onboarding shown', () async {
+      await const SignupDraftStore().save(
+        SignupDraft(
+          name: 'Kid',
+          dateOfBirth: DateTime.now().subtract(const Duration(days: 365 * 10)),
+          city: 'pune',
+          interests: const ['food'],
+        ),
+      );
+      final s = SessionController(
+        auth: FakeAuthRepository(_pwUser),
+        profiles: FakeProfileRepository(),
+      );
+      await pump();
+      await pump();
+      expect(s.status, SessionStatus.needsOnboarding);
+      expect(await const SignupDraftStore().load(), isNull);
+      s.dispose();
+    });
+
+    test('draft never contains a password and round-trips', () async {
+      final raw = draft.encode();
+      expect(raw.toLowerCase().contains('password'), isFalse);
+      final back = SignupDraft.decode(raw)!;
+      expect(back.dateOfBirth, DateTime(1998, 4, 2));
+      expect(back.interests, ['food', 'travel', 'music']);
+      expect(SignupDraft.decode('garbage'), isNull);
     });
   });
 }

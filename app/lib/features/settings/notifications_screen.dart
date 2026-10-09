@@ -41,69 +41,103 @@ class NotificationsScreen extends StatelessWidget {
     final uid = context.read<SessionController>().user?.uid;
     final t = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Notifications')),
-      body: uid == null
-          ? const SizedBox.shrink()
-          : StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: FirebaseFirestore.instance
-                  .collection('notifications')
-                  .where('userId', isEqualTo: uid)
-                  .orderBy('createdAt', descending: true)
-                  .limit(30)
-                  .snapshots(),
-              builder: (context, snap) {
-                if (snap.hasError) {
-                  return const ErrorState(
-                    message:
-                        'Couldn\'t load notifications. Check your connection.',
-                  );
-                }
-                if (!snap.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                final docs = snap.data!.docs;
-                if (docs.isEmpty) {
-                  return const EmptyState(
-                    icon: Icons.notifications_none,
-                    title: 'You\'re all caught up',
-                    message:
-                        'Join requests, approvals and plan updates show up here.',
-                  );
-                }
-                return ListView.separated(
-                  itemCount: docs.length,
-                  separatorBuilder: (_, _) => const Divider(height: 1),
-                  itemBuilder: (_, i) {
-                    final d = docs[i].data();
-                    final created = (d['createdAt'] as Timestamp?)?.toDate();
-                    final activityId =
-                        (d['data'] as Map?)?['activityId'] as String?;
-                    return ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: t.colorScheme.primary.withValues(
-                          alpha: 0.12,
-                        ),
-                        child: Icon(
-                          _icon(d['type'] as String? ?? ''),
-                          color: t.colorScheme.primary,
-                        ),
-                      ),
-                      title: Text(d['title'] as String? ?? ''),
-                      subtitle: Text(d['body'] as String? ?? ''),
-                      trailing: created == null
-                          ? null
-                          : Text(
-                              Formatters.chatTime(created),
-                              style: t.textTheme.bodySmall,
-                            ),
-                      onTap: activityId == null
-                          ? null
-                          : () => context.push('/activity/$activityId'),
-                    );
-                  },
-                );
-              },
+      appBar: AppBar(),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+            child: Text(
+              'Notifications',
+              style: t.textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
             ),
+          ),
+          Expanded(
+            child: uid == null
+                ? const SizedBox.shrink()
+                : StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                    stream: FirebaseFirestore.instance
+                        .collection('notifications')
+                        .where('userId', isEqualTo: uid)
+                        .orderBy('createdAt', descending: true)
+                        .limit(30)
+                        .snapshots(),
+                    builder: (context, snap) {
+                      if (snap.hasError) {
+                        return const ErrorState(
+                          message:
+                              'Couldn\'t load notifications. Check your connection.',
+                        );
+                      }
+                      if (!snap.hasData) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      final docs = snap.data!.docs;
+                      if (docs.isEmpty) {
+                        return const EmptyState(
+                          icon: Icons.notifications_none,
+                          title: 'You\'re all caught up',
+                          message:
+                              'Join requests, approvals and plan updates show up here.',
+                        );
+                      }
+                      return ListView.separated(
+                        itemCount: docs.length,
+                        separatorBuilder: (_, _) => const Divider(height: 1),
+                        itemBuilder: (_, i) {
+                          final d = docs[i].data();
+                          final created = (d['createdAt'] as Timestamp?)
+                              ?.toDate();
+                          final activityId =
+                              (d['data'] as Map?)?['activityId'] as String?;
+                          return ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 4,
+                            ),
+                            leading: CircleAvatar(
+                              radius: 22,
+                              backgroundColor: AppColors.tint,
+                              child: Icon(
+                                _icon(d['type'] as String? ?? ''),
+                                size: 22,
+                                color: t.colorScheme.primary,
+                              ),
+                            ),
+                            title: Text(
+                              d['title'] as String? ?? '',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: t.textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            subtitle: Text(
+                              d['body'] as String? ?? '',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            trailing: created == null
+                                ? null
+                                : Text(
+                                    Formatters.chatTime(created),
+                                    style: t.textTheme.bodySmall?.copyWith(
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                            onTap: activityId == null
+                                ? null
+                                : () => context.push('/activity/$activityId'),
+                          );
+                        },
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }

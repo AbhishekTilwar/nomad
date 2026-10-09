@@ -3,6 +3,14 @@ import 'package:intl/intl.dart';
 class Formatters {
   const Formatters._();
 
+  /// Absolute date used on detail/preview cards: "Sat, 11 May · 10:00 AM".
+  static String activityDate(DateTime d) =>
+      '${DateFormat('EEE, d MMM').format(d)} · ${DateFormat.jm().format(d)}';
+
+  /// "Sat, 11 May · 10:00 AM - 1:00 PM".
+  static String activityRange(DateTime start, DateTime end) =>
+      '${DateFormat('EEE, d MMM').format(start)} · ${DateFormat.jm().format(start)} - ${DateFormat.jm().format(end)}';
+
   static String activityWhen(DateTime d, {DateTime? now}) {
     final today = now ?? DateTime.now();
     final day = DateTime(d.year, d.month, d.day);

@@ -5,6 +5,22 @@ import '../theme/app_tokens.dart';
 class CategoryStyle {
   const CategoryStyle._();
 
+  /// Short labels used on tiles/chips where space is tight (filter grid).
+  static const shortLabels = <String, String>{
+    'food': 'Food',
+    'outings': 'Outings',
+    'travel': 'Travel',
+    'hiking': 'Hiking',
+    'games': 'Games',
+    'sports': 'Sports',
+    'photography': 'Photo',
+    'music': 'Music',
+    'movies': 'Movies',
+    'networking': 'Network',
+    'art': 'Art',
+    'explore': 'Explore',
+  };
+
   static Color color(String category) =>
       AppColors.categoryColors[category] ?? AppColors.secondary;
 

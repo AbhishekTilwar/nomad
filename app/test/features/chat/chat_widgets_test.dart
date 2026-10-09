@@ -385,7 +385,9 @@ void main() {
       expect(find.text('hello community'), findsOneWidget);
       expect(repo.windowActive, isTrue);
 
-      await t.tap(find.byTooltip('Community guidelines'));
+      await t.tap(find.byTooltip('More options'));
+      await settle(t);
+      await t.tap(find.text('Community guidelines'));
       await settle(t);
       expect(find.text('guidelines page'), findsOneWidget);
       // listener stays while the chat is still in the stack; leaving it disposes it

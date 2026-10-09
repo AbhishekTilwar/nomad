@@ -47,7 +47,15 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Chats')),
+      appBar: AppBar(
+        titleSpacing: 20,
+        title: Text(
+          'Chats',
+          style: Theme.of(
+            context,
+          ).textTheme.headlineMedium?.copyWith(fontSize: 22),
+        ),
+      ),
       body: ListenableBuilder(
         listenable: _c,
         builder: (context, _) {
@@ -77,7 +85,7 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                   physics: const AlwaysScrollableScrollPhysics(),
                   itemCount: _c.items.length,
                   separatorBuilder: (_, _) =>
-                      const Divider(height: 1, indent: 88),
+                      const Divider(height: 1, indent: 20, endIndent: 20),
                   itemBuilder: (context, i) => _ChatRow(
                     item: _c.items[i],
                     preview: _c.previewFor(_c.items[i]),
@@ -146,7 +154,8 @@ class _ChatRow extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: t.textTheme.titleMedium?.copyWith(
-          fontWeight: unread ? FontWeight.w800 : null,
+          fontSize: 15,
+          fontWeight: FontWeight.w700,
         ),
       ),
       subtitle: Text(
@@ -154,6 +163,7 @@ class _ChatRow extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: t.textTheme.bodyMedium?.copyWith(
+          fontSize: 13,
           color: unread
               ? t.colorScheme.onSurface
               : t.colorScheme.onSurfaceVariant,
@@ -166,9 +176,8 @@ class _ChatRow extends StatelessWidget {
           Text(
             Formatters.chatTime(when),
             style: t.textTheme.bodySmall?.copyWith(
-              color: unread
-                  ? t.colorScheme.primary
-                  : t.colorScheme.onSurfaceVariant,
+              fontSize: 11,
+              color: t.colorScheme.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: 6),

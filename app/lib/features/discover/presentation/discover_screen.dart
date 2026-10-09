@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../core/services/location_service.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/widgets/activity_card.dart';
+import '../../../core/widgets/app_chip.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/error_state.dart';
 import '../../../core/widgets/loading_skeleton.dart';
@@ -252,8 +253,8 @@ class _DiscoverViewState extends State<_DiscoverView> {
   Widget _chip(String label, bool selected, ValueChanged<bool> onSelected) =>
       Padding(
         padding: const EdgeInsets.only(right: 8),
-        child: FilterChip(
-          label: Text(label),
+        child: AppChip(
+          label: label,
           selected: selected,
           onSelected: onSelected,
         ),
