@@ -4,6 +4,7 @@ import 'package:nomad_mingle/app/app.dart';
 import 'package:nomad_mingle/core/utils/app_exception.dart';
 import 'package:nomad_mingle/features/auth/data/auth_repository.dart';
 import 'package:nomad_mingle/features/onboarding/application/intro_store.dart';
+import 'package:nomad_mingle/features/shell/main_shell.dart';
 import 'package:nomad_mingle/features/profile/data/user_profile.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -103,7 +104,7 @@ void main() {
       await t.tap(find.widgetWithText(FilledButton, 'Sign In'));
       await settle(t);
       expect(find.text('Map'), findsWidgets); // bottom nav + landed
-      expect(find.byType(NavigationBar), findsOneWidget);
+      expect(find.byType(FloatingNavBar), findsOneWidget);
     },
   );
 
@@ -130,7 +131,7 @@ void main() {
   });
 
   testWidgets(
-    'bottom navigation has exactly the four destinations, no community tab',
+    'bottom navigation has exactly three destinations, no community/notifications tab',
     (t) async {
       usePhone(t);
       await t.pumpWidget(
@@ -142,12 +143,8 @@ void main() {
         ),
       );
       await settle(t);
-      final bar = t.widget<NavigationBar>(find.byType(NavigationBar));
-      expect(bar.destinations.length, 4);
-      final labels = bar.destinations
-          .map((d) => (d as NavigationDestination).label)
-          .toList();
-      expect(labels, ['Map', 'Chat', 'Notifications', 'Profile']);
+      final bar = t.widget<FloatingNavBar>(find.byType(FloatingNavBar));
+      expect(bar.items.map((i) => i.label), ['Map', 'Chat', 'Profile']);
     },
   );
 
@@ -169,11 +166,11 @@ void main() {
       find.text('Sunday brunch at Kala Ghoda'),
       findsNothing,
     ); // map view: markers only
-    await t.tap(find.byTooltip('Show list'));
+    await t.tap(find.byKey(const ValueKey('view-toggle')));
     await settle(t);
     expect(find.text('Sunday brunch at Kala Ghoda'), findsOneWidget);
     expect(find.text('Hike to Sinhagad fort'), findsOneWidget);
-    await t.tap(find.byTooltip('Show map'));
+    await t.tap(find.byKey(const ValueKey('view-toggle')));
     await settle(t);
     expect(find.text('Sunday brunch at Kala Ghoda'), findsNothing);
   });
@@ -196,7 +193,7 @@ void main() {
     await t.pump(const Duration(seconds: 2)); // let the route transition finish
     await t.tap(find.widgetWithText(TextButton, 'Try again'));
     await settle(t);
-    await t.tap(find.byTooltip('Show list'));
+    await t.tap(find.byKey(const ValueKey('view-toggle')));
     await settle(t);
     expect(find.text('No plans here yet'), findsOneWidget);
   });

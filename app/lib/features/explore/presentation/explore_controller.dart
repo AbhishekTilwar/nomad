@@ -8,6 +8,7 @@ import '../../../core/utils/app_exception.dart';
 import '../../activities/data/activity_repository.dart';
 import '../../activities/models/activity.dart';
 import '../../discover/presentation/discover_controller.dart' show DateFilter;
+import '../../social/data/social_repository.dart';
 
 enum ExploreView { map, list }
 
@@ -117,6 +118,29 @@ class ExploreController extends ChangeNotifier {
     _areaRadiusKm = radiusKm;
     _focus(city.center, MapConfig.defaultZoom);
     load();
+  }
+
+  /// How many opted-in travelers are near the user (null until known/if the
+  /// lookup fails). Drives the "N+ nearby" pill.
+  int? nearbyCount;
+
+  Future<void> loadNearby(SocialRepository social, LatLng p) async {
+    try {
+      final list = await social.travelers(lat: p.latitude, lng: p.longitude);
+      nearbyCount = list.length;
+      notifyListeners();
+    } on AppException {
+      // Keep the pill as a plain "Nearby" button.
+    }
+  }
+
+  /// "Nearby", "3 nearby", "10+ nearby", "100+ nearby".
+  String get nearbyLabel {
+    final n = nearbyCount;
+    if (n == null || n == 0) return 'Nearby';
+    if (n >= 100) return '100+ nearby';
+    if (n >= 10) return '${n ~/ 10 * 10}+ nearby';
+    return '$n nearby';
   }
 
   void setUserLocation(LatLng p) {

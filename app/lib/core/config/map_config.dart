@@ -33,7 +33,7 @@ class MapConfig {
   final int maxZoom;
   final List<String> subdomains;
 
-  static const defaultZoom = 12.0;
+  static const defaultZoom = 11.0;
 
   /// Launch cities. Adding a city = adding an entry (also see backend).
   static const cities = <CityInfo>[

@@ -39,7 +39,7 @@ class BasemapStyle {
     'water_name',
   ];
 
-  static const _dropContains = ['link', 'stream', 'waterway-other', 'shield'];
+  static const _dropContains = ['link', 'waterway', 'line_label', 'shield'];
 
   static Future<BasemapStyle?>? _cached;
 

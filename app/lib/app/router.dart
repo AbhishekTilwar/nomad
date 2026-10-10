@@ -28,7 +28,6 @@ import '../features/onboarding/presentation/add_photo_screen.dart';
 import '../features/profile/presentation/public_profile_screen.dart';
 import '../features/chat/presentation/activity_chat_screen.dart';
 import '../features/chat/presentation/chats_list_screen.dart';
-import '../features/chat/presentation/community_chat_button.dart';
 import '../features/chat/presentation/community_chat_screen.dart';
 import '../features/shell/main_shell.dart';
 import '../features/shell/status_screens.dart';
@@ -138,6 +137,11 @@ GoRouter buildRouter(
         path: '/profile/notifications',
         builder: (_, _) => const NotificationPrefsScreen(),
       ),
+      // Opened from the bell on the map (no longer a tab).
+      GoRoute(
+        path: '/notifications',
+        builder: (_, _) => const NotificationsScreen(),
+      ),
       GoRoute(path: '/memories', builder: (_, _) => const MemoriesScreen()),
       GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
       GoRoute(
@@ -202,8 +206,7 @@ GoRouter buildRouter(
             routes: [
               GoRoute(
                 path: '/explore',
-                builder: (_, _) =>
-                    const ExploreScreen(communityAction: CommunityChatButton()),
+                builder: (_, _) => const ExploreScreen(),
                 routes: [
                   // Opened from the map's + button. Lives under /explore so it
                   // shares the shell's ExploreController (new plans appear on
@@ -221,14 +224,6 @@ GoRouter buildRouter(
               GoRoute(
                 path: '/chats',
                 builder: (_, _) => const ChatsListScreen(),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/notifications',
-                builder: (_, _) => const NotificationsScreen(),
               ),
             ],
           ),

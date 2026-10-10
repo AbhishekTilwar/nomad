@@ -8,6 +8,7 @@ import 'package:nomad_mingle/core/services/location_service.dart';
 import 'package:nomad_mingle/core/services/translation_service.dart';
 import 'package:nomad_mingle/features/auth/data/auth_repository.dart';
 import 'package:nomad_mingle/features/onboarding/application/intro_store.dart';
+import 'package:nomad_mingle/features/shell/main_shell.dart';
 import 'package:nomad_mingle/features/profile/data/public_profile.dart';
 import 'package:nomad_mingle/features/profile/data/user_profile.dart';
 import 'package:nomad_mingle/features/social/data/social_repository.dart';
@@ -164,17 +165,23 @@ GoRouter routerOf(WidgetTester t) =>
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({IntroStore.key: true}));
 
-  testWidgets('bottom bar: Map, Chat, Notifications, Profile (no Create)', (
+  testWidgets('bottom bar: Map, Chat, Profile only', (t) async {
+    await pumpSignedIn(t);
+    final bar = t.widget<FloatingNavBar>(find.byType(FloatingNavBar));
+    expect(bar.items.map((i) => i.label), ['Map', 'Chat', 'Profile']);
+  });
+
+  testWidgets('map header: nearby pill, bell, list toggle, no community icon', (
     t,
   ) async {
     await pumpSignedIn(t);
-    final bar = t.widget<NavigationBar>(find.byType(NavigationBar));
-    expect(bar.destinations.map((d) => (d as NavigationDestination).label), [
-      'Map',
-      'Chat',
-      'Notifications',
-      'Profile',
-    ]);
+    expect(find.byTooltip('Mingle Community'), findsNothing);
+    expect(find.text('1 nearby'), findsOneWidget);
+    expect(find.byKey(const ValueKey('view-toggle')), findsOneWidget);
+    expect(find.text('List'), findsOneWidget);
+    await t.tap(find.text('List'));
+    await settle(t);
+    expect(find.text('Map'), findsWidgets);
   });
 
   testWidgets('map asks for location on open and has a + create button', (
@@ -193,23 +200,23 @@ void main() {
 
   testWidgets('chat tab pins Mingle Community; tab switching works', (t) async {
     await pumpSignedIn(t);
-    await t.tap(find.text('Chat'));
+    await t.tap(find.byKey(const ValueKey('nav-Chat')));
     await settle(t);
     expect(find.text('Mingle Community'), findsOneWidget);
-    await t.tap(find.text('Profile'));
+    await t.tap(find.byKey(const ValueKey('nav-Profile')));
     await settle(t);
     expect(find.text('Asha Rao'), findsWidgets);
     expect(find.text('@asha_r'), findsOneWidget);
     expect(find.text('My Photos'), findsOneWidget);
     expect(find.byKey(const ValueKey('gallery-photo-0')), findsOneWidget);
-    await t.tap(find.text('Map'));
+    await t.tap(find.byKey(const ValueKey('nav-Map')));
     await settle(t);
     expect(find.byTooltip('Create a plan'), findsOneWidget);
   });
 
   testWidgets('map header: travelers sheet lists nearby members', (t) async {
     await pumpSignedIn(t);
-    await t.tap(find.byTooltip('Travelers nearby'));
+    await t.tap(find.text('1 nearby'));
     await settle(t);
     expect(find.text('Ivan K'), findsOneWidget);
     expect(find.text('Show me here'), findsOneWidget);

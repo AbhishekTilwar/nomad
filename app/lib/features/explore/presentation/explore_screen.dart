@@ -17,6 +17,7 @@ import '../../../core/widgets/error_state.dart';
 import '../../../core/widgets/loading_skeleton.dart';
 import '../../../core/widgets/plan_sheet_card.dart';
 import 'explore_controller.dart';
+import '../../social/data/social_repository.dart';
 import '../../social/presentation/travelers_sheet.dart';
 import 'filter_screen.dart';
 
@@ -24,47 +25,63 @@ import 'filter_screen.dart';
 const _quickCategories = ['food', 'travel', 'sports', 'art', 'hiking', 'music'];
 
 class ExploreScreen extends StatelessWidget {
-  const ExploreScreen({super.key, this.communityAction});
-
-  /// Entry point to the global Mingle Community chat (small icon in the header).
-  final Widget? communityAction;
+  const ExploreScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     final c = context.watch<ExploreController>();
     final isMap = c.view == ExploreView.map;
-    final header = _Header(controller: c, communityAction: communityAction);
+    final header = _Header(controller: c);
     return Scaffold(
       floatingActionButton: c.selected != null && isMap
           ? null
-          : FloatingActionButton(
-              heroTag: 'create-plan',
-              tooltip: 'Create a plan',
-              onPressed: () => context.push('/explore/create'),
-              child: const Icon(Icons.add),
-            ),
-      body: isMap
-          ? Stack(
-              fit: StackFit.expand,
-              children: [
-                Positioned.fill(child: _Body(controller: c)),
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: SafeArea(bottom: false, child: header),
-                ),
-              ],
-            )
-          : SafeArea(
-              bottom: false,
-              child: Column(
-                children: [
-                  header,
-                  Expanded(child: _Body(controller: c)),
-                ],
+          : Padding(
+              // Lifted so the map attribution (bottom-right) stays readable.
+              padding: const EdgeInsets.only(bottom: 28),
+              child: FloatingActionButton(
+                heroTag: 'create-plan',
+                tooltip: 'Create a plan',
+                onPressed: () => context.push('/explore/create'),
+                child: const Icon(Icons.add),
               ),
             ),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          isMap
+              ? Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Positioned.fill(child: _Body(controller: c)),
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: SafeArea(bottom: false, child: header),
+                    ),
+                  ],
+                )
+              : SafeArea(
+                  bottom: false,
+                  child: Column(
+                    children: [
+                      header,
+                      Expanded(child: _Body(controller: c)),
+                    ],
+                  ),
+                ),
+          if (!(isMap && c.selected != null))
+            Positioned(
+              left: 16,
+              bottom: 28,
+              child: _ViewToggle(
+                isMap: isMap,
+                onPressed: () =>
+                    c.setView(isMap ? ExploreView.list : ExploreView.map),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -72,9 +89,8 @@ class ExploreScreen extends StatelessWidget {
 /// City pill + round action buttons + category chips, floating over the map
 /// (solid white in list mode).
 class _Header extends StatelessWidget {
-  const _Header({required this.controller, this.communityAction});
+  const _Header({required this.controller});
   final ExploreController controller;
-  final Widget? communityAction;
 
   @override
   Widget build(BuildContext context) {
@@ -122,24 +138,15 @@ class _Header extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              _RoundAction(
-                tooltip: isMap ? 'Show list' : 'Show map',
-                icon: isMap ? Icons.view_list_outlined : Icons.map_outlined,
-                onPressed: () =>
-                    c.setView(isMap ? ExploreView.list : ExploreView.map),
-              ),
-              const SizedBox(width: 8),
-              _RoundAction(
-                tooltip: 'Travelers nearby',
-                icon: Icons.groups_outlined,
+              _NearbyPill(
+                label: c.nearbyLabel,
                 onPressed: () => TravelersSheet.show(context),
               ),
               const SizedBox(width: 8),
               _RoundAction(
-                tooltip: 'Mingle Community',
-                icon: Icons.forum_outlined,
-                child: communityAction,
-                onPressed: () => context.push('/community'),
+                tooltip: 'Notifications',
+                icon: Icons.notifications_none,
+                onPressed: () => context.push('/notifications'),
               ),
             ],
           ),
@@ -155,14 +162,10 @@ class _RoundAction extends StatelessWidget {
     required this.tooltip,
     required this.icon,
     required this.onPressed,
-    this.child,
   });
   final String tooltip;
   final IconData icon;
   final VoidCallback onPressed;
-
-  /// Replaces the default icon button (e.g. the unread-badge community button).
-  final Widget? child;
 
   @override
   Widget build(BuildContext context) {
@@ -176,14 +179,97 @@ class _RoundAction extends StatelessWidget {
         border: Border.all(color: t.colorScheme.outline),
         boxShadow: AppShadows.card,
       ),
-      child:
-          child ??
-          IconButton(
-            tooltip: tooltip,
-            padding: EdgeInsets.zero,
-            icon: Icon(icon, size: 20),
-            onPressed: onPressed,
+      child: IconButton(
+        tooltip: tooltip,
+        padding: EdgeInsets.zero,
+        icon: Icon(icon, size: 20),
+        onPressed: onPressed,
+      ),
+    );
+  }
+}
+
+/// "12+ nearby": opens the travelers sheet.
+class _NearbyPill extends StatelessWidget {
+  const _NearbyPill({required this.label, required this.onPressed});
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    return Semantics(
+      button: true,
+      label: 'Travelers $label',
+      child: Material(
+        color: t.colorScheme.surface,
+        shape: StadiumBorder(side: BorderSide(color: t.colorScheme.outline)),
+        elevation: 2,
+        shadowColor: Colors.black26,
+        child: InkWell(
+          customBorder: const StadiumBorder(),
+          onTap: onPressed,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.groups_outlined,
+                  size: 18,
+                  color: t.colorScheme.primary,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: t.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Bottom-left "List" / "Map" switch.
+class _ViewToggle extends StatelessWidget {
+  const _ViewToggle({required this.isMap, required this.onPressed});
+  final bool isMap;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    return Material(
+      color: t.colorScheme.surface,
+      shape: const StadiumBorder(),
+      elevation: 4,
+      shadowColor: Colors.black38,
+      child: InkWell(
+        key: const ValueKey('view-toggle'),
+        customBorder: const StadiumBorder(),
+        onTap: onPressed,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(isMap ? Icons.view_list : Icons.map, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                isMap ? 'List' : 'Map',
+                style: t.textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -336,6 +422,7 @@ class _MapViewState extends State<_MapView> {
     final r = await context.read<LocationService>().current();
     if (!mounted || r.position == null) return;
     c.setUserLocation(r.position!);
+    c.loadNearby(context.read<SocialRepository>(), r.position!);
   }
 
   Future<void> _recenter(ExploreController c) async {
@@ -361,6 +448,7 @@ class _MapViewState extends State<_MapView> {
       return;
     }
     c.setUserLocation(p);
+    c.loadNearby(context.read<SocialRepository>(), p);
   }
 
   void _onMapMoved(MapCamera camera) {
@@ -442,7 +530,7 @@ class _MapViewState extends State<_MapView> {
               ],
             ),
             RichAttributionWidget(
-              alignment: AttributionAlignment.bottomLeft,
+              alignment: AttributionAlignment.bottomRight,
               attributions: [TextSourceAttribution(_config.attribution)],
             ),
           ],
@@ -506,7 +594,7 @@ class _MapViewState extends State<_MapView> {
           ),
         Positioned(
           right: 16,
-          bottom: selected == null ? 88 : 330,
+          bottom: selected == null ? 112 : 330,
           child: FloatingActionButton.small(
             heroTag: 'recenter',
             tooltip: 'Use my location',
