@@ -515,6 +515,7 @@ class _MiniMap extends StatelessWidget {
           children: [
             TileLayer(
               urlTemplate: cfg.tileUrlTemplate,
+              retinaMode: RetinaMode.isHighDensity(context),
               userAgentPackageName: cfg.userAgentPackageName,
             ),
             MarkerLayer(

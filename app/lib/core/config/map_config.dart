@@ -3,9 +3,9 @@ import 'package:latlong2/latlong.dart';
 /// Tile provider configuration, replaceable without touching map widgets.
 ///
 /// Production: pass a provider-specific template with
-/// `--dart-define=MAP_TILE_URL=...`. The default is the public OpenStreetMap
-/// server, which is for development/testing only and is NOT an unlimited
-/// production service (see https://operations.osmfoundation.org/policies/tiles/).
+/// `--dart-define=MAP_TILE_URL=...`. The default is CARTO Voyager without
+/// labels: soft colors and low detail. Its free tier is for non-commercial use,
+/// so switch to a paid/self-hosted provider before a commercial launch.
 class MapConfig {
   const MapConfig({
     required this.tileUrlTemplate,
@@ -18,11 +18,12 @@ class MapConfig {
   factory MapConfig.fromEnvironment() => const MapConfig(
     tileUrlTemplate: String.fromEnvironment(
       'MAP_TILE_URL',
-      defaultValue: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      defaultValue:
+          'https://basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png',
     ),
     attribution: String.fromEnvironment(
       'MAP_ATTRIBUTION',
-      defaultValue: '© OpenStreetMap contributors',
+      defaultValue: '© OpenStreetMap contributors © CARTO',
     ),
   );
 

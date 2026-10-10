@@ -52,6 +52,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
             children: [
               TileLayer(
                 urlTemplate: _cfg.tileUrlTemplate,
+                retinaMode: RetinaMode.isHighDensity(context),
                 userAgentPackageName: _cfg.userAgentPackageName,
               ),
               MarkerLayer(

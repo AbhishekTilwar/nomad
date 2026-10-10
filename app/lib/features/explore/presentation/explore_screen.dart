@@ -401,6 +401,7 @@ class _MapViewState extends State<_MapView> {
           children: [
             TileLayer(
               urlTemplate: _config.tileUrlTemplate,
+              retinaMode: RetinaMode.isHighDensity(context),
               userAgentPackageName: _config.userAgentPackageName,
               maxNativeZoom: _config.maxZoom,
               keepBuffer: 1,
