@@ -32,19 +32,10 @@ class ExploreScreen extends StatelessWidget {
     final c = context.watch<ExploreController>();
     final isMap = c.view == ExploreView.map;
     final header = _Header(controller: c);
+    // The shell's floating nav bar overlays this screen; MediaQuery's bottom
+    // padding already includes its height, so floating controls clear it.
+    final pad = MediaQuery.paddingOf(context).bottom + 36;
     return Scaffold(
-      floatingActionButton: c.selected != null && isMap
-          ? null
-          : Padding(
-              // Lifted so the map attribution (bottom-right) stays readable.
-              padding: const EdgeInsets.only(bottom: 28),
-              child: FloatingActionButton(
-                heroTag: 'create-plan',
-                tooltip: 'Create a plan',
-                onPressed: () => context.push('/explore/create'),
-                child: const Icon(Icons.add),
-              ),
-            ),
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -72,8 +63,19 @@ class ExploreScreen extends StatelessWidget {
                 ),
           if (!(isMap && c.selected != null))
             Positioned(
+              right: 16,
+              bottom: pad,
+              child: FloatingActionButton(
+                heroTag: 'create-plan',
+                tooltip: 'Create a plan',
+                onPressed: () => context.push('/explore/create'),
+                child: const Icon(Icons.add),
+              ),
+            ),
+          if (!(isMap && c.selected != null))
+            Positioned(
               left: 16,
-              bottom: 28,
+              bottom: pad,
               child: _ViewToggle(
                 isMap: isMap,
                 onPressed: () =>
@@ -529,9 +531,14 @@ class _MapViewState extends State<_MapView> {
                   ),
               ],
             ),
-            RichAttributionWidget(
-              alignment: AttributionAlignment.bottomRight,
-              attributions: [TextSourceAttribution(_config.attribution)],
+            Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.paddingOf(context).bottom + 4,
+              ),
+              child: RichAttributionWidget(
+                alignment: AttributionAlignment.bottomRight,
+                attributions: [TextSourceAttribution(_config.attribution)],
+              ),
             ),
           ],
         ),
@@ -594,7 +601,9 @@ class _MapViewState extends State<_MapView> {
           ),
         Positioned(
           right: 16,
-          bottom: selected == null ? 112 : 330,
+          bottom:
+              MediaQuery.paddingOf(context).bottom +
+              (selected == null ? 112 : 330),
           child: FloatingActionButton.small(
             heroTag: 'recenter',
             tooltip: 'Use my location',
@@ -608,7 +617,7 @@ class _MapViewState extends State<_MapView> {
           Positioned(
             left: 16,
             right: 16,
-            bottom: 16,
+            bottom: MediaQuery.paddingOf(context).bottom + 12,
             child: PlanSheetCard(
               activity: selected,
               onClose: () => c.select(null),

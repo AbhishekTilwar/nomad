@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -19,6 +21,9 @@ class MainShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // Content scrolls behind the floating bar; MediaQuery padding grows by
+      // the bar's height so lists and floating controls still clear it.
+      extendBody: true,
       body: shell,
       bottomNavigationBar: FloatingNavBar(
         items: items,
@@ -60,32 +65,46 @@ class FloatingNavBar extends StatelessWidget {
       top: false,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(28, 4, 28, 12),
-        child: Container(
-          height: 68,
-          padding: const EdgeInsets.all(6),
+        child: DecoratedBox(
           decoration: BoxDecoration(
-            color: scheme.surface,
             borderRadius: BorderRadius.circular(AppRadius.pill),
-            border: Border.all(color: scheme.outline),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: dark ? 0.4 : 0.12),
+                color: Colors.black.withValues(alpha: dark ? 0.4 : 0.14),
                 blurRadius: 24,
                 offset: const Offset(0, 8),
               ),
             ],
           ),
-          child: Row(
-            children: [
-              for (var i = 0; i < items.length; i++)
-                Expanded(
-                  child: _NavButton(
-                    item: items[i],
-                    selected: i == currentIndex,
-                    onTap: () => onSelected(i),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            // Frosted glass: content behind the bar shows through, blurred.
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+              child: Container(
+                height: 68,
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: scheme.surface.withValues(alpha: 0.82),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                  border: Border.all(
+                    color: scheme.outline.withValues(alpha: 0.8),
                   ),
                 ),
-            ],
+                child: Row(
+                  children: [
+                    for (var i = 0; i < items.length; i++)
+                      Expanded(
+                        child: _NavButton(
+                          item: items[i],
+                          selected: i == currentIndex,
+                          onTap: () => onSelected(i),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
       ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
@@ -182,6 +183,22 @@ void main() {
     await t.tap(find.text('List'));
     await settle(t);
     expect(find.text('Map'), findsWidgets);
+  });
+
+  testWidgets('floating nav bar overlays content; map controls clear it', (
+    t,
+  ) async {
+    await pumpSignedIn(t);
+    final nav = t.getRect(find.byType(FloatingNavBar));
+    final fab = t.getRect(find.byTooltip('Create a plan'));
+    final toggle = t.getRect(find.byKey(const ValueKey('view-toggle')));
+    expect(fab.bottom, lessThan(nav.top));
+    expect(toggle.bottom, lessThan(nav.top));
+    // The map extends underneath the bar (content visible behind it).
+    final shell = t.getRect(find.byType(Scaffold).first);
+    expect(nav.bottom, lessThanOrEqualTo(shell.bottom));
+    final body = t.getRect(find.byType(FlutterMap));
+    expect(body.bottom, greaterThan(nav.top));
   });
 
   testWidgets('map asks for location on open and has a + create button', (
