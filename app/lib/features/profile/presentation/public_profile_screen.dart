@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -11,6 +12,7 @@ import '../../../core/utils/app_exception.dart';
 import '../../../core/utils/category_style.dart';
 import '../../../core/widgets/error_state.dart';
 import '../../../core/widgets/interest_chip.dart';
+import '../../../core/widgets/photo_gallery.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../../core/widgets/report_action_sheet.dart';
 import '../../../core/widgets/user_avatar.dart';
@@ -266,33 +268,13 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
           : ListView(
               padding: EdgeInsets.zero,
               children: [
-                // Banner (no cover photos are stored, so a soft gradient
-                // tinted by the member's first interest).
-                Container(
-                  height: 190,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        accent.withValues(alpha: 0.85),
-                        AppColors.primary.withValues(alpha: 0.65),
-                      ],
-                    ),
-                  ),
-                  child: ExcludeSemantics(
-                    child: Align(
-                      alignment: Alignment.bottomRight,
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: 20, bottom: 36),
-                        child: Icon(
-                          CategoryStyle.icon(firstInterest),
-                          size: 72,
-                          color: Colors.white.withValues(alpha: 0.25),
-                        ),
-                      ),
-                    ),
-                  ),
+                _Cover(
+                  coverUrl: p != null && p.photos.isNotEmpty
+                      ? p.photos.first
+                      : null,
+                  fallbackPhoto: photo,
+                  accent: accent,
+                  icon: CategoryStyle.icon(firstInterest),
                 ),
                 Transform.translate(
                   offset: const Offset(0, -28),
@@ -309,42 +291,47 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
                       children: [
                         Transform.translate(
                           offset: const Offset(0, -44),
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: t.scaffoldBackgroundColor,
-                              shape: BoxShape.circle,
-                              boxShadow: AppShadows.card,
-                            ),
-                            child: Stack(
-                              clipBehavior: Clip.none,
-                              children: [
-                                UserAvatar(
-                                  name: name.isEmpty ? '?' : name,
-                                  photoUrl: photo,
-                                  size: 92,
-                                ),
-                                if (flagEmoji(p?.countryCode) != null)
-                                  Positioned(
-                                    right: -4,
-                                    bottom: -2,
-                                    child: Tooltip(
-                                      message: countryName(p?.countryCode),
-                                      child: Container(
-                                        padding: const EdgeInsets.all(4),
-                                        decoration: BoxDecoration(
-                                          color: t.scaffoldBackgroundColor,
-                                          shape: BoxShape.circle,
-                                          boxShadow: AppShadows.card,
-                                        ),
-                                        child: Text(
-                                          flagEmoji(p?.countryCode)!,
-                                          style: const TextStyle(fontSize: 22),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: t.scaffoldBackgroundColor,
+                                shape: BoxShape.circle,
+                                boxShadow: AppShadows.card,
+                              ),
+                              child: Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  UserAvatar(
+                                    name: name.isEmpty ? '?' : name,
+                                    photoUrl: photo,
+                                    size: 92,
+                                  ),
+                                  if (flagEmoji(p?.countryCode) != null)
+                                    Positioned(
+                                      right: -4,
+                                      bottom: -2,
+                                      child: Tooltip(
+                                        message: countryName(p?.countryCode),
+                                        child: Container(
+                                          padding: const EdgeInsets.all(4),
+                                          decoration: BoxDecoration(
+                                            color: t.scaffoldBackgroundColor,
+                                            shape: BoxShape.circle,
+                                            boxShadow: AppShadows.card,
+                                          ),
+                                          child: Text(
+                                            flagEmoji(p?.countryCode)!,
+                                            style: const TextStyle(
+                                              fontSize: 22,
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -389,6 +376,8 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
                                     if (p.ageRange != null) p.ageRange!,
                                     if (p.city.isNotEmpty)
                                       MapConfig.cityById(p.city).name,
+                                    if (countryName(p.countryCode).isNotEmpty)
+                                      countryName(p.countryCode),
                                   ].join('  •  '),
                                   style: t.textTheme.bodyMedium?.copyWith(
                                     color: t.colorScheme.onSurfaceVariant,
@@ -396,47 +385,9 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
                                 ),
                                 if ((p.instagram ?? '').isNotEmpty) ...[
                                   const SizedBox(height: 12),
-                                  InkWell(
-                                    borderRadius: BorderRadius.circular(
-                                      AppRadius.pill,
-                                    ),
+                                  _InstagramPill(
+                                    handle: p.instagram!,
                                     onTap: () => _openInstagram(p.instagram!),
-                                    child: Ink(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 14,
-                                        vertical: 8,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(
-                                          AppRadius.pill,
-                                        ),
-                                        gradient: const LinearGradient(
-                                          colors: [
-                                            Color(0xFF833AB4),
-                                            Color(0xFFFD1D1D),
-                                            Color(0xFFFCB045),
-                                          ],
-                                        ),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Icon(
-                                            Icons.camera_alt_outlined,
-                                            size: 18,
-                                            color: Colors.white,
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            '@${p.instagram}',
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
                                   ),
                                 ],
                                 if (!_isMe) ...[
@@ -476,6 +427,15 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
                                         : null,
                                   ),
                                 ),
+                                if (p.photos.isNotEmpty) ...[
+                                  const SizedBox(height: 24),
+                                  Text(
+                                    'Photos',
+                                    style: t.textTheme.titleMedium,
+                                  ),
+                                  const SizedBox(height: 10),
+                                  PhotoGalleryStrip(urls: p.photos),
+                                ],
                                 if (_isMe) ...[
                                   const SizedBox(height: 24),
                                   PrimaryButton(
@@ -496,6 +456,97 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
             ),
     );
   }
+}
+
+/// Banner: the member's first gallery photo (or avatar), else a soft gradient.
+class _Cover extends StatelessWidget {
+  const _Cover({
+    required this.coverUrl,
+    required this.fallbackPhoto,
+    required this.accent,
+    required this.icon,
+  });
+  final String? coverUrl;
+  final String? fallbackPhoto;
+  final Color accent;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = coverUrl ?? fallbackPhoto;
+    final gradient = Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            accent.withValues(alpha: 0.85),
+            AppColors.primary.withValues(alpha: 0.65),
+          ],
+        ),
+      ),
+      child: ExcludeSemantics(
+        child: Align(
+          alignment: Alignment.bottomRight,
+          child: Padding(
+            padding: const EdgeInsets.only(right: 20, bottom: 36),
+            child: Icon(
+              icon,
+              size: 72,
+              color: Colors.white.withValues(alpha: 0.25),
+            ),
+          ),
+        ),
+      ),
+    );
+    return SizedBox(
+      height: 230,
+      child: url == null || url.isEmpty
+          ? gradient
+          : CachedNetworkImage(
+              imageUrl: url,
+              fit: BoxFit.cover,
+              memCacheWidth: 1000,
+              placeholder: (_, _) => gradient,
+              errorWidget: (_, _, _) => gradient,
+            ),
+    );
+  }
+}
+
+class _InstagramPill extends StatelessWidget {
+  const _InstagramPill({required this.handle, required this.onTap});
+  final String handle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+    borderRadius: BorderRadius.circular(AppRadius.pill),
+    onTap: onTap,
+    child: Ink(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF833AB4), Color(0xFFFD1D1D), Color(0xFFFCB045)],
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.camera_alt_outlined, size: 18, color: Colors.white),
+          const SizedBox(width: 6),
+          Text(
+            '@$handle',
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _Stat extends StatelessWidget {

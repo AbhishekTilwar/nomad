@@ -12,6 +12,7 @@ class UserProfile {
     this.role = 'user',
     this.countryCode,
     this.instagram,
+    this.photos = const [],
   });
 
   final String uid;
@@ -26,6 +27,9 @@ class UserProfile {
   final String role;
   final String? countryCode;
   final String? instagram;
+
+  /// Extra gallery photos (max 6), shown on the public profile.
+  final List<String> photos;
 
   bool get isStaff => role == 'admin' || role == 'moderator';
 
@@ -44,6 +48,7 @@ class UserProfile {
     role: j['role'] as String? ?? 'user',
     countryCode: j['countryCode'] as String?,
     instagram: j['instagram'] as String?,
+    photos: List<String>.from(j['photos'] as List? ?? const []),
   );
 }
 

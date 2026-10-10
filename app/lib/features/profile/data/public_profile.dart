@@ -18,6 +18,7 @@ class PublicProfile {
     this.countryCode,
     this.instagram,
     this.friendship = Friendship.none,
+    this.photos = const [],
   });
 
   final String uid;
@@ -33,6 +34,7 @@ class PublicProfile {
   final String? countryCode;
   final String? instagram;
   final Friendship friendship;
+  final List<String> photos;
 
   factory PublicProfile.fromJson(String uid, Map<String, dynamic> j) {
     final stats = (j['stats'] as Map?)?.cast<String, dynamic>() ?? const {};
@@ -50,6 +52,7 @@ class PublicProfile {
       countryCode: j['countryCode'] as String?,
       instagram: j['instagram'] as String?,
       friendship: friendshipFromString(j['friendship'] as String?),
+      photos: List<String>.from(j['photos'] as List? ?? const []),
     );
   }
 }

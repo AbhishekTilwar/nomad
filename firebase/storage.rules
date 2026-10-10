@@ -23,6 +23,13 @@ service firebase.storage {
       allow delete: if isOwner(uid);
     }
 
+    // Extra profile gallery photos (up to 6 are kept on the profile doc).
+    match /users/{uid}/photos/{fileName} {
+      allow read: if signedIn();
+      allow create, update: if isOwner(uid) && safeName(fileName) && validImage();
+      allow delete: if isOwner(uid);
+    }
+
     match /activities/{uid}/covers/{fileName} {
       allow read: if signedIn();
       allow create, update: if isOwner(uid) && safeName(fileName) && validImage();

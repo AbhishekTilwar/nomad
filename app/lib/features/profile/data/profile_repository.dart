@@ -26,6 +26,7 @@ abstract class ProfileRepository {
     bool removePhoto = false,
     String? countryCode,
     String? instagram,
+    List<String>? photos,
   });
 
   Future<void> deleteAccountData();
@@ -85,6 +86,7 @@ class ApiProfileRepository implements ProfileRepository {
     bool removePhoto = false,
     String? countryCode,
     String? instagram,
+    List<String>? photos,
   }) async {
     final res = await _api.patch(
       '/users/me',
@@ -96,6 +98,7 @@ class ApiProfileRepository implements ProfileRepository {
         'preferredActivityTypes': ?preferredActivityTypes,
         // null clears the photo on the server; absent leaves it unchanged.
         if (removePhoto) 'photoUrl': null else 'photoUrl': ?photoUrl,
+        'photos': ?photos,
         // '' clears the field on the server.
         if (countryCode != null)
           'countryCode': countryCode.isEmpty ? null : countryCode,

@@ -5,7 +5,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../utils/app_exception.dart';
 
-enum ImageKind { avatar, cover }
+enum ImageKind { avatar, cover, gallery }
 
 abstract class ImageUploadService {
   /// Lets the user pick a photo and uploads it. Returns null if cancelled.
@@ -57,9 +57,11 @@ class FirebaseImageUploadService implements ImageUploadService {
     if (bytes.length > maxBytes) {
       throw const AppException('That photo is too large. Pick one under 5 MB.');
     }
-    final folder = kind == ImageKind.avatar
-        ? 'users/$uid/avatar'
-        : 'activities/$uid/covers';
+    final folder = switch (kind) {
+      ImageKind.avatar => 'users/$uid/avatar',
+      ImageKind.gallery => 'users/$uid/photos',
+      ImageKind.cover => 'activities/$uid/covers',
+    };
     final ref = _storage.ref('$folder/${_randomName()}.jpg');
     try {
       await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));

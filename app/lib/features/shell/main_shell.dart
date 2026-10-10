@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/theme/app_tokens.dart';
-
-/// Bottom navigation: Map, Chat, Create, Notifications, Profile.
+/// Bottom navigation: Map, Chat, Notifications, Profile.
 /// (The global community chat deliberately has no tab: it opens from Explore.)
 class MainShell extends StatelessWidget {
   const MainShell({super.key, required this.shell});
@@ -35,11 +33,6 @@ class MainShell extends StatelessWidget {
               label: 'Chat',
             ),
             NavigationDestination(
-              icon: _CreateBadge(),
-              selectedIcon: _CreateBadge(),
-              label: 'Create',
-            ),
-            NavigationDestination(
               icon: Icon(Icons.notifications_none),
               selectedIcon: Icon(Icons.notifications),
               label: 'Notifications',
@@ -54,21 +47,4 @@ class MainShell extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Raised, filled "+" used for the centre Create destination.
-class _CreateBadge extends StatelessWidget {
-  const _CreateBadge();
-
-  @override
-  Widget build(BuildContext context) => Container(
-    width: 40,
-    height: 40,
-    decoration: BoxDecoration(
-      color: Theme.of(context).colorScheme.primary,
-      shape: BoxShape.circle,
-      boxShadow: AppShadows.card,
-    ),
-    child: const Icon(Icons.add, color: Colors.white),
-  );
 }

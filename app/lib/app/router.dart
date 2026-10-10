@@ -204,6 +204,15 @@ GoRouter buildRouter(
                 path: '/explore',
                 builder: (_, _) =>
                     const ExploreScreen(communityAction: CommunityChatButton()),
+                routes: [
+                  // Opened from the map's + button. Lives under /explore so it
+                  // shares the shell's ExploreController (new plans appear on
+                  // the map immediately).
+                  GoRoute(
+                    path: 'create',
+                    builder: (_, _) => const CreateActivityScreen(),
+                  ),
+                ],
               ),
             ],
           ),
@@ -212,14 +221,6 @@ GoRouter buildRouter(
               GoRoute(
                 path: '/chats',
                 builder: (_, _) => const ChatsListScreen(),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/create',
-                builder: (_, _) => const CreateActivityScreen(),
               ),
             ],
           ),

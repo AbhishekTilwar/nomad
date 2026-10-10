@@ -130,7 +130,7 @@ void main() {
   });
 
   testWidgets(
-    'bottom navigation has exactly the five destinations, no community tab',
+    'bottom navigation has exactly the four destinations, no community tab',
     (t) async {
       usePhone(t);
       await t.pumpWidget(
@@ -143,11 +143,11 @@ void main() {
       );
       await settle(t);
       final bar = t.widget<NavigationBar>(find.byType(NavigationBar));
-      expect(bar.destinations.length, 5);
+      expect(bar.destinations.length, 4);
       final labels = bar.destinations
           .map((d) => (d as NavigationDestination).label)
           .toList();
-      expect(labels, ['Map', 'Chat', 'Create', 'Notifications', 'Profile']);
+      expect(labels, ['Map', 'Chat', 'Notifications', 'Profile']);
     },
   );
 

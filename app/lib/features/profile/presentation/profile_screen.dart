@@ -10,6 +10,7 @@ import '../../../core/utils/app_exception.dart';
 import '../../../core/utils/category_style.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/interest_chip.dart';
+import '../../../core/widgets/photo_gallery.dart';
 import '../../../core/widgets/user_avatar.dart';
 import '../../activities/data/my_activities_repository.dart';
 import '../../activities/models/activity.dart';
@@ -215,6 +216,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     p.bio,
                     style: t.textTheme.bodyMedium?.copyWith(height: 1.4),
                   ),
+                ),
+              Padding(
+                padding: AppSpacing.page.copyWith(top: AppSpacing.lg),
+                child: Row(
+                  children: [
+                    Text('My Photos', style: t.textTheme.titleMedium),
+                    const Spacer(),
+                    TextButton(
+                      key: const ValueKey('manage-photos'),
+                      onPressed: () => context.push('/profile/edit'),
+                      child: Text(p.photos.isEmpty ? 'Add photos' : 'Manage'),
+                    ),
+                  ],
+                ),
+              ),
+              if (p.photos.isNotEmpty)
+                Padding(
+                  padding: AppSpacing.page.copyWith(top: AppSpacing.xs),
+                  child: PhotoGalleryStrip(urls: p.photos, height: 104),
                 ),
               Padding(
                 padding: AppSpacing.page.copyWith(top: AppSpacing.lg),

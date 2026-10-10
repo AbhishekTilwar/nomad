@@ -198,6 +198,7 @@ class SessionController extends ChangeNotifier {
     bool removePhoto = false,
     String? countryCode,
     String? instagram,
+    List<String>? photos,
   }) async {
     _profile = await _profiles.updateProfile(
       displayName: displayName,
@@ -209,6 +210,7 @@ class SessionController extends ChangeNotifier {
       removePhoto: removePhoto,
       countryCode: countryCode,
       instagram: instagram,
+      photos: photos,
     );
     notifyListeners();
   }

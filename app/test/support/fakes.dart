@@ -159,6 +159,7 @@ class FakeProfileRepository implements ProfileRepository {
     bool removePhoto = false,
     String? countryCode,
     String? instagram,
+    List<String>? photos,
   }) async {
     lastPhotoUrl = photoUrl;
     lastRemovePhoto = removePhoto;
@@ -171,6 +172,7 @@ class FakeProfileRepository implements ProfileRepository {
       interests: interests ?? profile!.interests,
       countryCode: countryCode ?? profile!.countryCode,
       instagram: instagram ?? profile!.instagram,
+      photos: photos ?? profile!.photos,
       profileCompleted: true,
     );
   }

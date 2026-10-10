@@ -34,6 +34,14 @@ class ExploreScreen extends StatelessWidget {
     final isMap = c.view == ExploreView.map;
     final header = _Header(controller: c, communityAction: communityAction);
     return Scaffold(
+      floatingActionButton: c.selected != null && isMap
+          ? null
+          : FloatingActionButton(
+              heroTag: 'create-plan',
+              tooltip: 'Create a plan',
+              onPressed: () => context.push('/explore/create'),
+              child: const Icon(Icons.add),
+            ),
       body: isMap
           ? Stack(
               fit: StackFit.expand,
@@ -261,7 +269,7 @@ class _Body extends StatelessWidget {
           title: 'No plans here yet',
           message: 'Be the first to host something in ${c.city.name}.',
           actionLabel: 'Create a plan',
-          onAction: () => context.go('/create'),
+          onAction: () => context.push('/explore/create'),
         );
       }
       return RefreshIndicator(
@@ -500,7 +508,7 @@ class _MapViewState extends State<_MapView> {
           ),
         Positioned(
           right: 16,
-          bottom: selected == null ? 16 : 330,
+          bottom: selected == null ? 88 : 330,
           child: FloatingActionButton.small(
             heroTag: 'recenter',
             tooltip: 'Use my location',

@@ -7,7 +7,7 @@ import { haversineKm } from '../../lib/geo.js';
 import { friendshipId } from './friends.js';
 
 export const PUBLIC_FIELDS = [
-  'displayName', 'photoUrl', 'bio', 'city', 'interests', 'ageRange', 'accountStatus',
+  'displayName', 'photoUrl', 'photos', 'bio', 'city', 'interests', 'ageRange', 'accountStatus',
   'countryCode', 'instagram', 'profileCompleted', 'emailVerified', 'stats', 'createdAt', 'updatedAt',
 ];
 const DEFAULT_PREFS = { joinRequests: true, approvals: true, activityUpdates: true, reminders: true, moderation: true, friends: true };
@@ -105,10 +105,11 @@ export function createUsersService({ db, auth, fv, now, logger, activities }) {
       }
 
       const merged = { ...(existing ?? {}) };
-      for (const k of ['displayName', 'bio', 'city', 'interests', 'photoUrl', 'countryCode', 'instagram']) if (body[k] !== undefined) merged[k] = body[k];
+      for (const k of ['displayName', 'bio', 'city', 'interests', 'photoUrl', 'photos', 'countryCode', 'instagram']) if (body[k] !== undefined) merged[k] = body[k];
       const pubDoc = {
         displayName: merged.displayName,
         photoUrl: merged.photoUrl ?? null,
+        photos: merged.photos ?? [],
         bio: merged.bio ?? '',
         city: merged.city,
         interests: merged.interests ?? [],

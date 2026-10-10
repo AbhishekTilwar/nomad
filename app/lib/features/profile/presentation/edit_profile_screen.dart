@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -32,6 +33,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late final TextEditingController _bio;
   late final TextEditingController _instagram;
   String _country = '';
+  late List<String> _photos;
+  bool _uploadingGallery = false;
+  static const _maxPhotos = 6;
   late String _city;
   late final Set<String> _interests;
   late final Set<String> _prefs;
@@ -51,6 +55,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _bio = TextEditingController(text: p.bio);
     _instagram = TextEditingController(text: p.instagram ?? '');
     _country = p.countryCode ?? '';
+    _photos = [...p.photos];
     _city = p.city;
     _interests = {...p.interests};
     _prefs = {...p.preferredActivityTypes};
@@ -99,6 +104,128 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
+  Future<void> _addGalleryPhoto() async {
+    final uid = context.read<SessionController>().user?.uid;
+    if (uid == null || _uploadingGallery || _photos.length >= _maxPhotos) {
+      return;
+    }
+    final images = context.read<ImageUploadService>();
+    final source = await PhotoSourceSheet.show(context);
+    if (source == null || !mounted) return;
+    setState(() {
+      _uploadingGallery = true;
+      _error = null;
+    });
+    try {
+      final url = await images.pickAndUpload(
+        uid,
+        ImageKind.gallery,
+        camera: source == PhotoSource.camera,
+      );
+      if (url != null && mounted) setState(() => _photos.add(url));
+    } on AppException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _uploadingGallery = false);
+    }
+  }
+
+  Widget _photoGrid(ThemeData t) {
+    Widget tile(int i) => Stack(
+      key: ValueKey('edit-photo-$i'),
+      fit: StackFit.expand,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          child: CachedNetworkImage(
+            imageUrl: _photos[i],
+            fit: BoxFit.cover,
+            memCacheWidth: 300,
+          ),
+        ),
+        if (i == 0)
+          Positioned(
+            left: 6,
+            bottom: 6,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Text(
+                'Cover',
+                style: TextStyle(color: Colors.white, fontSize: 11),
+              ),
+            ),
+          )
+        else
+          Positioned(
+            left: 2,
+            bottom: 2,
+            child: IconButton(
+              tooltip: 'Make cover photo',
+              iconSize: 18,
+              visualDensity: VisualDensity.compact,
+              style: IconButton.styleFrom(backgroundColor: Colors.black54),
+              color: Colors.white,
+              icon: const Icon(Icons.star_outline),
+              onPressed: () => setState(() {
+                final u = _photos.removeAt(i);
+                _photos.insert(0, u);
+              }),
+            ),
+          ),
+        Positioned(
+          right: 2,
+          top: 2,
+          child: IconButton(
+            tooltip: 'Remove photo',
+            iconSize: 18,
+            visualDensity: VisualDensity.compact,
+            style: IconButton.styleFrom(backgroundColor: Colors.black54),
+            color: Colors.white,
+            icon: const Icon(Icons.close),
+            onPressed: () => setState(() => _photos.removeAt(i)),
+          ),
+        ),
+      ],
+    );
+
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 3,
+      mainAxisSpacing: 8,
+      crossAxisSpacing: 8,
+      childAspectRatio: 0.8,
+      children: [
+        for (var i = 0; i < _photos.length; i++) tile(i),
+        if (_photos.length < _maxPhotos)
+          InkWell(
+            key: const ValueKey('add-gallery-photo'),
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            onTap: _uploadingGallery ? null : _addGalleryPhoto,
+            child: Ink(
+              decoration: BoxDecoration(
+                color: AppColors.field,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: AppColors.outline),
+              ),
+              child: Center(
+                child: _uploadingGallery
+                    ? const CircularProgressIndicator(strokeWidth: 2)
+                    : Icon(
+                        Icons.add_a_photo_outlined,
+                        color: t.colorScheme.primary,
+                      ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
   Future<void> _save() async {
     if (_busy || !_form.currentState!.validate()) return;
     if (_interests.isEmpty) {
@@ -120,6 +247,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         removePhoto: _removePhoto,
         countryCode: _country,
         instagram: _instagram.text.replaceFirst('@', ''),
+        photos: _photos,
       );
       if (mounted) context.pop();
     } on AppException catch (e) {
@@ -190,6 +318,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ],
                 ),
               ),
+              const SizedBox(height: AppSpacing.xl),
+              Text('Photos', style: t.textTheme.titleMedium),
+              const SizedBox(height: 4),
+              Text(
+                'Add up to $_maxPhotos photos so people can get to know you. '
+                'The first one is your cover.',
+                style: t.textTheme.bodySmall,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              _photoGrid(t),
               const SizedBox(height: AppSpacing.lg),
               AppFormField(
                 label: 'Display name',

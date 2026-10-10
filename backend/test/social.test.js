@@ -284,3 +284,16 @@ test('private plan: only host entry for non-members/requesters; full list for ho
   // unrelated user still cannot see it at all
   assert.equal((await j('GET', `${A}/${priv.id}/members`, await env.signup('s-px'))).status, 404);
 });
+
+test('profile photos: up to 6 https urls, public, replaceable', async () => {
+  const u = await env.signup('s-ph1'); const o = await env.signup('s-ph2');
+  const urls = ['https://x.test/a.jpg', 'https://x.test/b.jpg'];
+  const ok = await j('PATCH', `${U}/me`, u, { photos: urls });
+  assert.equal(ok.status, 200);
+  assert.deepEqual(ok.body.data.photos, urls);
+  assert.deepEqual((await j('GET', `${U}/s-ph1`, o)).body.data.photos, urls);
+  assert.equal((await j('PATCH', `${U}/me`, u, { photos: Array(7).fill(urls[0]) })).status, 400);
+  assert.equal((await j('PATCH', `${U}/me`, u, { photos: ['http://x.test/a.jpg'] })).status, 400);
+  assert.deepEqual((await j('PATCH', `${U}/me`, u, { photos: [] })).body.data.photos, []);
+  assert.deepEqual((await j('PATCH', `${U}/me`, u, { bio: 'hi' })).body.data.photos, []);
+});

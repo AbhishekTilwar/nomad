@@ -32,6 +32,7 @@ const fields = {
   preferredActivityTypes: z.array(tag).max(15),
   dateOfBirth: isoDate,
   photoUrl: httpsUrl.nullable(),
+  photos: z.array(httpsUrl).max(6),
   countryCode: countryCode.nullable(),
   instagram: instagram.nullable(),
 };
@@ -46,6 +47,7 @@ export const putProfileSchema = z
     preferredActivityTypes: fields.preferredActivityTypes.optional(),
     dateOfBirth: fields.dateOfBirth.optional(),
     photoUrl: fields.photoUrl.optional(),
+    photos: fields.photos.optional(),
     countryCode: fields.countryCode.optional(),
     instagram: fields.instagram.optional(),
   })
@@ -60,6 +62,7 @@ export const patchProfileSchema = z
     preferredActivityTypes: fields.preferredActivityTypes.optional(),
     dateOfBirth: fields.dateOfBirth.optional(),
     photoUrl: fields.photoUrl.optional(),
+    photos: fields.photos.optional(),
     countryCode: fields.countryCode.optional(),
     instagram: fields.instagram.optional(),
   })
