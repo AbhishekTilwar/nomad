@@ -58,6 +58,8 @@ dependencies:
   google_mlkit_language_id: ^0.14.0
   url_launcher: ^6.3.3
   flutter_image_compress: ^2.5.1
+  vector_map_tiles: ^9.0.0-beta.13
+  vector_tile_renderer: ^6.1.0
 
 dev_dependencies:
   flutter_test:

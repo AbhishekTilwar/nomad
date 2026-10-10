@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/config/map_config.dart';
+import '../../../core/widgets/basemap_layer.dart';
 import '../../../core/services/location_service.dart';
 import '../../../core/widgets/primary_button.dart';
 
@@ -50,11 +51,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
               onTap: (_, p) => setState(() => _picked = p),
             ),
             children: [
-              TileLayer(
-                urlTemplate: _cfg.tileUrlTemplate,
-                retinaMode: RetinaMode.isHighDensity(context),
-                userAgentPackageName: _cfg.userAgentPackageName,
-              ),
+              BasemapLayer(config: _cfg),
               MarkerLayer(
                 markers: [
                   Marker(

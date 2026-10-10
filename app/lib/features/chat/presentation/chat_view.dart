@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/utils/app_exception.dart';
+import '../../../core/widgets/chat_background.dart';
 import '../../../core/widgets/community_message_bubble.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/error_state.dart';
@@ -265,7 +266,7 @@ class _ChatViewState extends State<ChatView> {
       builder: (context, _) => Column(
         children: [
           if (c.readOnlyBanner != null) _Banner(text: c.readOnlyBanner!),
-          Expanded(child: _body(context)),
+          Expanded(child: ChatBackground(child: _body(context))),
           if (c.sendError != null) _SendError(text: c.sendError!),
           if (c.status != ChatStatus.error)
             ChatComposer(
@@ -357,7 +358,8 @@ class _SystemLine extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: AppColors.field,
+            // Pale pill like WhatsApp's date chips.
+            color: t.colorScheme.surface.withValues(alpha: 0.85),
             borderRadius: BorderRadius.circular(AppRadius.pill),
           ),
           child: Text(

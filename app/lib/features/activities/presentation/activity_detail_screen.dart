@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/config/map_config.dart';
+import '../../../core/widgets/basemap_layer.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/utils/app_exception.dart';
 import '../../../core/utils/category_style.dart';
@@ -513,11 +514,7 @@ class _MiniMap extends StatelessWidget {
             ),
           ),
           children: [
-            TileLayer(
-              urlTemplate: cfg.tileUrlTemplate,
-              retinaMode: RetinaMode.isHighDensity(context),
-              userAgentPackageName: cfg.userAgentPackageName,
-            ),
+            BasemapLayer(config: cfg),
             MarkerLayer(
               markers: [
                 Marker(

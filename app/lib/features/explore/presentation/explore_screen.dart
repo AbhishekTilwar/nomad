@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/config/map_config.dart';
+import '../../../core/widgets/basemap_layer.dart';
 import '../../../core/services/location_service.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/utils/category_style.dart';
@@ -399,13 +400,9 @@ class _MapViewState extends State<_MapView> {
             ),
           ),
           children: [
-            TileLayer(
-              urlTemplate: _config.tileUrlTemplate,
-              retinaMode: RetinaMode.isHighDensity(context),
-              userAgentPackageName: _config.userAgentPackageName,
-              maxNativeZoom: _config.maxZoom,
-              keepBuffer: 1,
-              errorTileCallback: (_, _, _) {
+            BasemapLayer(
+              config: _config,
+              onTileError: () {
                 if (!_tilesFailing && mounted) {
                   setState(() => _tilesFailing = true);
                 }
