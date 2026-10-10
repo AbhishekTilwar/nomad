@@ -83,7 +83,7 @@ class _AppFormFieldState extends State<AppFormField> {
       onFieldSubmitted: widget.onSubmitted,
       inputFormatters: widget.inputFormatters,
       autovalidateMode: AutovalidateMode.onUserInteraction,
-      style: t.textTheme.bodyMedium,
+      style: t.textTheme.bodyMedium?.copyWith(fontSize: 15),
       decoration: InputDecoration(
         hintText: widget.hint ?? (widget.showLabel ? null : widget.label),
         helperText: widget.helper,
@@ -177,7 +177,7 @@ class AppDropdownField<T> extends StatelessWidget {
             onChanged: onChanged,
             validator: validator,
             isExpanded: true,
-            style: t.textTheme.bodyMedium,
+            style: t.textTheme.bodyMedium?.copyWith(fontSize: 15),
             icon: const Icon(Icons.keyboard_arrow_down),
             decoration: InputDecoration(
               hintText: hint ?? (showLabel ? null : label),

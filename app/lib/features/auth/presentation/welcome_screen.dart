@@ -58,10 +58,8 @@ class WelcomeScreen extends StatelessWidget {
                         Text(
                           'Nomad Mingle',
                           textAlign: TextAlign.center,
-                          style: t.headlineMedium?.copyWith(
-                            color: Colors.white,
-                            fontSize: 36,
-                            fontWeight: FontWeight.w800,
+                          style: t.displaySmall?.copyWith(
+                            color: Colors.white, // 32 / 700 per type scale
                             letterSpacing: -0.5,
                           ),
                         ),

@@ -43,8 +43,8 @@ class AppTheme {
     scaffold: AppColors.sandDark,
   );
 
-  /// Type scale read off the design: 24 headings, 18 app-bar titles,
-  /// 16 card titles, 14 body, 12 captions.
+  /// Type scale (Inter): 32 splash, 28 page titles, 20 section headings,
+  /// 16 card titles / large body, 15 buttons & inputs, 14 body, 12-13 metadata.
   static TextTheme _textTheme(ColorScheme c) {
     TextStyle s(double size, FontWeight w, {double h = 1.4, Color? color}) =>
         TextStyle(
@@ -56,17 +56,17 @@ class AppTheme {
         );
     return TextTheme(
       displaySmall: s(32, FontWeight.w700, h: 1.2),
-      headlineMedium: s(24, FontWeight.w700, h: 1.25),
+      headlineMedium: s(28, FontWeight.w700, h: 1.25),
       headlineSmall: s(20, FontWeight.w700, h: 1.3),
-      titleLarge: s(18, FontWeight.w600, h: 1.3),
+      titleLarge: s(20, FontWeight.w600, h: 1.3),
       titleMedium: s(16, FontWeight.w600, h: 1.35),
       titleSmall: s(14, FontWeight.w600),
-      bodyLarge: s(15, FontWeight.w400, h: 1.5),
-      bodyMedium: s(14, FontWeight.w400, h: 1.45),
+      bodyLarge: s(16, FontWeight.w400, h: 1.5),
+      bodyMedium: s(14, FontWeight.w400, h: 1.5),
       bodySmall: s(12, FontWeight.w400, h: 1.35, color: c.onSurfaceVariant),
       labelLarge: s(15, FontWeight.w600, h: 1.2),
       labelMedium: s(13, FontWeight.w500, h: 1.2),
-      labelSmall: s(11, FontWeight.w500, h: 1.2),
+      labelSmall: s(12, FontWeight.w500, h: 1.2),
     );
   }
 
