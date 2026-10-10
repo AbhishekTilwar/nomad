@@ -106,6 +106,11 @@ export function createUsersService({ db, auth, fv, now, logger, activities }) {
 
       const merged = { ...(existing ?? {}) };
       for (const k of ['displayName', 'bio', 'city', 'interests', 'photoUrl', 'photos', 'countryCode', 'instagram']) if (body[k] !== undefined) merged[k] = body[k];
+      // A profile must keep at least one image: refuse a request that removes the last one.
+      if ((body.photos !== undefined || body.photoUrl !== undefined) && !merged.photoUrl && !(merged.photos?.length)
+          && (existing?.photoUrl || existing?.photos?.length)) {
+        throw invalid('Validation failed', [{ path: 'photos', message: 'At least one photo is required' }]);
+      }
       const pubDoc = {
         displayName: merged.displayName,
         photoUrl: merged.photoUrl ?? null,

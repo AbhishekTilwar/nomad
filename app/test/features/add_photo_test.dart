@@ -96,12 +96,18 @@ void main() {
     expect(images.calls.single.camera, isFalse);
   });
 
-  testWidgets('Skip leaves without uploading', (t) async {
+  testWidgets('a photo is required: there is no Skip', (t) async {
     final (images, session, _) = await pumpScreen(t);
-    await t.tap(find.text('Skip'));
-    await t.pump();
+    expect(find.text('Skip'), findsNothing);
     expect(images.calls, isEmpty);
-    expect(session.status, SessionStatus.ready);
+    expect(session.status, SessionStatus.needsPhoto);
+  });
+
+  testWidgets('first photo also seeds the gallery', (t) async {
+    final (_, _, repo) = await pumpScreen(t);
+    await t.tap(find.text('Take photo'));
+    await t.pumpAndSettle();
+    expect(repo.profile!.photos, ['https://example.com/me.jpg']);
   });
 
   testWidgets('upload failure shows the message and keeps the step open', (

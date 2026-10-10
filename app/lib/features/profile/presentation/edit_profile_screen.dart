@@ -228,6 +228,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Future<void> _save() async {
     if (_busy || !_form.currentState!.validate()) return;
+    if (_shownPhoto == null && _photos.isEmpty) {
+      setState(() => _error = 'Add at least one photo.');
+      return;
+    }
     if (_interests.isEmpty) {
       setState(() => _error = 'Pick at least one interest.');
       return;
@@ -307,7 +311,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         ),
                       ],
                     ),
-                    if (_shownPhoto != null)
+                    if (_shownPhoto != null && _photos.isNotEmpty)
                       TextButton(
                         onPressed: () => setState(() {
                           _removePhoto = true;

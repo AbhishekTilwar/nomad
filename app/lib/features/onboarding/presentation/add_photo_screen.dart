@@ -11,7 +11,7 @@ import '../../../core/widgets/user_avatar.dart';
 import '../../auth/application/session_controller.dart';
 
 /// Shown once right after profile setup: take or choose a profile photo
-/// (optional; Skip is always available).
+/// (required: every profile needs at least one photo).
 class AddPhotoScreen extends StatefulWidget {
   const AddPhotoScreen({super.key});
 
@@ -40,7 +40,8 @@ class _AddPhotoScreenState extends State<AddPhotoScreen> {
         camera: source == PhotoSource.camera,
       );
       if (url != null) {
-        await session.updateProfile(photoUrl: url);
+        // Required step: the first photo is also the start of the gallery.
+        await session.updateProfile(photoUrl: url, photos: [url]);
         if (mounted) setState(() => _uploadedUrl = url);
       }
     } on AppException catch (e) {
@@ -75,13 +76,6 @@ class _AddPhotoScreenState extends State<AddPhotoScreen> {
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
               child: Column(
                 children: [
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: _busy ? null : _done,
-                      child: Text(has ? 'Done' : 'Skip'),
-                    ),
-                  ),
                   const Spacer(),
                   Stack(
                     alignment: Alignment.bottomRight,

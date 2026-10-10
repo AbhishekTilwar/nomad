@@ -294,6 +294,19 @@ test('profile photos: up to 6 https urls, public, replaceable', async () => {
   assert.deepEqual((await j('GET', `${U}/s-ph1`, o)).body.data.photos, urls);
   assert.equal((await j('PATCH', `${U}/me`, u, { photos: Array(7).fill(urls[0]) })).status, 400);
   assert.equal((await j('PATCH', `${U}/me`, u, { photos: ['http://x.test/a.jpg'] })).status, 400);
+  // The last image cannot be removed; with an avatar present the gallery may be emptied.
+  assert.equal((await j('PATCH', `${U}/me`, u, { photos: [] })).status, 400);
+  await j('PATCH', `${U}/me`, u, { photoUrl: 'https://x.test/me.jpg' });
   assert.deepEqual((await j('PATCH', `${U}/me`, u, { photos: [] })).body.data.photos, []);
   assert.deepEqual((await j('PATCH', `${U}/me`, u, { bio: 'hi' })).body.data.photos, []);
+});
+
+test('profile photos: cannot remove the last image, can swap avatar for gallery', async () => {
+  const u = await env.signup('s-ph3');
+  await j('PATCH', `${U}/me`, u, { photoUrl: 'https://x.test/me.jpg' });
+  const r1 = await j('PATCH', `${U}/me`, u, { photoUrl: null });
+  assert.equal(r1.status, 400);
+  assert.equal((await j('PATCH', `${U}/me`, u, { photos: ['https://x.test/g.jpg'] })).status, 200);
+  assert.equal((await j('PATCH', `${U}/me`, u, { photoUrl: null })).status, 200);
+  assert.equal((await j('PATCH', `${U}/me`, u, { photos: [] })).status, 400);
 });

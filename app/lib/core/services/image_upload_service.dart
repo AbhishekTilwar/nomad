@@ -1,6 +1,9 @@
 import 'dart:math';
 
+import 'dart:typed_data';
+
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../utils/app_exception.dart';
@@ -18,6 +21,45 @@ abstract class ImageUploadService {
   });
 }
 
+/// Size policy per image kind: longest edge in px and the byte budget we
+/// compress towards (quality is stepped down until the result fits).
+class CompressionPolicy {
+  const CompressionPolicy(this.maxEdge, this.targetBytes);
+  final int maxEdge;
+  final int targetBytes;
+
+  static const avatar = CompressionPolicy(512, 60 * 1024);
+  static const gallery = CompressionPolicy(1080, 200 * 1024);
+  static const cover = CompressionPolicy(1280, 220 * 1024);
+
+  static CompressionPolicy of(ImageKind k) => switch (k) {
+    ImageKind.avatar => avatar,
+    ImageKind.gallery => gallery,
+    ImageKind.cover => cover,
+  };
+}
+
+/// Re-encodes as JPEG within [policy]. Starts at quality 82 and steps down to
+/// 40, returning the first result under the byte budget (or the smallest).
+Future<Uint8List> compressImage(
+  Uint8List input,
+  CompressionPolicy policy,
+) async {
+  Uint8List? best;
+  for (var q = 82; q >= 40; q -= 14) {
+    final out = await FlutterImageCompress.compressWithList(
+      input,
+      minWidth: policy.maxEdge,
+      minHeight: policy.maxEdge,
+      quality: q,
+      format: CompressFormat.jpeg,
+    );
+    if (best == null || out.length < best.length) best = out;
+    if (out.length <= policy.targetBytes) break;
+  }
+  return best ?? input;
+}
+
 /// Compresses on-device (max dimension + JPEG quality) before upload and writes
 /// to a random, non-guessable path covered by `storage.rules`.
 class FirebaseImageUploadService implements ImageUploadService {
@@ -27,7 +69,9 @@ class FirebaseImageUploadService implements ImageUploadService {
 
   final FirebaseStorage _storage;
   final ImagePicker _picker;
-  static const maxBytes = 5 * 1024 * 1024;
+
+  /// Cap on the original pick; what gets stored is the compressed copy.
+  static const maxBytes = 20 * 1024 * 1024;
 
   static String _randomName() {
     final r = Random.secure();
@@ -48,14 +92,22 @@ class FirebaseImageUploadService implements ImageUploadService {
       preferredCameraDevice: kind == ImageKind.avatar
           ? CameraDevice.front
           : CameraDevice.rear,
-      maxWidth: kind == ImageKind.avatar ? 512 : 1280,
-      maxHeight: kind == ImageKind.avatar ? 512 : 1280,
-      imageQuality: 80,
+      // Bounds memory while decoding; compressImage does the real shrinking.
+      maxWidth: 2048,
+      maxHeight: 2048,
     );
     if (file == null) return null;
-    final bytes = await file.readAsBytes();
-    if (bytes.length > maxBytes) {
-      throw const AppException('That photo is too large. Pick one under 5 MB.');
+    final raw = await file.readAsBytes();
+    if (raw.length > maxBytes) {
+      throw const AppException(
+        'That photo is too large. Pick one under 20 MB.',
+      );
+    }
+    final Uint8List bytes;
+    try {
+      bytes = await compressImage(raw, CompressionPolicy.of(kind));
+    } catch (_) {
+      throw const AppException('Couldn\'t read that photo. Try another one.');
     }
     final folder = switch (kind) {
       ImageKind.avatar => 'users/$uid/avatar',
