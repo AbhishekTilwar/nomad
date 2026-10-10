@@ -210,17 +210,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                 ),
               ),
-              if ((p.instagram ?? '').isNotEmpty)
-                Padding(
-                  padding: AppSpacing.page.copyWith(top: AppSpacing.md),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: InstagramPill(
-                      handle: p.instagram!,
-                      onTap: () => openInstagram(p.instagram!),
-                    ),
-                  ),
+              Padding(
+                padding: AppSpacing.page.copyWith(top: AppSpacing.md),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: (p.instagram ?? '').isNotEmpty
+                      ? InstagramPill(
+                          handle: p.instagram!,
+                          onTap: () => openInstagram(p.instagram!),
+                        )
+                      : ActionChip(
+                          key: const ValueKey('add-instagram'),
+                          avatar: const Icon(
+                            Icons.camera_alt_outlined,
+                            size: 18,
+                          ),
+                          label: const Text('Add Instagram'),
+                          onPressed: () => context.push('/profile/edit'),
+                        ),
                 ),
+              ),
               if (p.bio.isNotEmpty)
                 Padding(
                   padding: AppSpacing.page.copyWith(top: AppSpacing.md),
