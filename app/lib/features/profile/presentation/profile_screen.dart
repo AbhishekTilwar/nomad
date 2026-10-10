@@ -278,9 +278,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: AppSpacing.lg),
               const Divider(),
               row(
-                Icons.notifications_none,
-                'Notifications',
-                () => context.push('/notifications'),
+                Icons.photo_album_outlined,
+                'Memories',
+                () => context.push('/memories'),
               ),
               row(
                 Icons.shield_outlined,

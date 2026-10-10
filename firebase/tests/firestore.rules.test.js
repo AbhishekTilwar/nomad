@@ -176,6 +176,11 @@ test('reports, moderationActions, userRateLimits, deviceTokens are unreadable by
   }
 });
 
+test('friendships: no client access (backend only)', async () => {
+  await assertFails(getDoc(doc(db('bob'), 'friendships/bob_dave')));
+  await assertFails(setDoc(doc(db('bob'), 'friendships/bob_dave'), { users: ['bob', 'dave'], status: 'accepted' }));
+});
+
 test('userBlocks: owner-only read, no client writes', async () => {
   await fresh();
   await assertSucceeds(getDoc(doc(db('bob'), 'userBlocks/bob/blocked/dave')));

@@ -56,7 +56,11 @@ class ChatHeaderTitle extends StatelessWidget {
     this.subtitle = '',
     this.people = const [],
     this.fallbackIcon = Icons.groups_2_outlined,
+    this.onTap,
   });
+
+  /// Tapping the header (e.g. open the meetup page from its group chat).
+  final VoidCallback? onTap;
   final String title;
   final String subtitle;
   final List<ParticipantPreview> people;
@@ -65,7 +69,7 @@ class ChatHeaderTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
-    return Row(
+    final row = Row(
       children: [
         if (people.isEmpty)
           CircleAvatar(
@@ -103,6 +107,19 @@ class ChatHeaderTitle extends StatelessWidget {
           ),
         ),
       ],
+    );
+    if (onTap == null) return row;
+    return Semantics(
+      button: true,
+      hint: 'Opens the meetup page',
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: row,
+        ),
+      ),
     );
   }
 }

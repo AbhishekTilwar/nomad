@@ -140,6 +140,7 @@ class FakeProfileRepository implements ProfileRepository {
     return profile = UserProfile(
       uid: 'u1',
       displayName: displayName,
+      photoUrl: photoUrl,
       city: city,
       bio: bio,
       interests: interests,
@@ -156,6 +157,8 @@ class FakeProfileRepository implements ProfileRepository {
     List<String>? preferredActivityTypes,
     String? photoUrl,
     bool removePhoto = false,
+    String? countryCode,
+    String? instagram,
   }) async {
     lastPhotoUrl = photoUrl;
     lastRemovePhoto = removePhoto;
@@ -166,6 +169,8 @@ class FakeProfileRepository implements ProfileRepository {
       city: city ?? profile!.city,
       bio: bio ?? profile!.bio,
       interests: interests ?? profile!.interests,
+      countryCode: countryCode ?? profile!.countryCode,
+      instagram: instagram ?? profile!.instagram,
       profileCompleted: true,
     );
   }

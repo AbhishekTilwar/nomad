@@ -9,7 +9,13 @@ enum ImageKind { avatar, cover }
 
 abstract class ImageUploadService {
   /// Lets the user pick a photo and uploads it. Returns null if cancelled.
-  Future<String?> pickAndUpload(String uid, ImageKind kind);
+  ///
+  /// With [camera] true the device camera is used instead of the gallery.
+  Future<String?> pickAndUpload(
+    String uid,
+    ImageKind kind, {
+    bool camera = false,
+  });
 }
 
 /// Compresses on-device (max dimension + JPEG quality) before upload and writes
@@ -32,9 +38,16 @@ class FirebaseImageUploadService implements ImageUploadService {
   }
 
   @override
-  Future<String?> pickAndUpload(String uid, ImageKind kind) async {
+  Future<String?> pickAndUpload(
+    String uid,
+    ImageKind kind, {
+    bool camera = false,
+  }) async {
     final file = await _picker.pickImage(
-      source: ImageSource.gallery,
+      source: camera ? ImageSource.camera : ImageSource.gallery,
+      preferredCameraDevice: kind == ImageKind.avatar
+          ? CameraDevice.front
+          : CameraDevice.rear,
       maxWidth: kind == ImageKind.avatar ? 512 : 1280,
       maxHeight: kind == ImageKind.avatar ? 512 : 1280,
       imageQuality: 80,

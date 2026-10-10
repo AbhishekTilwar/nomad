@@ -20,10 +20,11 @@ All timestamps are Firestore `Timestamp`s set with server time. Clients never wr
 Chat reads are direct Firestore listeners (rules-authorized); chat writes always go through the API because rate limits, moderation state and membership checks cannot be expressed safely in rules.
 
 ## `users/{uid}` (public profile, readable by any signed-in user)
-`displayName`, `photoUrl`, `bio`, `city` (`mumbai|pune|other`), `interests[]`, `ageRange` (e.g. `18-24`), `accountStatus` (`active|muted|suspended|deleted`), `profileCompleted`, `emailVerified`, `stats.hosted`, `stats.attended`, `createdAt`, `updatedAt`.
+`displayName`, `photoUrl`, `bio`, `city` (`mumbai|pune|other`), `interests[]`, `ageRange` (e.g. `18-24`), `accountStatus` (`active|muted|suspended|deleted`), `countryCode` (ISO alpha-2 or null), `instagram` (handle or null), `profileCompleted`, `emailVerified`, `stats.hosted`, `stats.attended`, `createdAt`, `updatedAt`.
+Travelers (written by `PUT /users/me/location`, never returned by any API view): `discoverable`, `approxLat`/`approxLng` (rounded to 2 decimals, ~1.1 km; removed when not discoverable), `locationUpdatedAt`. Note: rules let any signed-in user `get` this doc, so clients that read it directly can see the approximate coordinates.
 
 ## `users/{uid}/private/profile` (owner read, backend write)
-`dateOfBirth` (ISO date), `ageVerifiedAt`, `preferredActivityTypes[]`, `notificationPrefs{joinRequests,approvals,activityUpdates,reminders,moderation}`, `role` (`user|moderator|admin`, **never** client-writable; admin also set via Auth custom claims, see SECURITY.md), `mutedUntil`, `violationCount`.
+`dateOfBirth` (ISO date), `ageVerifiedAt`, `preferredActivityTypes[]`, `notificationPrefs{joinRequests,approvals,activityUpdates,reminders,moderation,friends}`, `role` (`user|moderator|admin`, **never** client-writable; admin also set via Auth custom claims, see SECURITY.md), `mutedUntil`, `violationCount`.
 
 > Role and account status live in backend-only data. `users/{uid}.accountStatus` is a denormalized public mirror written only by the backend.
 
@@ -61,13 +62,18 @@ Same fields as activity messages. Readable by any signed-in user with an active 
 ## `deviceTokens/{tokenHash}`
 `uid`, `token`, `platform`, `updatedAt`. Backend only.
 
+## `friendships/{uidA_uidB}` (backend only; client read/write denied)
+Id = the two uids sorted and joined with `_`. `users[a,b]` (sorted), `requesterId`, `status` (`pending|accepted`), `createdAt`, `updatedAt`. Declining, cancelling, unfriending and blocking delete the doc. Max 100 outgoing pending requests per user.
+
 ## `notifications/{id}`
-`userId`, `type`, `title`, `body`, `data{}`, `read`, `createdAt`. Owner may read; backend writes.
+`userId`, `type` (incl. `friend_request`, `friend_accepted`), `title`, `body`, `data{}` (carries `actorId`, `actorName`, `actorPhotoUrl` when an actor is known), `read`, `createdAt`. Owner may read; backend writes.
 
 ## Geohash strategy
 Activities store `geohash` (precision 9). Nearby query: compute the geohash cover (center + 8 neighbours at a precision matching the radius), run one range query per prefix (`geohash >= p` and `< p~`) with `status == scheduled`, `startAt >= now` ordering by geohash, merge, dedupe by id, filter with Haversine, sort. Pagination is cursor-per-prefix; limitation: results are exact-radius but ordering across cells is by merged sort, so deep pages cost reads on each cell. Interface `ActivityQueryService` abstracts this so a dedicated geo service can replace it.
 
 ## Composite indexes
+Also: `users(discoverable, approxLat)` for travelers (latitude band, scan cap 300 docs, longitude/radius filtered in memory); `friendships(users CONTAINS, status, updatedAt desc)` and `(users CONTAINS, status, createdAt desc)`.
+
 See `firebase/firestore.indexes.json`.
 
 ---

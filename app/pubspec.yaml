@@ -53,6 +53,10 @@ dependencies:
   http: ^1.6.0
   intl: ^0.20.3
   shared_preferences: ^2.5.6
+  share_plus: ^13.3.1
+  google_mlkit_translation: ^0.14.0
+  google_mlkit_language_id: ^0.14.0
+  url_launcher: ^6.3.3
 
 dev_dependencies:
   flutter_test:
@@ -86,6 +90,10 @@ flutter:
           weight: 600
         - asset: assets/fonts/Inter-Bold.ttf
           weight: 700
+    # Handwritten-script wordmark (SIL OFL, variable weight 400-700).
+    - family: NomadScript
+      fonts:
+        - asset: assets/fonts/DancingScript-Variable.ttf
 
   # To add assets to your application, add an assets section, like this:
   # assets:

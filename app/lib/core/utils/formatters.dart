@@ -29,6 +29,25 @@ class Formatters {
     return '${km.toStringAsFixed(km < 10 ? 1 : 0)} km away';
   }
 
+  /// "just now", "9 minutes ago", "3 hours ago", "2 days ago", else a date.
+  static String timeAgo(DateTime d, {DateTime? now}) {
+    final diff = (now ?? DateTime.now()).difference(d);
+    if (diff.inMinutes < 1) return 'just now';
+    if (diff.inMinutes < 60) {
+      final m = diff.inMinutes;
+      return '$m minute${m == 1 ? '' : 's'} ago';
+    }
+    if (diff.inHours < 24) {
+      final h = diff.inHours;
+      return '$h hour${h == 1 ? '' : 's'} ago';
+    }
+    if (diff.inDays < 7) {
+      final n = diff.inDays;
+      return '$n day${n == 1 ? '' : 's'} ago';
+    }
+    return DateFormat('d MMM').format(d);
+  }
+
   static String chatTime(DateTime d, {DateTime? now}) {
     final today = now ?? DateTime.now();
     if (d.year == today.year && d.month == today.month && d.day == today.day) {

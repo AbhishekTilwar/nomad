@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_tokens.dart';
@@ -11,7 +12,6 @@ import '../../../core/widgets/report_action_sheet.dart';
 import '../application/chat_controller.dart';
 import '../models/chat_message.dart';
 import 'chat_composer.dart';
-import 'member_profile_sheet.dart';
 
 /// Shared body for the community and activity chats: banner, messages (newest at the bottom,
 /// older pages load when scrolling up), send-error strip and the composer.
@@ -174,11 +174,9 @@ class _ChatViewState extends State<ChatView> {
   void _openProfile(ChatMessage m) {
     final cb = widget.onOpenProfile;
     if (cb != null) return cb(m);
-    MemberProfileSheet.show(
-      context,
-      uid: m.senderId,
-      name: m.senderName,
-      photoUrl: m.senderPhotoUrl,
+    context.push(
+      '/user/${m.senderId}',
+      extra: {'name': m.senderName, 'photoUrl': m.senderPhotoUrl},
     );
   }
 

@@ -6,8 +6,16 @@ import '../data/auth_repository.dart';
 
 /// "Continue with Google" with its own busy state and friendly errors.
 class GoogleSignInButton extends StatefulWidget {
-  const GoogleSignInButton({super.key, this.onBusyChanged});
+  const GoogleSignInButton({
+    super.key,
+    this.onBusyChanged,
+    this.onWhite = false,
+  });
   final ValueChanged<bool>? onBusyChanged;
+
+  /// Solid white button for dark photo backgrounds (landing screen). The
+  /// default is a white outlined button with a soft shadow.
+  final bool onWhite;
 
   @override
   State<GoogleSignInButton> createState() => _GoogleSignInButtonState();
@@ -33,34 +41,68 @@ class _GoogleSignInButtonState extends State<GoogleSignInButton> {
   }
 
   @override
-  Widget build(BuildContext context) => Semantics(
-    button: true,
-    label: 'Continue with Google',
-    excludeSemantics: true,
-    child: OutlinedButton(
+  Widget build(BuildContext context) {
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppRadius.md),
+    );
+    final button = OutlinedButton(
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size.fromHeight(52),
+        backgroundColor: Colors.white,
+        foregroundColor: AppColors.ink,
+        disabledBackgroundColor: Colors.white.withValues(alpha: 0.85),
+        shape: shape,
+        side: onWhiteSide,
+      ),
       onPressed: _busy ? null : _signIn,
       child: _busy
           ? const SizedBox(
               width: 22,
               height: 22,
-              child: CircularProgressIndicator(strokeWidth: 2.5),
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: AppColors.navy,
+              ),
             )
           : Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 const _GoogleG(),
                 const SizedBox(width: 10),
-                Text(
-                  'Google',
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: AppColors.ink,
-                    fontWeight: FontWeight.w500,
+                Flexible(
+                  child: Text(
+                    'Continue with Google',
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: AppColors.ink,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
             ),
-    ),
-  );
+    );
+    return Semantics(
+      button: true,
+      enabled: !_busy,
+      label: _busy ? 'Signing in with Google' : 'Continue with Google',
+      excludeSemantics: true,
+      onTap: _busy ? null : _signIn,
+      child: widget.onWhite
+          ? button
+          : DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                boxShadow: AppShadows.card,
+              ),
+              child: button,
+            ),
+    );
+  }
+
+  BorderSide get onWhiteSide => widget.onWhite
+      ? BorderSide.none
+      : const BorderSide(color: AppColors.outline);
 }
 
 /// Simple brand-colored "G" mark (no asset needed).

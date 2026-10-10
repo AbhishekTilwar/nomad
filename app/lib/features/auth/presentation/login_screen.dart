@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/theme/app_tokens.dart';
 import '../../../core/utils/validators.dart';
-import '../../../core/widgets/form_field.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../data/auth_repository.dart';
+import 'auth_fields.dart';
 import 'auth_layout.dart';
 import 'google_sign_in_button.dart';
 
@@ -53,34 +54,39 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return AuthPage(
-      title: 'Welcome Back',
-      subtitle: 'Login to continue',
+      title: 'Welcome back',
+      subtitle: 'Sign in to continue',
       footer: AuthSwitchRow(
         prompt: 'Don\'t have an account?',
         action: 'Sign Up',
         onPressed: _busy ? null : () => context.pushReplacement('/register'),
       ),
       children: [
+        const GoogleSignInButton(),
+        const SizedBox(height: 16),
+        const OrDivider(),
+        const SizedBox(height: 16),
         Form(
           key: _form,
           child: AutofillGroup(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                AppFormField(
-                  label: 'Email',
-                  showLabel: false,
+                LabeledAuthField(
+                  key: const ValueKey('login-email'),
+                  label: 'Email address',
+                  hint: 'you@example.com',
                   controller: _email,
                   validator: Validators.email,
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
                   autofillHints: const [AutofillHints.email],
-                  prefixIcon: Icons.mail_outline,
                 ),
                 const SizedBox(height: 14),
-                AppFormField(
+                LabeledAuthField(
+                  key: const ValueKey('login-password'),
                   label: 'Password',
-                  showLabel: false,
+                  hint: 'Enter your password',
                   controller: _password,
                   obscure: true,
                   validator: (v) =>
@@ -88,30 +94,30 @@ class _LoginScreenState extends State<LoginScreen> {
                   textInputAction: TextInputAction.done,
                   onSubmitted: (_) => _submit(),
                   autofillHints: const [AutofillHints.password],
-                  prefixIcon: Icons.lock_outline,
                 ),
               ],
             ),
           ),
         ),
-        Align(
-          alignment: Alignment.centerRight,
+        if (_error != null) ...[const SizedBox(height: 12), AuthError(_error!)],
+        const SizedBox(height: 16),
+        PrimaryButton(
+          backgroundColor: AppColors.navy,
+          label: 'Sign In',
+          loading: _busy,
+          onPressed: _submit,
+        ),
+        const SizedBox(height: 4),
+        Center(
           child: TextButton(
             style: TextButton.styleFrom(
-              minimumSize: const Size(0, 44),
-              padding: const EdgeInsets.symmetric(horizontal: 4),
+              minimumSize: const Size(0, 48),
+              foregroundColor: AppColors.inkMuted,
             ),
             onPressed: () => context.push('/forgot-password'),
             child: const Text('Forgot password?'),
           ),
         ),
-        if (_error != null) ...[AuthError(_error!), const SizedBox(height: 12)],
-        const SizedBox(height: 4),
-        PrimaryButton(label: 'Login', loading: _busy, onPressed: _submit),
-        const SizedBox(height: 24),
-        const OrContinueWith(),
-        const SizedBox(height: 14),
-        const GoogleSignInButton(),
       ],
     );
   }

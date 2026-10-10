@@ -70,5 +70,7 @@
 	<string>Nomad Mingle uses your location to show plans near you. It is never shared with other people.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Choose a photo for your profile or a plan cover image.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Take a profile photo or a plan cover photo.</string>
 </dict>
 </plist>

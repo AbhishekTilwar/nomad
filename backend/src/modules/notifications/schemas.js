@@ -7,6 +7,7 @@ export const notificationPrefsSchema = z
     activityUpdates: z.boolean(),
     reminders: z.boolean(),
     moderation: z.boolean(),
+    friends: z.boolean(),
   })
   .partial()
   .strict();

@@ -6,7 +6,6 @@ import '../features/activities/data/activity_repository.dart';
 import '../features/activities/models/activity.dart';
 import '../features/create/presentation/create_activity_screen.dart';
 import '../features/create/presentation/location_picker_screen.dart';
-import '../features/discover/presentation/discover_screen.dart';
 import '../features/explore/presentation/explore_controller.dart';
 
 import '../features/activities/presentation/activity_detail_screen.dart';
@@ -21,9 +20,12 @@ import '../features/explore/presentation/explore_screen.dart';
 import '../features/onboarding/presentation/intro_screen.dart';
 import '../features/onboarding/presentation/onboarding_screen.dart';
 import '../features/profile/presentation/edit_profile_screen.dart';
+import '../features/profile/presentation/memories_screen.dart';
 import '../features/profile/presentation/profile_screen.dart';
 import '../features/settings/notifications_screen.dart';
 import '../features/settings/settings_screens.dart';
+import '../features/onboarding/presentation/add_photo_screen.dart';
+import '../features/profile/presentation/public_profile_screen.dart';
 import '../features/chat/presentation/activity_chat_screen.dart';
 import '../features/chat/presentation/chats_list_screen.dart';
 import '../features/chat/presentation/community_chat_button.dart';
@@ -51,6 +53,8 @@ String? redirectFor(SessionStatus status, String location) {
       return location == '/verify-email' ? null : '/verify-email';
     case SessionStatus.needsOnboarding:
       return location == '/onboarding' ? null : '/onboarding';
+    case SessionStatus.needsPhoto:
+      return location == '/add-photo' ? null : '/add-photo';
     case SessionStatus.profileError:
       return location == '/profile-error' ? null : '/profile-error';
     case SessionStatus.restricted:
@@ -65,6 +69,7 @@ String? redirectFor(SessionStatus status, String location) {
         '/forgot-password',
         '/verify-email',
         '/onboarding',
+        '/add-photo',
         '/profile-error',
         '/restricted',
       };
@@ -133,10 +138,7 @@ GoRouter buildRouter(
         path: '/profile/notifications',
         builder: (_, _) => const NotificationPrefsScreen(),
       ),
-      GoRoute(
-        path: '/notifications',
-        builder: (_, _) => const NotificationsScreen(),
-      ),
+      GoRoute(path: '/memories', builder: (_, _) => const MemoriesScreen()),
       GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
       GoRoute(
         path: '/location',
@@ -146,6 +148,18 @@ GoRouter buildRouter(
       GoRoute(
         path: '/profile/blocked',
         builder: (_, _) => const BlockedUsersScreen(),
+      ),
+      GoRoute(path: '/add-photo', builder: (_, _) => const AddPhotoScreen()),
+      GoRoute(
+        path: '/user/:uid',
+        builder: (_, s) {
+          final extra = (s.extra as Map?)?.cast<String, dynamic>();
+          return PublicProfileScreen(
+            uid: s.pathParameters['uid']!,
+            fallbackName: extra?['name'] as String?,
+            fallbackPhotoUrl: extra?['photoUrl'] as String?,
+          );
+        },
       ),
       GoRoute(
         path: '/community',
@@ -196,8 +210,8 @@ GoRouter buildRouter(
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/discover',
-                builder: (_, _) => const DiscoverScreen(),
+                path: '/chats',
+                builder: (_, _) => const ChatsListScreen(),
               ),
             ],
           ),
@@ -212,8 +226,8 @@ GoRouter buildRouter(
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/chats',
-                builder: (_, _) => const ChatsListScreen(),
+                path: '/notifications',
+                builder: (_, _) => const NotificationsScreen(),
               ),
             ],
           ),

@@ -5,6 +5,7 @@ import '../../../core/config/map_config.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/utils/app_exception.dart';
 import '../../../core/utils/validators.dart';
+import '../../../core/widgets/brand_logo.dart';
 import '../../../core/widgets/form_field.dart';
 import '../../../core/widgets/app_chip.dart';
 import '../../../core/widgets/primary_button.dart';
@@ -151,20 +152,28 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         value: (_step + 1) / 3,
                         minHeight: 6,
                         backgroundColor: AppColors.tint,
+                        color: AppColors.navy,
                       ),
                     ),
                   ),
                   Expanded(
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
+                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
                       keyboardDismissBehavior:
                           ScrollViewKeyboardDismissBehavior.onDrag,
-                      child: AnimatedSwitcher(
-                        duration: AppMotion.normal,
-                        child: KeyedSubtree(
-                          key: ValueKey(_step),
-                          child: _buildStep(t),
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const Center(child: BrandLogo(size: 28)),
+                          const SizedBox(height: 20),
+                          AnimatedSwitcher(
+                            duration: AppMotion.normal,
+                            child: KeyedSubtree(
+                              key: ValueKey(_step),
+                              child: _buildStep(t),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -224,7 +233,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              PrimaryButton(label: 'Continue', onPressed: _next),
+              PrimaryButton(
+                backgroundColor: AppColors.navy,
+                label: 'Continue',
+                onPressed: _next,
+              ),
             ],
           ),
         );
@@ -262,7 +275,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 maxLength: 300,
               ),
               const SizedBox(height: 12),
-              PrimaryButton(label: 'Continue', onPressed: _next),
+              PrimaryButton(
+                backgroundColor: AppColors.navy,
+                label: 'Continue',
+                onPressed: _next,
+              ),
             ],
           ),
         );
@@ -317,7 +334,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
             ],
             const SizedBox(height: 24),
-            PrimaryButton(label: 'Finish', loading: _busy, onPressed: _finish),
+            PrimaryButton(
+              backgroundColor: AppColors.navy,
+              label: 'Finish',
+              loading: _busy,
+              onPressed: _finish,
+            ),
           ],
         );
     }

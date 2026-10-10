@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_tokens.dart';
@@ -91,6 +92,10 @@ class _ManageMembersScreenState extends State<ManageMembersScreen> {
                     photoUrl: m.photoUrl,
                   ),
                   title: Text(m.displayName),
+                  onTap: () => context.push(
+                    '/user/${m.userId}',
+                    extra: {'name': m.displayName, 'photoUrl': m.photoUrl},
+                  ),
                   trailing: _busy.contains(m.userId)
                       ? const SizedBox(
                           width: 24,
@@ -127,6 +132,10 @@ class _ManageMembersScreenState extends State<ManageMembersScreen> {
                     photoUrl: m.photoUrl,
                   ),
                   title: Text(m.displayName),
+                  onTap: () => context.push(
+                    '/user/${m.userId}',
+                    extra: {'name': m.displayName, 'photoUrl': m.photoUrl},
+                  ),
                   trailing: IconButton(
                     tooltip: 'Remove ${m.displayName}',
                     icon: const Icon(Icons.person_remove_outlined),

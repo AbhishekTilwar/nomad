@@ -11,7 +11,14 @@ const PREF_FOR_TYPE = {
   activity_updated: 'activityUpdates',
   reminder: 'reminders',
   moderation: 'moderation',
+  friend_request: 'friends',
+  friend_accepted: 'friends',
 };
+
+/** Actor fields attached to notification `data` so clients can render an avatar and "X wants to ...". */
+export const actorData = (uid, profile) => (profile
+  ? { actorId: uid, actorName: profile.displayName ?? '', actorPhotoUrl: profile.photoUrl ?? null }
+  : {});
 
 const BAD_TOKEN_CODES = new Set([
   'messaging/registration-token-not-registered',
@@ -38,7 +45,7 @@ export function createNotificationService({ db, messaging, fv, now, logger, conf
       const tokenSnap = await db.collection('deviceTokens').where('uid', '==', userId).get();
       const tokens = tokenSnap.docs.map((d) => d.data().token).filter(Boolean);
       if (!tokens.length || !messaging) return { sent: 0 };
-      const strData = Object.fromEntries(Object.entries({ type, ...data }).map(([k, v]) => [k, String(v)]));
+      const strData = Object.fromEntries(Object.entries({ type, ...data }).filter(([, v]) => v !== null && v !== undefined).map(([k, v]) => [k, String(v)]));
       let sent = 0;
       for (let i = 0; i < tokens.length; i += 500) {
         const chunk = tokens.slice(i, i + 500);

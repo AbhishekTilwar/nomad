@@ -14,8 +14,9 @@ import '../../../core/widgets/activity_marker.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/error_state.dart';
 import '../../../core/widgets/loading_skeleton.dart';
-import '../../../core/widgets/map_preview_card.dart';
+import '../../../core/widgets/plan_sheet_card.dart';
 import 'explore_controller.dart';
+import '../../social/presentation/travelers_sheet.dart';
 import 'filter_screen.dart';
 
 /// Categories shown as quick chips (the full set lives in the filter sheet).
@@ -120,9 +121,9 @@ class _Header extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               _RoundAction(
-                tooltip: 'Search plans',
-                icon: Icons.search,
-                onPressed: () => context.go('/discover'),
+                tooltip: 'Travelers nearby',
+                icon: Icons.groups_outlined,
+                onPressed: () => TravelersSheet.show(context),
               ),
               const SizedBox(width: 8),
               _RoundAction(
@@ -317,6 +318,17 @@ class _MapViewState extends State<_MapView> {
     }
   }
 
+  /// First time the map is shown: ask for permission and centre on the user.
+  /// Silent on failure (the city view is a fine fallback; the button retries).
+  Future<void> _autoLocate() async {
+    final c = widget.controller;
+    if (c.autoLocateDone) return;
+    c.autoLocateDone = true;
+    final r = await context.read<LocationService>().current();
+    if (!mounted || r.position == null) return;
+    c.setUserLocation(r.position!);
+  }
+
   Future<void> _recenter(ExploreController c) async {
     final messenger = ScaffoldMessenger.of(context);
     final location = context.read<LocationService>();
@@ -368,6 +380,7 @@ class _MapViewState extends State<_MapView> {
             onMapReady: () {
               _ready = true;
               _onController();
+              _autoLocate();
             },
             onTap: (_, _) => c.select(null),
             onPositionChanged: (camera, hasGesture) {
@@ -487,7 +500,7 @@ class _MapViewState extends State<_MapView> {
           ),
         Positioned(
           right: 16,
-          bottom: selected == null ? 16 : 140,
+          bottom: selected == null ? 16 : 330,
           child: FloatingActionButton.small(
             heroTag: 'recenter',
             tooltip: 'Use my location',
@@ -502,9 +515,9 @@ class _MapViewState extends State<_MapView> {
             left: 16,
             right: 16,
             bottom: 16,
-            child: MapPreviewCard(
+            child: PlanSheetCard(
               activity: selected,
-              onTap: () => context.push('/activity/${selected.id}'),
+              onClose: () => c.select(null),
             ),
           ),
       ],

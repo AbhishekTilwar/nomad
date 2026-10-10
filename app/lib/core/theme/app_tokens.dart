@@ -8,6 +8,9 @@ class AppColors {
   static const primary = Color(0xFF4F46E5);
   static const primaryDark = Color(0xFF818CF8);
   static const onPrimary = Colors.white;
+
+  /// Dark navy primary button used across the first-run / auth flow.
+  static const navy = Color(0xFF1B2A3B);
   static const secondary = Color(0xFF3B6FE0);
   static const secondaryDark = Color(0xFF8DB1FF);
 

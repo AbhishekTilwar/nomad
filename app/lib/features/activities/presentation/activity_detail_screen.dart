@@ -309,38 +309,52 @@ class _DetailViewState extends State<_DetailView> {
                       fact(Icons.payments_outlined, a.costDescription),
                     ],
                     const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: t.colorScheme.outline),
+                    Semantics(
+                      button: true,
+                      label: 'View ${a.hostDisplayName}\'s profile',
+                      child: InkWell(
                         borderRadius: BorderRadius.circular(AppRadius.lg),
-                      ),
-                      child: Row(
-                        children: [
-                          UserAvatar(
-                            name: a.hostDisplayName,
-                            photoUrl: a.hostPhotoUrl,
-                            size: 40,
+                        onTap: () => context.push(
+                          '/user/${a.hostId}',
+                          extra: {
+                            'name': a.hostDisplayName,
+                            'photoUrl': a.hostPhotoUrl,
+                          },
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: t.colorScheme.outline),
+                            borderRadius: BorderRadius.circular(AppRadius.lg),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Hosted by ${a.hostDisplayName}',
-                                  style: t.textTheme.titleSmall,
+                          child: Row(
+                            children: [
+                              UserAvatar(
+                                name: a.hostDisplayName,
+                                photoUrl: a.hostPhotoUrl,
+                                size: 40,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Hosted by ${a.hostDisplayName}',
+                                      style: t.textTheme.titleSmall,
+                                    ),
+                                    Text(
+                                      a.approvalRequired
+                                          ? 'Host approves requests'
+                                          : 'Open to join',
+                                      style: t.textTheme.bodySmall,
+                                    ),
+                                  ],
                                 ),
-                                Text(
-                                  a.approvalRequired
-                                      ? 'Host approves requests'
-                                      : 'Open to join',
-                                  style: t.textTheme.bodySmall,
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),

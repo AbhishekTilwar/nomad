@@ -7,10 +7,13 @@ import '../core/theme/app_theme.dart';
 import '../features/activities/data/activity_repository.dart';
 import '../core/services/image_upload_service.dart';
 import '../core/services/location_service.dart';
+import '../core/services/translation_service.dart';
+import '../features/social/data/social_repository.dart';
 import '../features/auth/application/session_controller.dart';
 import '../features/safety/data/safety_repository.dart';
 import '../features/auth/data/auth_repository.dart';
 import '../features/profile/data/profile_repository.dart';
+import '../features/profile/data/public_profile.dart';
 import 'router.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../features/activities/data/my_activities_repository.dart';
@@ -31,6 +34,9 @@ class NomadMingleApp extends StatefulWidget {
     this.images,
     this.chat,
     this.myActivities,
+    this.publicProfiles,
+    this.translation,
+    this.social,
   });
 
   final AuthRepository auth;
@@ -41,6 +47,9 @@ class NomadMingleApp extends StatefulWidget {
   final ImageUploadService? images;
   final ChatRepository? chat;
   final MyActivitiesRepository? myActivities;
+  final PublicProfileRepository? publicProfiles;
+  final TranslationService? translation;
+  final SocialRepository? social;
 
   @override
   State<NomadMingleApp> createState() => _NomadMingleAppState();
@@ -75,6 +84,17 @@ class _NomadMingleAppState extends State<NomadMingleApp> {
         Provider<AuthRepository>.value(value: widget.auth),
         Provider<ApiClient>.value(value: _api),
         Provider<ActivityRepository>.value(value: _activities),
+        Provider<PublicProfileRepository>(
+          create: (ctx) =>
+              widget.publicProfiles ??
+              ApiPublicProfileRepository(ctx.read<ApiClient>()),
+        ),
+        Provider<TranslationService>.value(
+          value: widget.translation ?? MlKitTranslationService(),
+        ),
+        Provider<SocialRepository>.value(
+          value: widget.social ?? ApiSocialRepository(_api),
+        ),
         Provider<SafetyRepository>.value(
           value: widget.safety ?? ApiSafetyRepository(_api),
         ),

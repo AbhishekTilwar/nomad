@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_tokens.dart';
+import '../../../core/widgets/brand_logo.dart';
 
-/// Shared white page used by login, sign-up, forgot-password and
-/// verify-email: back arrow, 24/700 heading, grey subtitle, content, and an
-/// optional footer pinned to the bottom (or just below the content on short
-/// screens).
+/// Shared white page used by sign-in, sign-up, forgot-password and
+/// verify-email: back arrow, centred dark brand logo, bold 18 heading, grey 13
+/// subtitle, content, and an optional footer pinned to the bottom (or just
+/// below the content on short screens).
 class AuthPage extends StatelessWidget {
   const AuthPage({
     super.key,
@@ -15,7 +16,7 @@ class AuthPage extends StatelessWidget {
     required this.children,
     this.footer,
     this.showBack = true,
-    this.centered = false,
+    this.centered = true,
   });
 
   final String title;
@@ -65,32 +66,37 @@ class AuthPage extends StatelessWidget {
                                 : null,
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const Center(child: BrandLogo(size: 34)),
+                        const SizedBox(height: 14),
                         Column(
                           crossAxisAlignment: align,
                           children: [
                             Text(
                               title,
-                              style: t.textTheme.headlineMedium,
+                              style: t.textTheme.titleMedium?.copyWith(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                              ),
                               textAlign: centered
                                   ? TextAlign.center
                                   : TextAlign.start,
                             ),
                             if (subtitle != null) ...[
-                              const SizedBox(height: 6),
+                              const SizedBox(height: 4),
                               Text(
                                 subtitle!,
                                 textAlign: centered
                                     ? TextAlign.center
                                     : TextAlign.start,
-                                style: t.textTheme.bodyMedium?.copyWith(
+                                style: t.textTheme.bodySmall?.copyWith(
+                                  fontSize: 13,
                                   color: AppColors.inkMuted,
                                 ),
                               ),
                             ],
                           ],
                         ),
-                        const SizedBox(height: 28),
+                        const SizedBox(height: 22),
                         ...children,
                         if (footer != null) ...[
                           const Spacer(),
@@ -110,7 +116,7 @@ class AuthPage extends StatelessWidget {
   }
 }
 
-/// "Prompt  Action" row with a bold indigo link, e.g. "Don't have an
+/// "Prompt  Action" row with a bold navy link, e.g. "Don't have an
 /// account? Sign Up".
 class AuthSwitchRow extends StatelessWidget {
   const AuthSwitchRow({
@@ -145,7 +151,7 @@ class AuthSwitchRow extends StatelessWidget {
           child: Text(
             action,
             style: t.textTheme.bodyMedium?.copyWith(
-              color: AppColors.primary,
+              color: AppColors.navy,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -155,18 +161,25 @@ class AuthSwitchRow extends StatelessWidget {
   }
 }
 
-/// Centered grey "Or continue with" caption as in the design.
-class OrContinueWith extends StatelessWidget {
-  const OrContinueWith({super.key});
+/// Horizontal rule with a centred "or".
+class OrDivider extends StatelessWidget {
+  const OrDivider({super.key});
 
   @override
-  Widget build(BuildContext context) => Center(
-    child: Text(
-      'Or continue with',
-      style: Theme.of(
-        context,
-      ).textTheme.bodySmall?.copyWith(color: AppColors.inkMuted),
-    ),
+  Widget build(BuildContext context) => Row(
+    children: [
+      const Expanded(child: Divider(color: AppColors.outline)),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Text(
+          'or',
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: AppColors.inkMuted),
+        ),
+      ),
+      const Expanded(child: Divider(color: AppColors.outline)),
+    ],
   );
 }
 

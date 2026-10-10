@@ -114,6 +114,8 @@ service cloud.firestore {
     match /moderationActions/{id} { allow read, write: if false; }
     match /userRateLimits/{id} { allow read, write: if false; }
     match /deviceTokens/{id} { allow read, write: if false; }
+    // Friendships are read/written only through the backend API (GET /users/me/friends etc.).
+    match /friendships/{id} { allow read, write: if false; }
 
     // Default deny.
     match /{document=**} {

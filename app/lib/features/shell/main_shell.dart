@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_tokens.dart';
 
-/// Bottom navigation: Explore, Discover, Create, Chats, Profile.
+/// Bottom navigation: Map, Chat, Create, Notifications, Profile.
 /// (The global community chat deliberately has no tab: it opens from Explore.)
 class MainShell extends StatelessWidget {
   const MainShell({super.key, required this.shell});
@@ -27,12 +27,12 @@ class MainShell extends StatelessWidget {
             NavigationDestination(
               icon: Icon(Icons.map_outlined),
               selectedIcon: Icon(Icons.map),
-              label: 'Explore',
+              label: 'Map',
             ),
             NavigationDestination(
-              icon: Icon(Icons.search),
-              selectedIcon: Icon(Icons.search),
-              label: 'Discover',
+              icon: Icon(Icons.chat_bubble_outline),
+              selectedIcon: Icon(Icons.chat_bubble),
+              label: 'Chat',
             ),
             NavigationDestination(
               icon: _CreateBadge(),
@@ -40,9 +40,9 @@ class MainShell extends StatelessWidget {
               label: 'Create',
             ),
             NavigationDestination(
-              icon: Icon(Icons.chat_bubble_outline),
-              selectedIcon: Icon(Icons.chat_bubble),
-              label: 'Chats',
+              icon: Icon(Icons.notifications_none),
+              selectedIcon: Icon(Icons.notifications),
+              label: 'Notifications',
             ),
             NavigationDestination(
               icon: Icon(Icons.person_outline),

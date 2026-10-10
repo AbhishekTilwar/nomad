@@ -3,6 +3,7 @@ import { encodeGeohash } from '../../lib/geo.js';
 import { toJson } from '../../lib/serialize.js';
 import { toMillis, ts } from '../../lib/time.js';
 import { createActivityQueryService } from './queryService.js';
+import { actorData } from '../notifications/service.js';
 import { decodeCursor, encodeCursor } from '../../lib/pagination.js';
 
 /** Max membership docs scanned per "my activities" request (bounds read cost). */
@@ -132,7 +133,7 @@ export function createActivitiesService({ db, fv, now, notifications, config, qu
     if (notifyChange) {
       const members = await db.collection(`activities/${id}/members`).where('status', '==', 'approved').get();
       await notifications.notifyMany(members.docs.map((m) => m.id).filter((u) => u !== user.uid), {
-        type: 'activity_updated', title: 'Activity updated', body: `${snap.data().title} has new details`, data: { activityId: id },
+        type: 'activity_updated', title: 'Activity updated', body: `${snap.data().title} has new details`, data: { activityId: id, ...actorData(user.uid, user.profile) },
       });
     }
     return view(snap);
@@ -210,7 +211,12 @@ export function createActivitiesService({ db, fv, now, notifications, config, qu
   }
 
   async function listMembers(user, id) {
-    const { isHost } = await loadVisible(id, user.uid);
+    const { isHost, a, membershipStatus } = await loadVisible(id, user.uid);
+    if (a.visibility === 'private' && !isHost && membershipStatus !== 'approved') {
+      // Private plans hide attendees from anyone who is not host or an approved member.
+      const h = await mRef(id, a.hostId).get();
+      return h.exists ? [{ uid: h.id, ...toJson(h.data()) }] : [];
+    }
     let q = db.collection(`activities/${id}/members`);
     if (!isHost) q = q.where('status', '==', 'approved');
     const snap = await q.limit(500).get();
@@ -296,8 +302,8 @@ export function createActivitiesService({ db, fv, now, notifications, config, qu
     });
 
     await notifications.notify(outcome.hostId, outcome.status === 'requested'
-      ? { type: 'join_request', title: 'New join request', body: `${user.profile.displayName} wants to join ${outcome.title}`, data: { activityId: id, userId: user.uid } }
-      : { type: 'participant_joined', title: 'New participant', body: `${user.profile.displayName} joined ${outcome.title}`, data: { activityId: id, userId: user.uid } });
+      ? { type: 'join_request', title: 'New join request', body: `${user.profile.displayName} wants to join ${outcome.title}`, data: { activityId: id, userId: user.uid, ...actorData(user.uid, user.profile) } }
+      : { type: 'participant_joined', title: 'New participant', body: `${user.profile.displayName} joined ${outcome.title}`, data: { activityId: id, userId: user.uid, ...actorData(user.uid, user.profile) } });
     return { status: outcome.status };
   }
 
@@ -327,7 +333,7 @@ export function createActivitiesService({ db, fv, now, notifications, config, qu
         return { member: { status: 'approved', approvedAt: fv.serverTimestamp(), joinedAt: fv.serverTimestamp() }, countDelta: 1 };
       },
     });
-    await notifications.notify(uid, { type: 'join_approved', title: "You're in!", body: `You were approved for ${r.title}`, data: { activityId: id } });
+    await notifications.notify(uid, { type: 'join_approved', title: "You're in!", body: `You were approved for ${r.title}`, data: { activityId: id, ...actorData(user.uid, user.profile) } });
     return { status: 'approved' };
   }
 
@@ -339,7 +345,7 @@ export function createActivitiesService({ db, fv, now, notifications, config, qu
         return { member: { status: 'rejected' } };
       },
     });
-    await notifications.notify(uid, { type: 'join_rejected', title: 'Request declined', body: `Your request for ${r.title} was declined`, data: { activityId: id } });
+    await notifications.notify(uid, { type: 'join_rejected', title: 'Request declined', body: `Your request for ${r.title} was declined`, data: { activityId: id, ...actorData(user.uid, user.profile) } });
     return { status: 'rejected' };
   }
 
@@ -352,7 +358,7 @@ export function createActivitiesService({ db, fv, now, notifications, config, qu
         return { member: { status: 'removed', leftAt: fv.serverTimestamp() }, countDelta: -1 };
       },
     });
-    await notifications.notify(uid, { type: 'removed', title: 'Removed from activity', body: `You were removed from ${r.title}`, data: { activityId: id } });
+    await notifications.notify(uid, { type: 'removed', title: 'Removed from activity', body: `You were removed from ${r.title}`, data: { activityId: id, ...actorData(user.uid, user.profile) } });
     return { status: 'removed' };
   }
 
@@ -367,10 +373,10 @@ export function createActivitiesService({ db, fv, now, notifications, config, qu
       const wasApproved = mSnap.data().status === 'approved';
       tx.update(mRef(id, uid), { status: 'left', leftAt: fv.serverTimestamp() });
       if (wasApproved) tx.update(aRef(id), { participantCount: a.participantCount - 1, updatedAt: fv.serverTimestamp() });
-      return { hostId: a.hostId, title: a.title, name: mSnap.data().displayName, wasApproved };
+      return { hostId: a.hostId, title: a.title, name: mSnap.data().displayName, photo: mSnap.data().photoUrl ?? null, wasApproved };
     });
     if (out.wasApproved && !silent) {
-      await notifications.notify(out.hostId, { type: 'participant_left', title: 'Participant left', body: `${out.name} left ${out.title}`, data: { activityId: id } });
+      await notifications.notify(out.hostId, { type: 'participant_left', title: 'Participant left', body: `${out.name} left ${out.title}`, data: { activityId: id, userId: uid, ...actorData(uid, { displayName: out.name, photoUrl: out.photo }) } });
     }
     return { status: 'left' };
   }
@@ -388,7 +394,7 @@ export function createActivitiesService({ db, fv, now, notifications, config, qu
     });
     const members = await db.collection(`activities/${id}/members`).where('status', 'in', ['approved', 'requested']).get();
     await notifications.notifyMany(members.docs.map((m) => m.id).filter((u) => u !== actor.uid), {
-      type: 'activity_cancelled', title: 'Activity cancelled', body: `${title} was cancelled`, data: { activityId: id },
+      type: 'activity_cancelled', title: 'Activity cancelled', body: `${title} was cancelled`, data: { activityId: id, ...actorData(actor.uid, actor.profile) },
     });
     return { status: 'cancelled' };
   }

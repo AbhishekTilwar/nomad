@@ -45,54 +45,63 @@ void main() {
   });
 
   testWidgets(
-    'first run: Get Started -> intro -> Next -> Get Started -> sign up',
+    'first run: landing forwards to intro; Next x2 then Get Started',
     (t) async {
       SharedPreferences.setMockInitialValues({});
       await boot(t, FakeAuthRepository());
-      await t.tap(find.text('Get Started'));
-      await settle(t);
-      expect(find.text('Discover Meetups Near You'), findsOneWidget);
+      expect(find.text('Real People,\nShared Adventures'), findsOneWidget);
+      expect(find.text('Skip'), findsOneWidget);
       await t.tap(find.text('Next'));
       await settle(t);
-      expect(find.text('Explore Interests'), findsOneWidget);
-      expect(find.text('Join or Create Plans'), findsOneWidget);
-      expect(find.text('Chat & Connect'), findsOneWidget);
+      expect(find.text('Explore Activities\n& Meet Locals'), findsOneWidget);
+      await t.tap(find.text('Next'));
+      await settle(t);
+      expect(find.text('A Community\nThat Feels Like Home'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Get Started'), findsOneWidget);
       await t.tap(find.widgetWithText(FilledButton, 'Get Started'));
       await settle(t);
-      expect(find.text('Create Your Account'), findsOneWidget);
+      expect(find.text('Continue with Email'), findsOneWidget);
       expect(await const IntroStore().hasSeen(), isTrue);
     },
   );
 
+  testWidgets('intro pages can be swiped', (t) async {
+    SharedPreferences.setMockInitialValues({});
+    await boot(t, FakeAuthRepository());
+    await t.fling(find.byType(PageView), const Offset(-400, 0), 1000);
+    await settle(t);
+    expect(find.text('Explore Activities\n& Meet Locals'), findsOneWidget);
+  });
+
+  testWidgets('Skip marks intro seen and goes to landing', (t) async {
+    SharedPreferences.setMockInitialValues({});
+    await boot(t, FakeAuthRepository());
+    await t.tap(find.text('Skip'));
+    await settle(t);
+    expect(find.text('Continue with Google'), findsOneWidget);
+    expect(await const IntroStore().hasSeen(), isTrue);
+  });
+
   testWidgets('intro is skipped once seen', (t) async {
     SharedPreferences.setMockInitialValues({IntroStore.key: true});
     await boot(t, FakeAuthRepository());
-    await t.tap(find.text('Get Started'));
+    expect(find.text('Continue with Email'), findsOneWidget);
+    expect(find.text('Real People,\nShared Adventures'), findsNothing);
+    await t.tap(find.text('Continue with Email'));
+    await settle(t);
+    expect(find.text('Welcome back'), findsOneWidget);
+    await t.tap(find.text('Sign Up'));
     await settle(t);
     expect(find.text('Create Your Account'), findsOneWidget);
-    expect(find.text('Discover Meetups Near You'), findsNothing);
-  });
-
-  testWidgets('intro "Login" link goes to login and marks intro seen', (
-    t,
-  ) async {
-    SharedPreferences.setMockInitialValues({});
-    await boot(t, FakeAuthRepository());
-    await t.tap(find.text('Get Started'));
-    await settle(t);
-    await t.tap(find.text('Next'));
-    await settle(t);
-    await t.tap(find.text('Login'));
-    await settle(t);
-    expect(find.text('Welcome Back'), findsOneWidget);
-    expect(await const IntroStore().hasSeen(), isTrue);
   });
 
   group('sign up', () {
     Future<void> open(WidgetTester t, FakeAuthRepository auth) async {
       SharedPreferences.setMockInitialValues({IntroStore.key: true});
       await boot(t, auth);
-      await t.tap(find.text('Get Started'));
+      await t.tap(find.text('Continue with Email'));
+      await settle(t);
+      await t.tap(find.text('Sign Up'));
       await settle(t);
     }
 
@@ -193,15 +202,22 @@ void main() {
     t.view.devicePixelRatio = 1;
     await settle(t);
     expect(t.takeException(), isNull);
-    await t.tap(find.text('Get Started'));
+    for (final label in ['Next', 'Next', 'Get Started']) {
+      await t.tap(find.text(label));
+      await settle(t);
+      expect(t.takeException(), isNull);
+    }
+    expect(find.text('Continue with Email'), findsOneWidget);
+    await t.tap(find.text('Continue with Email'));
     await settle(t);
+    expect(find.text('Welcome back'), findsOneWidget);
     expect(t.takeException(), isNull);
-    await t.tap(find.text('Next'));
+    await t.tap(find.text('Forgot password?'));
     await settle(t);
+    expect(find.text('Reset Password'), findsOneWidget);
     expect(t.takeException(), isNull);
-    await t.tap(find.text('Login'));
+    await t.pageBack();
     await settle(t);
-    expect(t.takeException(), isNull);
     await t.tap(find.text('Sign Up'));
     await settle(t);
     expect(find.text('Create Your Account'), findsOneWidget);

@@ -316,6 +316,12 @@ void main() {
         ),
       );
       addTearDown(session.dispose);
+      final communityUnread = CommunityUnreadController(
+        repository: repo,
+        store: store,
+        uid: () => 'me',
+      );
+      addTearDown(communityUnread.dispose);
       final router = GoRouter(
         initialLocation: '/',
         routes: [
@@ -360,6 +366,9 @@ void main() {
               value: mine ?? FakeMyActivitiesRepository(),
             ),
             ChangeNotifierProvider<ChatReadStore>.value(value: store),
+            ChangeNotifierProvider<CommunityUnreadController>.value(
+              value: communityUnread,
+            ),
             ChangeNotifierProvider<SessionController>.value(value: session),
           ],
           child: MaterialApp.router(
@@ -466,6 +475,11 @@ void main() {
         ),
       ];
       await pumpApp(t, start: '/chats', mine: mine);
+      // Community is pinned above every plan chat.
+      expect(
+        t.getTopLeft(find.text('Mingle Community')).dy,
+        lessThan(t.getTopLeft(find.text('Brunch club')).dy),
+      );
       expect(find.text('Brunch club'), findsOneWidget);
       expect(find.text('Dev Patel: Who is bringing snacks?'), findsOneWidget);
       expect(find.text('You: See you all'), findsOneWidget);
@@ -488,7 +502,9 @@ void main() {
 
     testWidgets('chats list: empty and error states', (t) async {
       await pumpApp(t, start: '/chats');
-      expect(find.text('No chats yet'), findsOneWidget);
+      expect(find.text('No plan chats yet'), findsOneWidget);
+      // Community stays pinned even with no plan chats.
+      expect(find.text('Mingle Community'), findsOneWidget);
       final failing = FakeMyActivitiesRepository()
         ..error = const AppException('Server down');
       await pumpApp(t, start: '/chats', mine: failing);

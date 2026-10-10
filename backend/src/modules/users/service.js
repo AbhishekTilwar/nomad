@@ -1,13 +1,21 @@
 import { conflict, forbidden, invalid, notFound } from '../../lib/errors.js';
 import { toJson } from '../../lib/serialize.js';
 import { sha256 } from '../../lib/text.js';
-import { ts } from '../../lib/time.js';
+import { toMillis, ts } from '../../lib/time.js';
+import { encodeCursor, decodeCursor } from '../../lib/pagination.js';
+import { haversineKm } from '../../lib/geo.js';
+import { friendshipId } from './friends.js';
 
 export const PUBLIC_FIELDS = [
   'displayName', 'photoUrl', 'bio', 'city', 'interests', 'ageRange', 'accountStatus',
-  'profileCompleted', 'emailVerified', 'stats', 'createdAt', 'updatedAt',
+  'countryCode', 'instagram', 'profileCompleted', 'emailVerified', 'stats', 'createdAt', 'updatedAt',
 ];
-const DEFAULT_PREFS = { joinRequests: true, approvals: true, activityUpdates: true, reminders: true, moderation: true };
+const DEFAULT_PREFS = { joinRequests: true, approvals: true, activityUpdates: true, reminders: true, moderation: true, friends: true };
+/** Max user docs read per travelers query (cost cap) and how long a location stays fresh. */
+const TRAVELERS_SCAN = 300;
+const LOCATION_FRESH_MS = 30 * 24 * 3600_000;
+const KM_PER_DEG_LAT = 111.19;
+const round2 = (n) => Math.round(n * 100) / 100;
 const DELETED_NAME = 'Deleted user';
 
 export function ageOn(dob, nowMs) {
@@ -55,9 +63,10 @@ export function createUsersService({ db, auth, fv, now, logger, activities }) {
     return {
       uid,
       ...publicView(pub.data()),
+      discoverable: pub.data().discoverable === true,
       private: toJson({
         preferredActivityTypes: p.preferredActivityTypes ?? [],
-        notificationPrefs: p.notificationPrefs ?? DEFAULT_PREFS,
+        notificationPrefs: { ...DEFAULT_PREFS, ...(p.notificationPrefs ?? {}) },
         role: p.role ?? 'user',
         mutedUntil: p.mutedUntil ?? null,
         ageVerifiedAt: p.ageVerifiedAt ?? null,
@@ -96,13 +105,15 @@ export function createUsersService({ db, auth, fv, now, logger, activities }) {
       }
 
       const merged = { ...(existing ?? {}) };
-      for (const k of ['displayName', 'bio', 'city', 'interests', 'photoUrl']) if (body[k] !== undefined) merged[k] = body[k];
+      for (const k of ['displayName', 'bio', 'city', 'interests', 'photoUrl', 'countryCode', 'instagram']) if (body[k] !== undefined) merged[k] = body[k];
       const pubDoc = {
         displayName: merged.displayName,
         photoUrl: merged.photoUrl ?? null,
         bio: merged.bio ?? '',
         city: merged.city,
         interests: merged.interests ?? [],
+        countryCode: merged.countryCode ?? null,
+        instagram: merged.instagram ?? null,
         ageRange,
         accountStatus: existing?.accountStatus ?? 'active',
         profileCompleted: Boolean(merged.displayName && merged.city && ageRange),
@@ -111,6 +122,10 @@ export function createUsersService({ db, auth, fv, now, logger, activities }) {
         createdAt: existing?.createdAt ?? fv.serverTimestamp(),
         updatedAt: fv.serverTimestamp(),
       };
+      // Travelers fields are owned by PUT /users/me/location; a profile edit must not wipe them.
+      for (const k of ['discoverable', 'approxLat', 'approxLng', 'locationUpdatedAt']) {
+        if (existing?.[k] !== undefined) pubDoc[k] = existing[k];
+      }
       tx.set(pubRef(uid), pubDoc);
 
       if (!existingPriv) {
@@ -172,6 +187,7 @@ export function createUsersService({ db, auth, fv, now, logger, activities }) {
       blockedAt: fv.serverTimestamp(),
       targetDisplayName: t.data().displayName ?? '',
     });
+    await db.doc(`friendships/${friendshipId(uid, target)}`).delete(); // blocking ends any friendship/request
     return { blocked: true };
   }
 
@@ -185,13 +201,68 @@ export function createUsersService({ db, auth, fv, now, logger, activities }) {
     return new Set(snap.docs.map((d) => d.id));
   }
 
+  // ---- travelers
+  async function setLocation(uid, { lat, lng, discoverable }) {
+    if (!discoverable) {
+      await pubRef(uid).update({
+        discoverable: false, approxLat: fv.delete(), approxLng: fv.delete(), locationUpdatedAt: fv.delete(),
+      });
+      return { discoverable: false };
+    }
+    // ~1.1 km precision: exact coordinates are never stored on the public doc.
+    await pubRef(uid).update({
+      discoverable: true, approxLat: round2(lat), approxLng: round2(lng), locationUpdatedAt: fv.serverTimestamp(),
+    });
+    return { discoverable: true };
+  }
+
+  /**
+   * Bounded latitude-band query (discoverable + approxLat range, scan cap TRAVELERS_SCAN) then Haversine
+   * filter/sort in memory; offset cursor. Blocks are checked lazily in distance order.
+   */
+  async function listTravelers(user, { lat, lng, radiusKm, limit, cursor }) {
+    const c = decodeCursor(cursor);
+    if (c === undefined || (c && !(Number.isInteger(c.o) && c.o >= 0))) throw invalid('Invalid cursor');
+    const offset = c?.o ?? 0;
+    const dLat = radiusKm / KM_PER_DEG_LAT + 0.01;
+    const snap = await db.collection('users')
+      .where('discoverable', '==', true)
+      .where('approxLat', '>=', lat - dLat).where('approxLat', '<=', lat + dLat)
+      .orderBy('approxLat').limit(TRAVELERS_SCAN).get();
+    const minUpdated = now() - LOCATION_FRESH_MS;
+    const cands = [];
+    for (const d of snap.docs) {
+      const u = d.data();
+      if (d.id === user.uid || u.accountStatus !== 'active' || u.profileCompleted !== true) continue;
+      if (typeof u.approxLng !== 'number' || !u.locationUpdatedAt || toMillis(u.locationUpdatedAt) < minUpdated) continue;
+      const km = haversineKm(lat, lng, u.approxLat, u.approxLng);
+      if (km > radiusKm) continue;
+      cands.push({ uid: d.id, u, km });
+    }
+    cands.sort((a, b) => a.km - b.km || (a.uid < b.uid ? -1 : 1));
+    const mine = await blockedIds(user.uid);
+    const out = [];
+    let hasMore = false;
+    for (const x of cands) {
+      if (mine.has(x.uid)) continue;
+      if ((await db.doc(`userBlocks/${x.uid}/blocked/${user.uid}`).get()).exists) continue;
+      if (out.length === offset + limit) { hasMore = true; break; }
+      out.push({
+        uid: x.uid, displayName: x.u.displayName, photoUrl: x.u.photoUrl ?? null,
+        countryCode: x.u.countryCode ?? null, city: x.u.city, distanceKm: Math.round(x.km * 10) / 10,
+      });
+    }
+    const items = out.slice(offset);
+    return { items, nextCursor: hasMore ? encodeCursor({ o: offset + limit }) : null, total: cands.length };
+  }
+
   // ---- prefs / tokens
   async function setPrefs(uid, prefs) {
     const upd = {};
     for (const [k, v] of Object.entries(prefs)) upd[`notificationPrefs.${k}`] = v;
     if (!Object.keys(upd).length) throw invalid('No preferences supplied');
     await privRef(uid).update(upd);
-    return (await privRef(uid).get()).data().notificationPrefs;
+    return { ...DEFAULT_PREFS, ...(await privRef(uid).get()).data().notificationPrefs };
   }
 
   async function addDeviceToken(uid, { token, platform }) {
@@ -238,6 +309,7 @@ export function createUsersService({ db, auth, fv, now, logger, activities }) {
     await deleteQuery(db.collection('deviceTokens').where('uid', '==', uid));
     await deleteQuery(db.collection('notifications').where('userId', '==', uid));
     await deleteQuery(db.collection(`userBlocks/${uid}/blocked`));
+    await deleteQuery(db.collection('friendships').where('users', 'array-contains', uid));
     await db.doc(`userRateLimits/${uid}`).delete();
     await privRef(uid).delete();
     await pubRef(uid).delete();
@@ -249,5 +321,5 @@ export function createUsersService({ db, auth, fv, now, logger, activities }) {
     return { deleted: true };
   }
 
-  return { getMe, upsertProfile, getPublic, listBlocks, block, unblock, blockedIds, setPrefs, addDeviceToken, removeDeviceToken, deleteAccount };
+  return { getMe, upsertProfile, getPublic, setLocation, listTravelers, listBlocks, block, unblock, blockedIds, setPrefs, addDeviceToken, removeDeviceToken, deleteAccount };
 }

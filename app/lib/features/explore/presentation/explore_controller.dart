@@ -41,6 +41,9 @@ class ExploreController extends ChangeNotifier {
   /// Search radius when the map hasn't been panned (km).
   double radiusKm = 25;
   String? selectedId;
+
+  /// The map asks for location once per session when first shown.
+  bool autoLocateDone = false;
   LatLng? userLocation;
 
   /// Bumped when something asks the map widget to move (city switch, a plan

@@ -10,6 +10,7 @@ import { createNotificationService } from './modules/notifications/service.js';
 import { internalJobsRouter } from './modules/notifications/routes.js';
 import { createActivitiesService } from './modules/activities/service.js';
 import { createUsersService } from './modules/users/service.js';
+import { createFriendsService } from './modules/users/friends.js';
 import { createChatService } from './modules/community/chat.js';
 import { createSafetyService } from './modules/safety/service.js';
 import { createAdminService } from './modules/admin/service.js';
@@ -31,6 +32,7 @@ export function createApp(deps) {
   const notifications = createNotificationService(base);
   const activities = createActivitiesService({ ...base, notifications });
   const users = createUsersService({ ...base, activities });
+  const friends = createFriendsService({ ...base, notifications });
   const chat = createChatService({ ...base, users });
   const safety = createSafetyService(base);
   const admin = createAdminService({ ...base, notifications, activities });
@@ -72,7 +74,7 @@ export function createApp(deps) {
   v1.use('/internal/jobs', internalJobsRouter({ config, notifications }));
   v1.use(authenticate(base));
   v1.use(userLimiter(config.userRateLimitPerMin));
-  v1.use('/users', usersRouter({ users, activities }));
+  v1.use('/users', usersRouter({ users, activities, friends }));
   v1.use('/activities', requireProfile, activitiesRouter({ activities, chat }));
   v1.use('/community', requireProfile, communityRouter({ chat, safety }));
   v1.use('/reports', requireProfile, safetyRouter({ safety }));
@@ -81,6 +83,6 @@ export function createApp(deps) {
 
   app.use(notFoundHandler);
   app.use(errorHandler(logger));
-  app.locals.services = { users, activities, chat, safety, admin, notifications };
+  app.locals.services = { users, friends, activities, chat, safety, admin, notifications };
   return app;
 }

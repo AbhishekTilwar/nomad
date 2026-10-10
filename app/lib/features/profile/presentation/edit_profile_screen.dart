@@ -3,7 +3,9 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/config/map_config.dart';
+import '../../../core/utils/countries.dart';
 import '../../../core/services/image_upload_service.dart';
+import '../../../core/widgets/photo_source_sheet.dart';
 import '../../../core/widgets/user_avatar.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/utils/app_exception.dart';
@@ -28,6 +30,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _form = GlobalKey<FormState>();
   late final TextEditingController _name;
   late final TextEditingController _bio;
+  late final TextEditingController _instagram;
+  String _country = '';
   late String _city;
   late final Set<String> _interests;
   late final Set<String> _prefs;
@@ -45,6 +49,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final p = context.read<SessionController>().profile!;
     _name = TextEditingController(text: p.displayName);
     _bio = TextEditingController(text: p.bio);
+    _instagram = TextEditingController(text: p.instagram ?? '');
+    _country = p.countryCode ?? '';
     _city = p.city;
     _interests = {...p.interests};
     _prefs = {...p.preferredActivityTypes};
@@ -54,6 +60,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void dispose() {
     _name.dispose();
     _bio.dispose();
+    _instagram.dispose();
     super.dispose();
   }
 
@@ -67,12 +74,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final uid = context.read<SessionController>().user?.uid;
     if (uid == null || _uploading) return;
     final images = context.read<ImageUploadService>();
+    final source = await PhotoSourceSheet.show(context);
+    if (source == null || !mounted) return;
     setState(() {
       _uploading = true;
       _error = null;
     });
     try {
-      final url = await images.pickAndUpload(uid, ImageKind.avatar);
+      final url = await images.pickAndUpload(
+        uid,
+        ImageKind.avatar,
+        camera: source == PhotoSource.camera,
+      );
       if (url != null && mounted) {
         setState(() {
           _newPhotoUrl = url;
@@ -105,6 +118,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         preferredActivityTypes: _prefs.toList(),
         photoUrl: _newPhotoUrl,
         removePhoto: _removePhoto,
+        countryCode: _country,
+        instagram: _instagram.text.replaceFirst('@', ''),
       );
       if (mounted) context.pop();
     } on AppException catch (e) {
@@ -188,6 +203,39 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 validator: Validators.bio,
                 maxLines: 4,
                 maxLength: 300,
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              AppFormField(
+                label: 'Instagram',
+                controller: _instagram,
+                hint: '@yourhandle',
+                prefixIcon: Icons.alternate_email,
+                validator: (v) {
+                  final h = (v ?? '').trim().replaceFirst('@', '');
+                  if (h.isEmpty) return null;
+                  return RegExp(r'^[A-Za-z0-9._]{1,30}$').hasMatch(h)
+                      ? null
+                      : 'Letters, numbers, . and _ only';
+                },
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Text('Country', style: t.textTheme.titleMedium),
+              const SizedBox(height: AppSpacing.sm),
+              DropdownButtonFormField<String>(
+                initialValue: kCountries.containsKey(_country) ? _country : '',
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  hintText: 'Where are you from?',
+                ),
+                items: [
+                  const DropdownMenuItem(value: '', child: Text('Not shown')),
+                  for (final e in kCountries.entries)
+                    DropdownMenuItem(
+                      value: e.key,
+                      child: Text('${flagEmoji(e.key)}  ${e.value}'),
+                    ),
+                ],
+                onChanged: (v) => setState(() => _country = v ?? ''),
               ),
               const SizedBox(height: AppSpacing.md),
               Text('City', style: t.textTheme.titleMedium),

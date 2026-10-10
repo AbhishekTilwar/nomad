@@ -10,6 +10,8 @@ class UserProfile {
     this.profileCompleted = false,
     this.accountStatus = 'active',
     this.role = 'user',
+    this.countryCode,
+    this.instagram,
   });
 
   final String uid;
@@ -22,6 +24,8 @@ class UserProfile {
   final bool profileCompleted;
   final String accountStatus;
   final String role;
+  final String? countryCode;
+  final String? instagram;
 
   bool get isStaff => role == 'admin' || role == 'moderator';
 
@@ -38,6 +42,8 @@ class UserProfile {
     profileCompleted: j['profileCompleted'] as bool? ?? false,
     accountStatus: j['accountStatus'] as String? ?? 'active',
     role: j['role'] as String? ?? 'user',
+    countryCode: j['countryCode'] as String?,
+    instagram: j['instagram'] as String?,
   );
 }
 

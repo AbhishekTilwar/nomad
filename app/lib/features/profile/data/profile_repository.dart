@@ -24,6 +24,8 @@ abstract class ProfileRepository {
     List<String>? preferredActivityTypes,
     String? photoUrl,
     bool removePhoto = false,
+    String? countryCode,
+    String? instagram,
   });
 
   Future<void> deleteAccountData();
@@ -81,6 +83,8 @@ class ApiProfileRepository implements ProfileRepository {
     List<String>? preferredActivityTypes,
     String? photoUrl,
     bool removePhoto = false,
+    String? countryCode,
+    String? instagram,
   }) async {
     final res = await _api.patch(
       '/users/me',
@@ -92,6 +96,11 @@ class ApiProfileRepository implements ProfileRepository {
         'preferredActivityTypes': ?preferredActivityTypes,
         // null clears the photo on the server; absent leaves it unchanged.
         if (removePhoto) 'photoUrl': null else 'photoUrl': ?photoUrl,
+        // '' clears the field on the server.
+        if (countryCode != null)
+          'countryCode': countryCode.isEmpty ? null : countryCode,
+        if (instagram != null)
+          'instagram': instagram.trim().isEmpty ? null : instagram.trim(),
       },
     );
     return UserProfile.fromJson(res.asMap);

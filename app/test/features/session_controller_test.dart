@@ -61,10 +61,62 @@ void main() {
       interests: ['food'],
       preferredActivityTypes: const [],
     );
+    // Brand-new profile with no photo gets the one-time "add a photo" step.
+    expect(s.status, SessionStatus.needsPhoto);
+    s.finishPhotoPrompt();
     expect(s.status, SessionStatus.ready);
     expect(repo.lastDob, DateTime(1998, 1, 1));
     s.dispose();
   });
+
+  test('new profile that already has a photo skips the photo step', () async {
+    final s = SessionController(
+      auth: FakeAuthRepository(_pwUser),
+      profiles: FakeProfileRepository(),
+    );
+    await pump();
+    await s.completeOnboarding(
+      displayName: 'Asha',
+      dateOfBirth: DateTime(1998, 1, 1),
+      city: 'pune',
+      bio: '',
+      interests: ['food'],
+      preferredActivityTypes: const [],
+      photoUrl: 'https://example.com/me.jpg',
+    );
+    expect(s.status, SessionStatus.ready);
+    s.dispose();
+  });
+
+  test('existing users with no photo are not nagged on sign-in', () async {
+    final s = SessionController(
+      auth: FakeAuthRepository(_pwUser),
+      profiles: FakeProfileRepository(profile: _completed),
+    );
+    await pump();
+    expect(s.status, SessionStatus.ready);
+    s.dispose();
+  });
+
+  test('finishPhotoPrompt is a no-op outside the photo step', () async {
+    final s = SessionController(
+      auth: FakeAuthRepository(_pwUser),
+      profiles: FakeProfileRepository(profile: _completed),
+    );
+    await pump();
+    s.finishPhotoPrompt();
+    expect(s.status, SessionStatus.ready);
+    s.dispose();
+  });
+
+  test(
+    'router sends needsPhoto to /add-photo and frees ready users from it',
+    () {
+      expect(redirectFor(SessionStatus.needsPhoto, '/explore'), '/add-photo');
+      expect(redirectFor(SessionStatus.needsPhoto, '/add-photo'), isNull);
+      expect(redirectFor(SessionStatus.ready, '/add-photo'), '/explore');
+    },
+  );
 
   test('unverified password user is held at email verification', () async {
     final auth = FakeAuthRepository(
@@ -170,7 +222,10 @@ void main() {
       expect(redirectFor(SessionStatus.signedOut, '/sign-in'), isNull);
       expect(redirectFor(SessionStatus.signedOut, '/intro'), isNull);
       expect(redirectFor(SessionStatus.signedOut, '/register'), isNull);
+      expect(redirectFor(SessionStatus.signedOut, '/welcome'), isNull);
+      expect(redirectFor(SessionStatus.signedOut, '/forgot-password'), isNull);
       expect(redirectFor(SessionStatus.signedOut, '/legal/terms'), isNull);
+      expect(redirectFor(SessionStatus.signedOut, '/legal/privacy'), isNull);
     });
     test('ready users cannot linger on auth screens', () {
       expect(redirectFor(SessionStatus.ready, '/welcome'), '/explore');
@@ -209,7 +264,7 @@ void main() {
       );
       await pump();
       await pump();
-      expect(s.status, SessionStatus.ready);
+      expect(s.status, SessionStatus.needsPhoto);
       expect(s.profile?.displayName, 'Asha Rao');
       expect(s.profile?.city, 'mumbai');
       expect(repo.lastDob, DateTime(1998, 4, 2));

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/theme/app_tokens.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/form_field.dart';
 import '../../../core/widgets/primary_button.dart';
@@ -91,6 +92,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         if (_error != null) ...[const SizedBox(height: 12), AuthError(_error!)],
         const SizedBox(height: 24),
         PrimaryButton(
+          backgroundColor: AppColors.navy,
           label: 'Send reset link',
           loading: _busy,
           onPressed: _submit,

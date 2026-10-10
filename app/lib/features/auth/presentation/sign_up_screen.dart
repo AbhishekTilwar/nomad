@@ -164,6 +164,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         if (_error != null) ...[const SizedBox(height: 12), AuthError(_error!)],
         const SizedBox(height: 20),
         PrimaryButton(
+          backgroundColor: AppColors.navy,
           label: 'Create Account',
           loading: _busy,
           onPressed: _submit,

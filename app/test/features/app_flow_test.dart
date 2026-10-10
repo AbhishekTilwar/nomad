@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nomad_mingle/app/app.dart';
 import 'package:nomad_mingle/core/utils/app_exception.dart';
 import 'package:nomad_mingle/features/auth/data/auth_repository.dart';
+import 'package:nomad_mingle/features/onboarding/application/intro_store.dart';
 import 'package:nomad_mingle/features/profile/data/user_profile.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -38,11 +39,9 @@ Future<void> settle(WidgetTester t) async {
 }
 
 void main() {
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  setUp(() => SharedPreferences.setMockInitialValues({IntroStore.key: true}));
 
-  testWidgets('signed out: welcome screen leads to login with Google', (
-    t,
-  ) async {
+  testWidgets('signed out: landing leads to sign in with Google', (t) async {
     usePhone(t);
     await t.pumpWidget(
       NomadMingleApp(
@@ -53,17 +52,16 @@ void main() {
       ),
     );
     await settle(t);
-    expect(
-      find.text('Find your people.\nMake a plan. Go together.'),
-      findsOneWidget,
-    );
-    expect(find.text('Get Started'), findsOneWidget);
-    expect(find.text('I already have an account'), findsOneWidget);
-    await t.tap(find.text('I already have an account'));
+    expect(find.text('New places. New people.\nSame sky.'), findsOneWidget);
+    expect(find.text('Continue with Google'), findsOneWidget);
+    expect(find.text('Continue with Email'), findsOneWidget);
+    await t.tap(find.text('Continue with Email'));
     await settle(t);
-    expect(find.text('Welcome Back'), findsOneWidget);
-    expect(find.text('Google'), findsOneWidget);
+    expect(find.text('Welcome back'), findsOneWidget);
+    expect(find.text('Sign in to continue'), findsOneWidget);
+    expect(find.text('Continue with Google'), findsOneWidget);
     expect(find.text('Apple'), findsNothing);
+    expect(find.text('Sign Up'), findsOneWidget);
   });
 
   testWidgets(
@@ -84,27 +82,27 @@ void main() {
         ),
       );
       await settle(t);
-      await t.tap(find.text('I already have an account'));
+      await t.tap(find.text('Continue with Email'));
       await settle(t);
 
       // Validation first.
-      await t.tap(find.widgetWithText(FilledButton, 'Login'));
+      await t.tap(find.widgetWithText(FilledButton, 'Sign In'));
       await settle(t);
       expect(find.text('Enter your email address.'), findsOneWidget);
       expect(auth.signInCalls, 0);
 
-      await t.enterText(find.widgetWithText(TextFormField, 'Email'), 'a@b.co');
+      await t.enterText(find.byKey(const ValueKey('login-email')), 'a@b.co');
       await t.enterText(
-        find.widgetWithText(TextFormField, 'Password'),
+        find.byKey(const ValueKey('login-password')),
         'wrongpass',
       );
-      await t.tap(find.widgetWithText(FilledButton, 'Login'));
+      await t.tap(find.widgetWithText(FilledButton, 'Sign In'));
       await settle(t);
       expect(find.text('Email or password is incorrect.'), findsOneWidget);
 
-      await t.tap(find.widgetWithText(FilledButton, 'Login'));
+      await t.tap(find.widgetWithText(FilledButton, 'Sign In'));
       await settle(t);
-      expect(find.text('Explore'), findsWidgets); // bottom nav + landed
+      expect(find.text('Map'), findsWidgets); // bottom nav + landed
       expect(find.byType(NavigationBar), findsOneWidget);
     },
   );
@@ -149,7 +147,7 @@ void main() {
       final labels = bar.destinations
           .map((d) => (d as NavigationDestination).label)
           .toList();
-      expect(labels, ['Explore', 'Discover', 'Create', 'Chats', 'Profile']);
+      expect(labels, ['Map', 'Chat', 'Create', 'Notifications', 'Profile']);
     },
   );
 
@@ -203,7 +201,7 @@ void main() {
     expect(find.text('No plans here yet'), findsOneWidget);
   });
 
-  testWidgets('Profile tab shows data and sign out returns to welcome', (
+  testWidgets('Profile tab shows data and sign out returns to landing', (
     t,
   ) async {
     usePhone(t);
@@ -223,6 +221,7 @@ void main() {
     await settle(t);
     await t.tap(find.text('Sign out').last);
     await settle(t);
-    expect(find.text('Get Started'), findsOneWidget);
+    expect(find.text('Continue with Google'), findsOneWidget);
+    expect(find.text('Continue with Email'), findsOneWidget);
   });
 }

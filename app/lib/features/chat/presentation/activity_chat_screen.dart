@@ -69,6 +69,7 @@ class _ActivityChatScreenState extends State<ActivityChatScreen> {
             title: _c.title,
             subtitle: _c.subtitle,
             people: _c.headerAvatars,
+            onTap: () => context.push('/activity/${widget.activityId}'),
           ),
         ),
         actions: [

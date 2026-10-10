@@ -16,6 +16,9 @@ enum SessionStatus {
   needsEmailVerification,
   loadingProfile,
   needsOnboarding,
+
+  /// Brand-new profile without a photo: offer "add a profile photo" once.
+  needsPhoto,
   ready,
 
   /// Signed in but the profile could not be loaded (offline, server down).
@@ -68,7 +71,11 @@ class SessionController extends ChangeNotifier {
       return;
     }
     // Avoid refetching on benign userChanges() re-emits (token refresh).
-    if (previousUid == user.uid && _status == SessionStatus.ready) return;
+    if (previousUid == user.uid &&
+        (_status == SessionStatus.ready ||
+            _status == SessionStatus.needsPhoto)) {
+      return;
+    }
     await loadProfile();
   }
 
@@ -82,7 +89,7 @@ class SessionController extends ChangeNotifier {
         final created = await _createFromDraft();
         if (created != null) {
           _profile = created;
-          _set(SessionStatus.ready);
+          _set(_afterCreate(created.photoUrl));
           return;
         }
         _set(SessionStatus.needsOnboarding);
@@ -167,7 +174,18 @@ class SessionController extends ChangeNotifier {
       photoUrl: photoUrl,
     );
     await _drafts.clear();
-    _set(SessionStatus.ready);
+    _set(_afterCreate(_profile?.photoUrl));
+  }
+
+  /// New profiles without a photo get the one-time "add a photo" step.
+  SessionStatus _afterCreate(String? photoUrl) =>
+      (photoUrl == null || photoUrl.isEmpty)
+      ? SessionStatus.needsPhoto
+      : SessionStatus.ready;
+
+  /// Leaves the photo step (after adding a photo or skipping).
+  void finishPhotoPrompt() {
+    if (_status == SessionStatus.needsPhoto) _set(SessionStatus.ready);
   }
 
   Future<void> updateProfile({
@@ -178,6 +196,8 @@ class SessionController extends ChangeNotifier {
     List<String>? preferredActivityTypes,
     String? photoUrl,
     bool removePhoto = false,
+    String? countryCode,
+    String? instagram,
   }) async {
     _profile = await _profiles.updateProfile(
       displayName: displayName,
@@ -187,6 +207,8 @@ class SessionController extends ChangeNotifier {
       preferredActivityTypes: preferredActivityTypes,
       photoUrl: photoUrl,
       removePhoto: removePhoto,
+      countryCode: countryCode,
+      instagram: instagram,
     );
     notifyListeners();
   }

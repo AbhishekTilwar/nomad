@@ -10,6 +10,7 @@ import '../../../core/widgets/loading_skeleton.dart';
 import '../../activities/data/my_activities_repository.dart';
 import '../../activities/models/activity.dart';
 import '../application/chat_read_store.dart';
+import '../application/community_unread_controller.dart';
 import '../application/chats_list_controller.dart';
 import '../data/chat_repository.dart';
 import 'chat_header.dart';
@@ -69,30 +70,40 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                 onRetry: _c.load,
               );
             case ChatsListStatus.ready:
-              if (_c.items.isEmpty) {
-                return EmptyState(
-                  icon: Icons.chat_bubble_outline,
-                  title: 'No chats yet',
-                  message:
-                      'Join or host an activity and its group chat will show up here.',
-                  actionLabel: 'Find activities',
-                  onAction: () => context.go('/discover'),
-                );
-              }
-              return RefreshIndicator(
-                onRefresh: _c.load,
-                child: ListView.separated(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  itemCount: _c.items.length,
-                  separatorBuilder: (_, _) =>
-                      const Divider(height: 1, indent: 20, endIndent: 20),
-                  itemBuilder: (context, i) => _ChatRow(
-                    item: _c.items[i],
-                    preview: _c.previewFor(_c.items[i]),
-                    unread: _c.isUnread(_c.items[i]),
-                    myUid: _c.myUid,
+              return Column(
+                children: [
+                  const _PinnedCommunityTile(),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: _c.items.isEmpty
+                        ? EmptyState(
+                            icon: Icons.chat_bubble_outline,
+                            title: 'No plan chats yet',
+                            message:
+                                'Join or host an activity and its group chat will show up here.',
+                            actionLabel: 'Find activities',
+                            onAction: () => context.go('/explore'),
+                          )
+                        : RefreshIndicator(
+                            onRefresh: _c.load,
+                            child: ListView.separated(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              itemCount: _c.items.length,
+                              separatorBuilder: (_, _) => const Divider(
+                                height: 1,
+                                indent: 20,
+                                endIndent: 20,
+                              ),
+                              itemBuilder: (context, i) => _ChatRow(
+                                item: _c.items[i],
+                                preview: _c.previewFor(_c.items[i]),
+                                unread: _c.isUnread(_c.items[i]),
+                                myUid: _c.myUid,
+                              ),
+                            ),
+                          ),
                   ),
-                ),
+                ],
               );
           }
         },
@@ -195,6 +206,93 @@ class _ChatRow extends StatelessWidget {
             const SizedBox(height: 10),
         ],
       ),
+    );
+  }
+}
+
+/// Mingle Community, always pinned above the plan chats.
+class _PinnedCommunityTile extends StatefulWidget {
+  const _PinnedCommunityTile();
+
+  @override
+  State<_PinnedCommunityTile> createState() => _PinnedCommunityTileState();
+}
+
+class _PinnedCommunityTileState extends State<_PinnedCommunityTile> {
+  late final CommunityUnreadController _unread = context
+      .read<CommunityUnreadController>();
+
+  @override
+  void initState() {
+    super.initState();
+    _unread.start(); // idempotent; the listener is shared with the map header
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    return ListenableBuilder(
+      listenable: _unread,
+      builder: (context, _) {
+        final unread = _unread.hasUnread;
+        return Material(
+          color: AppColors.tint,
+          child: ListTile(
+            minTileHeight: 72,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.xs,
+            ),
+            onTap: () => context.push('/community'),
+            leading: CircleAvatar(
+              radius: 24,
+              backgroundColor: t.colorScheme.primary,
+              child: const Icon(Icons.forum, color: Colors.white),
+            ),
+            title: Row(
+              children: [
+                Flexible(
+                  child: Text(
+                    'Mingle Community',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.textTheme.titleMedium?.copyWith(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Icon(
+                  Icons.push_pin,
+                  size: 14,
+                  color: t.colorScheme.onSurfaceVariant,
+                ),
+              ],
+            ),
+            subtitle: Text(
+              unread ? 'New messages' : 'Chat with everyone in the community',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: t.textTheme.bodyMedium?.copyWith(
+                fontSize: 13,
+                fontWeight: unread ? FontWeight.w600 : null,
+              ),
+            ),
+            trailing: unread
+                ? Container(
+                    key: const ValueKey('unread-community'),
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: t.colorScheme.primary,
+                      shape: BoxShape.circle,
+                    ),
+                  )
+                : null,
+          ),
+        );
+      },
     );
   }
 }
