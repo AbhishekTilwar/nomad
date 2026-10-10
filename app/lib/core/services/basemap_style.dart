@@ -30,9 +30,16 @@ class BasemapStyle {
     'bridge-motorway',
     'bridge-trunk-primary',
     'bridge-secondary-tertiary',
+    // Basic labels: places, neighbourhoods and water.
+    'label_city',
+    'label_town',
+    'label_village',
+    'label_other',
+    'label_state',
+    'water_name',
   ];
 
-  static const _dropContains = ['name', 'label', 'link', 'stream', 'other'];
+  static const _dropContains = ['link', 'stream', 'waterway-other', 'shield'];
 
   static Future<BasemapStyle?>? _cached;
 
