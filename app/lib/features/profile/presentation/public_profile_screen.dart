@@ -11,6 +11,7 @@ import '../../../core/theme/app_tokens.dart';
 import '../../../core/utils/app_exception.dart';
 import '../../../core/utils/category_style.dart';
 import '../../../core/widgets/error_state.dart';
+import '../../../core/widgets/instagram_pill.dart';
 import '../../../core/widgets/interest_chip.dart';
 import '../../../core/widgets/photo_gallery.dart';
 import '../../../core/widgets/primary_button.dart';
@@ -385,7 +386,7 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
                                 ),
                                 if ((p.instagram ?? '').isNotEmpty) ...[
                                   const SizedBox(height: 12),
-                                  _InstagramPill(
+                                  InstagramPill(
                                     handle: p.instagram!,
                                     onTap: () => _openInstagram(p.instagram!),
                                   ),
@@ -512,41 +513,6 @@ class _Cover extends StatelessWidget {
             ),
     );
   }
-}
-
-class _InstagramPill extends StatelessWidget {
-  const _InstagramPill({required this.handle, required this.onTap});
-  final String handle;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => InkWell(
-    borderRadius: BorderRadius.circular(AppRadius.pill),
-    onTap: onTap,
-    child: Ink(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF833AB4), Color(0xFFFD1D1D), Color(0xFFFCB045)],
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.camera_alt_outlined, size: 18, color: Colors.white),
-          const SizedBox(width: 6),
-          Text(
-            '@$handle',
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
 }
 
 class _Stat extends StatelessWidget {

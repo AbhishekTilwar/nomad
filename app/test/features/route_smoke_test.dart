@@ -28,6 +28,7 @@ const _profile = UserProfile(
   displayName: 'Asha Rao',
   city: 'pune',
   bio: 'Hi there',
+  instagram: 'asha_r',
   interests: ['food', 'hiking'],
   profileCompleted: true,
   photos: ['https://example.com/1.jpg', 'https://example.com/2.jpg'],
@@ -198,6 +199,7 @@ void main() {
     await t.tap(find.text('Profile'));
     await settle(t);
     expect(find.text('Asha Rao'), findsWidgets);
+    expect(find.text('@asha_r'), findsOneWidget);
     expect(find.text('My Photos'), findsOneWidget);
     expect(find.byKey(const ValueKey('gallery-photo-0')), findsOneWidget);
     await t.tap(find.text('Map'));

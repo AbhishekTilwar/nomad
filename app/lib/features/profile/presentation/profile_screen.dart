@@ -9,6 +9,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/utils/app_exception.dart';
 import '../../../core/utils/category_style.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/instagram_pill.dart';
 import '../../../core/widgets/interest_chip.dart';
 import '../../../core/widgets/photo_gallery.dart';
 import '../../../core/widgets/user_avatar.dart';
@@ -209,6 +210,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                 ),
               ),
+              if ((p.instagram ?? '').isNotEmpty)
+                Padding(
+                  padding: AppSpacing.page.copyWith(top: AppSpacing.md),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: InstagramPill(
+                      handle: p.instagram!,
+                      onTap: () => openInstagram(p.instagram!),
+                    ),
+                  ),
+                ),
               if (p.bio.isNotEmpty)
                 Padding(
                   padding: AppSpacing.page.copyWith(top: AppSpacing.md),
