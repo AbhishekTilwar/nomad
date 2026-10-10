@@ -3,15 +3,15 @@ import 'package:latlong2/latlong.dart';
 /// Tile provider configuration, replaceable without touching map widgets.
 ///
 /// Production: pass a provider-specific template with
-/// `--dart-define=MAP_TILE_URL=...`. The default is CARTO Voyager without
-/// labels: soft colors and low detail. Its free tier is for non-commercial use,
-/// so switch to a paid/self-hosted provider before a commercial launch.
+/// `--dart-define=MAP_TILE_URL=...`. The default is Esri's Light Gray
+/// Canvas: muted colors and low detail. Check Esri's terms before a commercial
+/// launch, or switch to a paid/self-hosted provider.
 class MapConfig {
   const MapConfig({
     required this.tileUrlTemplate,
     required this.attribution,
     this.userAgentPackageName = 'in.nomadmingle.app',
-    this.maxZoom = 19,
+    this.maxZoom = 16,
     this.subdomains = const [],
   });
 
@@ -19,11 +19,11 @@ class MapConfig {
     tileUrlTemplate: String.fromEnvironment(
       'MAP_TILE_URL',
       defaultValue:
-          'https://basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png',
+          'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
     ),
     attribution: String.fromEnvironment(
       'MAP_ATTRIBUTION',
-      defaultValue: '© OpenStreetMap contributors © CARTO',
+      defaultValue: 'Tiles © Esri',
     ),
   );
 
