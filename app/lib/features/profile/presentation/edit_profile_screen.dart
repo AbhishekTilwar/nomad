@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -240,6 +241,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       _busy = true;
       _error = null;
     });
+    final current = context.read<SessionController>().profile!;
+    final newInstagram = _instagram.text.replaceFirst('@', '').trim();
+    // Only send the newer fields when they changed, so ordinary edits keep
+    // working against an API that predates them.
+    final countryChanged = _country != (current.countryCode ?? '');
+    final instagramChanged = newInstagram != (current.instagram ?? '');
+    final photosChanged = !listEquals(_photos, current.photos);
     try {
       await context.read<SessionController>().updateProfile(
         displayName: _name.text,
@@ -249,9 +257,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         preferredActivityTypes: _prefs.toList(),
         photoUrl: _newPhotoUrl,
         removePhoto: _removePhoto,
-        countryCode: _country,
-        instagram: _instagram.text.replaceFirst('@', ''),
-        photos: _photos,
+        countryCode: countryChanged ? _country : null,
+        instagram: instagramChanged ? newInstagram : null,
+        photos: photosChanged ? _photos : null,
       );
       if (mounted) context.pop();
     } on AppException catch (e) {
