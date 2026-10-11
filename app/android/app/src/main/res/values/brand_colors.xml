@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Same as AppColors.sand: the splash and welcome screens use it in light and dark mode. -->
+    <color name="brand_splash">#FAF9F6</color>
+</resources>

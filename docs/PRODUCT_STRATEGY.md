@@ -39,3 +39,23 @@ Onboarding completion; time to first plan opened; detail→join conversion; join
 | Members with several plans need one entry point for all of them (a single next-plan pill was rejected as unrepresentative); this is still unsolved | Usability task: "find where you're meeting tomorrow" from the map |
 | Telling people their age range, and that the birthday is fixed, reduces mistaken birthdays | Support contacts about birthday corrections |
 | Removing the completion score does not reduce profile completion | Edit-profile rate for new members |
+
+## Welcome page: first-impression reasoning (hypotheses, not findings)
+Goal: in about five seconds a stranger should know what this is, feel that people like them are here, and see one easy next step. No measurement exists yet; everything below is a design hypothesis.
+
+| Principle | What it suggests | What the page does |
+|---|---|---|
+| Faces capture attention first and signal belonging | Show people, varied and recognisably human | Gathered groups of distinct people (skin tone, hair, clothing vary) at each pin; a slot for real photos |
+| Authenticity beats polish; stock faces read as staged and lower trust | Never present strangers' photos as "our members" | Photos are optional and must be licensed and consented; people are not captioned as members near you; they are illustration |
+| Dual coding: picture + words encode better than words alone | Let motion mirror the promise "Find your people. Make a plan. Go together." | Pins appear (find), the route draws (plan), a person walks it (go together) |
+| Concreteness reduces uncertainty ("what is this for?") | Show the actual place and the actual kinds of activity | Real Mumbai map, pins at real neighbourhoods carrying activity icons |
+| Hick's law / one dominant action | Few choices, one clear path | Two sign-in buttons only; everything else is quiet, slow ambient motion |
+| Calm over urgency | No counters, countdowns or "X people joined" | Nothing implies live activity; motion is slow and decorative; reduced-motion shows a still picture |
+
+**Do not** (fabricated social proof, per the brief): invent member counts or "people near you now"; use random stock or scraped faces; label illustrations as real members.
+
+**Real social proof later (needs a decision):** once plans exist, an opt-in, privacy-safe public feed ("3 plans this weekend in Mumbai", host first names and consented photos) would beat any illustration. It needs a signed-out endpoint, so privacy review and a cost cap first.
+
+**Open question for the owner:** the Email button is visually heavier than Google, although Google is the lower-friction path for most people. Kept as is on request; worth an A/B test.
+
+**Measure:** welcome → first tap rate; time to first tap; Google vs Email split; sign-up completion; bounce at the welcome page; compare illustrated vs real-photo variants.

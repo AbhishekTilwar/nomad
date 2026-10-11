@@ -8,7 +8,7 @@
     <uses-permission android:name="android.permission.READ_CONTACTS"/>
     <uses-permission android:name="android.permission.WRITE_CONTACTS" tools:node="remove"/>
     <application
-        android:label="nomad_mingle"
+        android:label="Nomad Mingle"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

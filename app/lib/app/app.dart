@@ -37,6 +37,7 @@ class NomadMingleApp extends StatefulWidget {
     this.publicProfiles,
     this.translation,
     this.social,
+    this.splashMinDuration = Duration.zero,
   });
 
   final AuthRepository auth;
@@ -50,6 +51,10 @@ class NomadMingleApp extends StatefulWidget {
   final PublicProfileRepository? publicProfiles;
   final TranslationService? translation;
   final SocialRepository? social;
+
+  /// How long the splash stays up at least (so its logo animation can play).
+  /// Zero in tests.
+  final Duration splashMinDuration;
 
   @override
   State<NomadMingleApp> createState() => _NomadMingleAppState();
@@ -68,12 +73,26 @@ class _NomadMingleAppState extends State<NomadMingleApp> {
     auth: widget.auth,
     profiles: _profiles,
   );
-  late final GoRouter _router = buildRouter(_session);
+  late final ValueNotifier<bool> _splashHold = ValueNotifier(
+    widget.splashMinDuration > Duration.zero,
+  );
+  late final GoRouter _router = buildRouter(_session, splashHold: _splashHold);
+
+  @override
+  void initState() {
+    super.initState();
+    if (_splashHold.value) {
+      Future<void>.delayed(widget.splashMinDuration, () {
+        if (mounted) _splashHold.value = false;
+      });
+    }
+  }
 
   @override
   void dispose() {
     _session.dispose();
     _router.dispose();
+    _splashHold.dispose();
     super.dispose();
   }
 

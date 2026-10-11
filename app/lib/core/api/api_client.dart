@@ -15,7 +15,7 @@ class ApiClient {
     required this.tokenProvider,
     http.Client? client,
     String? baseUrl,
-    this.timeout = const Duration(seconds: 15),
+    this.timeout = const Duration(seconds: 45),
   }) : _client = client ?? http.Client(),
        baseUrl = baseUrl ?? AppConfig.apiBaseUrl;
 
@@ -77,8 +77,10 @@ class ApiClient {
         retryable: true,
       );
     } on SocketException {
+      // Covers a dead network but also a server that refuses or cannot be
+      // found, so don't claim the user's internet is down.
       throw const AppException(
-        'No internet connection.',
+        'Couldn\'t reach Nomad Mingle. Check your connection and try again.',
         code: 'offline',
         retryable: true,
       );

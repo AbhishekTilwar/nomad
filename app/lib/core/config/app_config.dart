@@ -80,6 +80,17 @@ class AppConfig {
 
   static bool get isConfigured => firebaseOptions != null;
 
+  /// A release build that still points at this machine (the default) can never
+  /// work on a phone; the app says so instead of reporting "no internet".
+  static bool get apiBaseIsLocalOnly {
+    final host = Uri.tryParse(apiBaseUrl)?.host ?? '';
+    return host == 'localhost' || host == '127.0.0.1' || host == '10.0.2.2';
+  }
+
+  /// True when a release build was made without a real server address.
+  static bool get releaseMissingApiUrl =>
+      kReleaseMode && !useEmulator && apiBaseIsLocalOnly;
+
   /// Crashlytics / App Check are unsupported on web or in emulator mode.
   static bool get enableMobileOnlyServices => !kIsWeb && !useEmulator;
 }

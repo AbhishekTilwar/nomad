@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nomad_mingle/app/app.dart';
 import 'package:nomad_mingle/core/widgets/primary_button.dart';
 import 'package:nomad_mingle/features/auth/data/auth_repository.dart';
-import 'package:nomad_mingle/features/auth/presentation/scenes/hero_scene.dart';
 import 'package:nomad_mingle/features/onboarding/application/intro_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -45,7 +44,14 @@ void main() {
       final size = t.getSize(find.text(label).first);
       expect(size.width, greaterThan(0));
     }
-    for (final b in [find.byType(OutlinedButton)]) {
+    for (final label in ['Continue with Google', 'Continue with Email']) {
+      expect(
+        t.getSize(find.text(label).first).height,
+        greaterThan(0),
+        reason: label,
+      );
+    }
+    for (final b in [find.byType(PrimaryButton)]) {
       for (final e in b.evaluate()) {
         expect(
           t.getSize(find.byWidget(e.widget)).height,
@@ -53,11 +59,33 @@ void main() {
         );
       }
     }
-    final scene = find.descendant(
-      of: find.byType(HeroScene),
-      matching: find.byType(ExcludeSemantics),
+    // The logo is announced once, as one image.
+    expect(find.byKey(const ValueKey('brand-mark-image')), findsOneWidget);
+  });
+
+  testWidgets('splash holds for its minimum time, then hands over', (t) async {
+    SharedPreferences.setMockInitialValues({IntroStore.key: true});
+    t.view.physicalSize = const Size(360, 640);
+    t.view.devicePixelRatio = 1;
+    addTearDown(t.view.reset);
+    await t.pumpWidget(
+      NomadMingleApp(
+        chat: FakeChatRepository(),
+        auth: FakeAuthRepository(),
+        profiles: FakeProfileRepository(),
+        activities: FakeActivityRepository(),
+        splashMinDuration: const Duration(milliseconds: 1200),
+      ),
     );
-    expect(scene, findsWidgets);
+    await t.pump(const Duration(milliseconds: 600));
+    // Session is long ready, but the splash is still up.
+    expect(find.byType(LinearProgressIndicator), findsOneWidget);
+    expect(find.text('Continue with Email'), findsNothing);
+    await t.pump(const Duration(milliseconds: 900));
+    await settle(t);
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+    expect(find.text('Continue with Email'), findsOneWidget);
+    expect(t.takeException(), isNull);
   });
 
   testWidgets('landing: Terms and Privacy open the legal pages', (t) async {

@@ -54,8 +54,17 @@ void main() {
       ),
     );
     await settle(t);
+    expect(find.byKey(const ValueKey('brand-mark-image')), findsOneWidget);
+    // The tagline is real text under the logo, not part of the image.
+    expect(find.byKey(const ValueKey('brand-mark-tagline')), findsOneWidget);
     expect(
-      find.text('Find your people.\nMake a plan. Go together.'),
+      find.text('Find your people. Make a plan. Go together.'),
+      findsOneWidget,
+    );
+    expect(
+      find.bySemanticsLabel(
+        'Nomad Mingle. Find your people. Make a plan. Go together.',
+      ),
       findsOneWidget,
     );
     expect(find.text('Continue with Google'), findsOneWidget);

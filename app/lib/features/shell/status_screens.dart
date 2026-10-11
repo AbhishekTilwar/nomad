@@ -1,15 +1,47 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/config/app_config.dart';
+import '../../core/theme/app_tokens.dart';
+import '../../core/widgets/brand_mark.dart';
 import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/error_state.dart';
 import '../auth/application/session_controller.dart';
 
+/// Shown while the session loads: the logo animates in on the brand
+/// background, with a quiet progress line underneath.
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
+
   @override
-  Widget build(BuildContext context) => const Scaffold(
-    body: Center(child: CircularProgressIndicator(semanticsLabel: 'Loading')),
+  Widget build(BuildContext context) => Scaffold(
+    // Fixed brand background (the logo image carries its own light backdrop).
+    backgroundColor: AppColors.sand,
+    body: Stack(
+      fit: StackFit.expand,
+      children: [
+        const Align(
+          alignment: BrandMark.restAlignment,
+          child: BrandMark(width: 260, animate: true),
+        ),
+        // Quiet progress line near the bottom, where the welcome actions
+        // will appear.
+        Align(
+          alignment: const Alignment(0, 0.82),
+          child: SizedBox(
+            width: 120,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+              child: const LinearProgressIndicator(
+                minHeight: 3,
+                semanticsLabel: 'Loading',
+                backgroundColor: AppColors.primaryLight,
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
   );
 }
 
@@ -62,20 +94,27 @@ class RestrictedScreen extends StatelessWidget {
   );
 }
 
-/// Shown when Firebase isn't configured (no dart-defines and no emulator flag).
+/// Shown when the build is missing its configuration: Firebase values, or (in
+/// release) the address of the Nomad Mingle server.
 class SetupRequiredScreen extends StatelessWidget {
   const SetupRequiredScreen({super.key});
   @override
-  Widget build(BuildContext context) => const Scaffold(
-    body: SafeArea(
-      child: EmptyState(
-        icon: Icons.settings_suggest_outlined,
-        title: 'Firebase isn\'t configured',
-        message:
-            'Run with --dart-define=USE_EMULATOR=true for local development, or pass the FIREBASE_* values for your project. See README.md.',
+  Widget build(BuildContext context) {
+    final firebaseOk = AppConfig.isConfigured;
+    return Scaffold(
+      body: SafeArea(
+        child: EmptyState(
+          icon: Icons.settings_suggest_outlined,
+          title: firebaseOk
+              ? 'Server address isn\'t set'
+              : 'Firebase isn\'t configured',
+          message: firebaseOk
+              ? 'This build was made without API_BASE_URL, so it would try to reach a server on this phone. Rebuild with --dart-define=API_BASE_URL=https://<your-api>/api/v1. See docs/RELEASE_BUILD.md.'
+              : 'Run with --dart-define=USE_EMULATOR=true for local development, or pass the FIREBASE_* values for your project. See README.md.',
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class StaticTextScreen extends StatelessWidget {

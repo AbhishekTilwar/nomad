@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
@@ -82,17 +83,37 @@ String? redirectFor(SessionStatus status, String location) {
   }
 }
 
+/// [splashHold] keeps the splash visible (even if the session is ready) while
+/// its value is true, so the logo animation can finish.
 GoRouter buildRouter(
   SessionController session, {
   String initialLocation = '/splash',
+  ValueNotifier<bool>? splashHold,
 }) {
   return GoRouter(
     initialLocation: initialLocation,
-    refreshListenable: session,
-    redirect: (_, state) => redirectFor(session.status, state.matchedLocation),
+    refreshListenable: splashHold == null
+        ? session
+        : Listenable.merge([session, splashHold]),
+    redirect: (_, state) => redirectFor(
+      (splashHold?.value ?? false)
+          ? SessionStatus.initializing
+          : session.status,
+      state.matchedLocation,
+    ),
     routes: [
       GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
-      GoRoute(path: '/welcome', builder: (_, _) => const WelcomeScreen()),
+      GoRoute(
+        path: '/welcome',
+        // Cross-fade from the splash so the logo hands over smoothly.
+        pageBuilder: (_, state) => CustomTransitionPage<void>(
+          key: state.pageKey,
+          transitionDuration: const Duration(milliseconds: 600),
+          child: const WelcomeScreen(),
+          transitionsBuilder: (_, animation, _, child) =>
+              FadeTransition(opacity: animation, child: child),
+        ),
+      ),
       GoRoute(path: '/intro', builder: (_, _) => const IntroScreen()),
       GoRoute(path: '/sign-in', builder: (_, _) => const LoginScreen()),
       GoRoute(path: '/register', builder: (_, _) => const SignUpScreen()),

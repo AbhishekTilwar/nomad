@@ -50,3 +50,34 @@ No new tabs, no schema/backend changes, no new packages, no gamification. Remind
 | Profile | Completion ring removed; "Find a plan" action in empty Upcoming. |
 | Onboarding | City as tiles; interest search removed; photo copy says it can wait. |
 | Backend | `GET /activities/map` markers add `venueName`, `hostDisplayName`, `hostPhotoUrl`, `approvalRequired` (test and API.md updated). |
+
+## Brand: logo, splash, app name
+| Area | Change |
+|---|---|
+| Logo | `assets/images/brand_logo.png` (supplied) used on the splash and welcome page via `core/widgets/brand_mark.dart`. The welcome page is now light (the logo is dark on a light backdrop); the dusk photo scene stays on the intro only. |
+| Animation | Splash: logo fades in, rises and settles (1.1 s, skipped under reduced motion). The splash is held 1.8 s in `main.dart` (`splashMinDuration`, zero in tests) so it can play. Welcome: the same logo at the same screen position (`BrandMark.restAlignment`), so the hand-over keeps it still; buttons then fade and slide in. |
+| Native launch | Android launch screen is plain brand background with no icon (`values*/styles.xml`, `brand_colors.xml`, `splash_icon_empty.xml`), so the default Flutter logo no longer flashes before the app starts. |
+| App name | "Nomad Mingle" in the Android label, iOS `CFBundleName`, and web title/manifest (iOS display name already was). |
+| Icon pipeline | `app/tool/generate_icons.sh master.png` builds all Android, iOS and web icon sizes with `sips` (no new package). Tested against a dummy master in a temp folder; **the real icon is not applied yet** (see below). |
+
+Caveats: the supplied logo PNG is 298x192, so it looks soft on a phone; an SVG or a 3x PNG would fix that. The PNG has faint noise in its backdrop, hidden by feathering its edges. The first ~2 s of a debug launch is blank brand background while the engine starts; release builds start faster (not measured).
+
+## Welcome background
+`features/auth/presentation/welcome_backdrop.dart` replaces the flat background. Everything is drawn in code (no assets): sand → soft mint ground that eases in below the logo; faint topographic contours in two corners that breathe slowly; five plan pins (our category colours) that pop in one after another, then bob over a ripple; a dotted route that draws itself between three pins, with a small amber traveller dot looping along it. The Google and Email buttons, legal caption and logo position are unchanged. Reduced motion shows the finished picture with no ticking; it is excluded from semantics. Inspiration is the idea of a living, illustrated welcome; the visual language (map, pins, route) is ours and ties to "find your people, make a plan, go together". Migomap itself was not viewed in this session, so nothing was copied from it.
+Caveats: contours are deliberately faint (may need a nudge on bright outdoor screens); the pins are decorative and do not represent real plans.
+
+### Welcome background: real map
+The welcome page now shows the real city (Mumbai) using the same `BasemapLayer` as Explore, non-interactive, drifting slowly under a slight zoom (a transform, so tiles are not reloaded while it moves). Sand veils clear the area around the logo and fade the map out under the sign-in block; the plan pins, dotted route and traveller dot are drawn on top. If the map cannot load, the painted ground with topographic contours takes over; reduced motion keeps the map still. The logo image's edge feather was widened so its own backdrop blends into the map.
+Caveats: the signed-out welcome now requests map tiles (needs a connection, small data use per cold start); the default tile source is Esri's light-gray canvas, whose terms should be checked before launch (already noted in `map_config.dart`).
+
+### Welcome map: real places, activities and people
+Pins are now anchored to real Mumbai places by latitude/longitude (Juhu, Andheri East, Worli, Parel, Wadala), projected with the same camera as the map (`_kMapCenter`, `_kMapZoom`) and drawn inside the map's drift transform, so they stay glued to their spots. Each pin carries its activity icon and category colour (coffee, music, hiking, sports, photography); a small group of people is gathered under each, arriving just after the pin lands; the route runs Worli → Parel → Wadala and a person (not a dot) walks it. All of it is illustrative: the places are real, the plans and people are not, and nothing implies live activity.
+Caveats: positions are tuned for a 412x890 phone; other aspect ratios move pins slightly relative to the logo and buttons (the washes keep them readable). A transparent logo is expected later: then the logo's feathering and the clearing around it can be simplified.
+
+### Welcome people: photos slot and more human avatars
+- `assets/images/welcome/` accepts `person_1.jpg`..`person_6.jpg` (optional; see its README for licensing and consent rules). `WelcomePeople.load` reads what exists and skips the rest; photos are cropped to circles and used in place of the avatars.
+- Without photos, avatars are illustrated people: pastel backdrop, five skin tones, five hair colours, four hair styles (short, long, bun, cropped), five clothing colours, chosen per person so a group never repeats. Slightly larger (18 px) so they read as people.
+- No photos were added: none are available, and unconsented stock faces would be fabricated social proof.
+
+### Logo from the supplied SVG
+`logo.svg` is a Canva-style export: two embedded PNGs (a colour image and a greyscale mask) rather than vector paths, and flutter_svg does not support SVG masks, so it cannot be drawn directly. `app/tool/svg_logo_to_png.py logo.svg assets/images/brand_logo.png` combines them into a transparent PNG (1100 px wide, 288 KB; full-size 1804x872 source kept at `assets/branding/logo_source.svg`). The tagline is no longer part of the image: `BrandMark` sets "Find your people. Make a plan. Go together." as real text under the logo (crisp at any size, translatable, and it follows the logo in with a short fade). With the transparent logo, the old edge feathering is gone and the clearing around it on the map is smaller and softer.

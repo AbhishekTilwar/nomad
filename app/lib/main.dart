@@ -16,7 +16,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final options = AppConfig.firebaseOptions;
-  if (options == null) {
+  if (options == null || AppConfig.releaseMissingApiUrl) {
     runApp(
       MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -60,5 +60,10 @@ Future<void> main() async {
     return true;
   };
 
-  runApp(NomadMingleApp(auth: FirebaseAuthRepository()));
+  runApp(
+    NomadMingleApp(
+      auth: FirebaseAuthRepository(),
+      splashMinDuration: const Duration(milliseconds: 1800),
+    ),
+  );
 }

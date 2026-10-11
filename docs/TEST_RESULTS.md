@@ -38,3 +38,20 @@ Existing suites cover: first run/intro, sign-up validation, route smoke for ever
 - The first "Try again" after restarting the backend failed because it raced the server start; a second tap recovered.
 - A bug found only on device: the photo prompt used a router route, so the join was silently dropped when the session refreshed. Fixed; the widget test (with `refreshListenable`) now reproduces and guards it.
 - Not verified: Google sign-in, Discover filters, delete account, TalkBack/large text, many-plan density, real push.
+
+## Brand pass
+`flutter analyze`: no issues. `flutter test`: 227 passed (new: splash holds then hands over; landing asserts the logo image and its semantics label). On device: native launch shows no Flutter logo; splash animation and hand-over captured frame by frame; one logo throughout after aligning both screens (an earlier build showed two logos cross-fading, fixed). Not done: app icon (file not received), iOS build (no Xcode here).
+
+Welcome background: `flutter analyze` clean; `flutter test` 230 passed (new: animates without errors, reduced motion never ticks, fits 360x640). On device: frames captured mid-intro and after the route finished; buttons unchanged.
+
+Welcome map background: `flutter analyze` clean, `flutter test` 230 passed; on device the Mumbai map renders behind the logo with pins, route and unchanged buttons (three builds iterated: logo box visible → feather and clearing widened → clean). Offline fallback is covered by code path (tile-error callback) but was not forced on device.
+
+Welcome pins: analyze clean, tests pass (231). On device: pins on land at the named places, clear of the status bar and sign-in block; people groups and walking figure visible.
+
+Welcome people: 233 tests pass (new: loader returns empty when no photos, loads provided ones and skips missing or broken files). On device: varied illustrated people at all five pins and walking the route. The real-photo rendering path is covered by the loader test only; no photos exist yet to see on device.
+
+New logo + tagline: analyze clean, 233 tests pass (landing test now asserts the logo image and the tagline text). On device: crisp transparent logo on the splash (fades in) and on the welcome map; tagline legible under it. Note: in one capture the basemap fell back to the grey raster style (network timing); not investigated.
+
+Release build (Android): split APKs + universal APK + AAB built (see RELEASE_BUILD.md). The first attempt showed "Firebase isn't configured" because the dart-defines were passed as one unquoted zsh string; rebuilt with an array and verified the real-project launch. Tests: 233 passed before the build.
+
+Release misconfiguration guard: 235 tests pass (new: local-only address detection, guard never triggers in tests). On device: a release built without API_BASE_URL now shows "Server address isn't set" at launch. Connection failures now read "Couldn't reach Nomad Mingle" instead of "No internet connection". Found while verifying: installing a non-split APK over a split one fails with a version-code downgrade error (split builds add 2000 to the version code); uninstall first.

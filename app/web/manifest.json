@@ -1,6 +1,6 @@
 {
-    "name": "nomad_mingle",
-    "short_name": "nomad_mingle",
+    "name": "Nomad Mingle",
+    "short_name": "Nomad Mingle",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

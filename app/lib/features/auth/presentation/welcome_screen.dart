@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_tokens.dart';
-import '../../../core/widgets/brand_logo.dart';
+import '../../../core/widgets/brand_mark.dart';
+import '../../../core/widgets/primary_button.dart';
 import '../../onboarding/application/intro_store.dart';
 import 'google_sign_in_button.dart';
-import 'scenes/hero_scene.dart';
+import 'welcome_backdrop.dart';
 
-/// Landing screen: full-bleed lake-at-dusk scene, brand lock-up, tagline and
-/// the two entry actions. On a first launch it forwards to the intro
+/// Landing screen: the logo on the brand background with the two entry
+/// actions beneath it. On a first launch it forwards to the intro
 /// carousel (which returns here when finished).
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key, this.intro = const IntroStore()});
@@ -42,29 +43,14 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.primary,
+      // Fixed brand background: the logo image carries its own light backdrop.
+      backgroundColor: AppColors.sand,
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              const HeroScene(kind: HeroSceneKind.lakeDusk),
-              // Darken the sky slightly so the white logo always reads.
-              const ExcludeSemantics(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.center,
-                      colors: [Color(0x66000000), Color(0x00000000)],
-                    ),
-                  ),
-                ),
-              ),
-              if (_ready) _Content(googleBusy: _googleBusy, onBusy: _setBusy),
-            ],
-          ),
+          child: _ready
+              ? _Content(googleBusy: _googleBusy, onBusy: _setBusy)
+              : const SizedBox.expand(),
         ),
       ),
     );
@@ -75,64 +61,93 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   }
 }
 
-class _Content extends StatelessWidget {
+class _Content extends StatefulWidget {
   const _Content({required this.googleBusy, required this.onBusy});
 
   final bool googleBusy;
   final ValueChanged<bool> onBusy;
 
   @override
+  State<_Content> createState() => _ContentState();
+}
+
+class _ContentState extends State<_Content>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 700),
+  );
+  bool _started = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_started) return;
+    _started = true;
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _c.value = 1;
+    } else {
+      // Let the logo's hand-over from the splash land first, then bring in
+      // the actions.
+      Future<void>.delayed(const Duration(milliseconds: 250), () {
+        if (mounted) _c.forward();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-    return SafeArea(
-      child: LayoutBuilder(
-        builder: (context, box) => SingleChildScrollView(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: box.maxHeight),
-            child: IntrinsicHeight(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 36, 24, 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Center(child: BrandLogo(size: 44, onDark: true)),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Find your people.\nMake a plan. Go together.',
-                      textAlign: TextAlign.center,
-                      style: t.bodyLarge?.copyWith(
-                        color: Colors.white,
-                        fontSize: 16,
-                        height: 1.4,
+    final reveal = CurvedAnimation(parent: _c, curve: Curves.easeOutCubic);
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        const WelcomeBackdrop(),
+        // Same spot as on the splash (both relative to the full screen), so
+        // the hand-over keeps the logo still.
+        const Align(
+          alignment: BrandMark.restAlignment,
+          child: BrandMark(width: 260),
+        ),
+        SafeArea(
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+              child: FadeTransition(
+                opacity: reveal,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0, 0.12),
+                    end: Offset.zero,
+                  ).animate(reveal),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      GoogleSignInButton(onBusyChanged: widget.onBusy),
+                      const SizedBox(height: 12),
+                      PrimaryButton(
+                        label: 'Continue with Email',
+                        onPressed: widget.googleBusy
+                            ? null
+                            : () => context.push('/sign-in'),
                       ),
-                    ),
-                    const Spacer(),
-                    GoogleSignInButton(onWhite: true, onBusyChanged: onBusy),
-                    const SizedBox(height: 12),
-                    OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(52),
-                        foregroundColor: Colors.white,
-                        backgroundColor: Colors.transparent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppRadius.md),
-                        ),
-                        side: const BorderSide(color: Colors.white, width: 1.5),
-                      ),
-                      onPressed: googleBusy
-                          ? null
-                          : () => context.push('/sign-in'),
-                      child: const Text('Continue with Email'),
-                    ),
-                    const SizedBox(height: 4),
-                    const _LegalCaption(),
-                  ],
+                      const SizedBox(height: 4),
+                      const _LegalCaption(),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
         ),
-      ),
+      ],
     );
   }
 }
@@ -144,11 +159,12 @@ class _LegalCaption extends StatelessWidget {
   Widget build(BuildContext context) {
     final base = Theme.of(
       context,
-    ).textTheme.bodySmall?.copyWith(color: Colors.white, fontSize: 12);
+    ).textTheme.bodySmall?.copyWith(color: AppColors.inkMuted, fontSize: 12);
     final link = base?.copyWith(
       fontWeight: FontWeight.w700,
+      color: AppColors.ink,
       decoration: TextDecoration.underline,
-      decorationColor: Colors.white,
+      decorationColor: AppColors.ink,
     );
     Widget tap(String label, String route) => InkWell(
       onTap: () => context.push(route),
