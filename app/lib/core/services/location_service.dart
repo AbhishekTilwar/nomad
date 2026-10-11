@@ -12,11 +12,30 @@ class LocationResult {
 /// Foreground, one-shot location only. We never request background location,
 /// never track continuously, and never upload the result.
 abstract class LocationService {
+  /// May show the system permission prompt. Call only after a user action.
   Future<LocationResult> current();
+
+  /// Like [current] but never prompts: returns no position unless permission
+  /// was already granted. Safe to call on screen open.
+  Future<LocationResult> currentIfPermitted() => current();
   Future<void> openSettings();
 }
 
 class GeolocatorLocationService implements LocationService {
+  @override
+  Future<LocationResult> currentIfPermitted() async {
+    try {
+      final perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied ||
+          perm == LocationPermission.deniedForever) {
+        return const LocationResult(LocationOutcome.denied);
+      }
+    } catch (_) {
+      return const LocationResult(LocationOutcome.error);
+    }
+    return current();
+  }
+
   @override
   Future<LocationResult> current() async {
     try {

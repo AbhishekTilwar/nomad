@@ -102,7 +102,7 @@ class _LoginScreenState extends State<LoginScreen> {
         if (_error != null) ...[const SizedBox(height: 12), AuthError(_error!)],
         const SizedBox(height: 16),
         PrimaryButton(
-          backgroundColor: AppColors.navy,
+          backgroundColor: AppColors.primary,
           label: 'Sign In',
           loading: _busy,
           onPressed: _submit,

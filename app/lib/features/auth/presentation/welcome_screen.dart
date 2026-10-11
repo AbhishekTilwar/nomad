@@ -42,7 +42,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.navy,
+      backgroundColor: AppColors.primary,
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
@@ -98,7 +98,7 @@ class _Content extends StatelessWidget {
                     const Center(child: BrandLogo(size: 44, onDark: true)),
                     const SizedBox(height: 12),
                     Text(
-                      'New places. New people.\nSame sky.',
+                      'Find your people.\nMake a plan. Go together.',
                       textAlign: TextAlign.center,
                       style: t.bodyLarge?.copyWith(
                         color: Colors.white,

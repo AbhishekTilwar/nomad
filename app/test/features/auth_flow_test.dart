@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nomad_mingle/app/app.dart';
-import 'package:nomad_mingle/features/auth/application/signup_draft.dart';
 import 'package:nomad_mingle/features/onboarding/application/intro_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -49,14 +48,14 @@ void main() {
     (t) async {
       SharedPreferences.setMockInitialValues({});
       await boot(t, FakeAuthRepository());
-      expect(find.text('Real People,\nShared Adventures'), findsOneWidget);
+      expect(find.text('Find Your People'), findsOneWidget);
       expect(find.text('Skip'), findsOneWidget);
       await t.tap(find.text('Next'));
       await settle(t);
-      expect(find.text('Explore Activities\n& Meet Locals'), findsOneWidget);
+      expect(find.text('Make a Plan'), findsOneWidget);
       await t.tap(find.text('Next'));
       await settle(t);
-      expect(find.text('A Community\nThat Feels Like Home'), findsOneWidget);
+      expect(find.text('Go Together'), findsOneWidget);
       expect(find.widgetWithText(FilledButton, 'Get Started'), findsOneWidget);
       await t.tap(find.widgetWithText(FilledButton, 'Get Started'));
       await settle(t);
@@ -70,7 +69,7 @@ void main() {
     await boot(t, FakeAuthRepository());
     await t.fling(find.byType(PageView), const Offset(-400, 0), 1000);
     await settle(t);
-    expect(find.text('Explore Activities\n& Meet Locals'), findsOneWidget);
+    expect(find.text('Make a Plan'), findsOneWidget);
   });
 
   testWidgets('Skip marks intro seen and goes to landing', (t) async {
@@ -86,7 +85,7 @@ void main() {
     SharedPreferences.setMockInitialValues({IntroStore.key: true});
     await boot(t, FakeAuthRepository());
     expect(find.text('Continue with Email'), findsOneWidget);
-    expect(find.text('Real People,\nShared Adventures'), findsNothing);
+    expect(find.text('Find Your People'), findsNothing);
     await t.tap(find.text('Continue with Email'));
     await settle(t);
     expect(find.text('Welcome back'), findsOneWidget);
@@ -105,89 +104,49 @@ void main() {
       await settle(t);
     }
 
-    Future<void> pickDobByTyping(WidgetTester t, String mmddyyyy) async {
-      await t.tap(find.widgetWithText(TextFormField, 'Date of birth'));
-      await settle(t);
-      await t.tap(find.byIcon(Icons.edit_outlined));
-      await settle(t);
-      await t.enterText(find.byType(TextField).last, mmddyyyy);
-      await t.tap(find.text('OK'));
-      await settle(t);
-    }
-
     testWidgets('shows validation errors on an empty form', (t) async {
       await open(t, FakeAuthRepository());
-      await t.ensureVisible(find.text('Create Account'));
       await t.tap(find.text('Create Account'));
       await settle(t);
-      expect(find.text('Name must be at least 2 characters.'), findsOneWidget);
       expect(find.text('Enter your email address.'), findsOneWidget);
       expect(find.text('Enter a password.'), findsOneWidget);
-      expect(find.text('Select your date of birth.'), findsOneWidget);
-      expect(find.text('Select your city.'), findsOneWidget);
-      expect(find.text('Choose at least 3 interests.'), findsOneWidget);
     });
 
-    testWidgets('rejects short password, under-18 DOB and <3 interests', (
-      t,
-    ) async {
+    testWidgets('rejects a short password', (t) async {
       final auth = FakeAuthRepository();
       await open(t, auth);
-      await t.enterText(find.widgetWithText(TextFormField, 'Name'), 'Asha Rao');
-      await t.enterText(find.widgetWithText(TextFormField, 'Email'), 'a@b.co');
-      await t.enterText(
-        find.widgetWithText(TextFormField, 'Password'),
-        'short',
-      );
-      final y = DateTime.now().year - 10;
-      await pickDobByTyping(t, '01/01/$y');
-      await t.ensureVisible(find.text('Food'));
-      await t.tap(find.text('Food'));
-      await t.tap(find.text('Travel'));
-      await settle(t);
-      await t.ensureVisible(find.text('Create Account'));
+      await t.enterText(find.byKey(const ValueKey('signup-email')), 'a@b.co');
+      await t.enterText(find.byKey(const ValueKey('signup-password')), 'short');
       await t.tap(find.text('Create Account'));
       await settle(t);
       expect(find.text('Use at least 8 characters.'), findsOneWidget);
-      expect(
-        find.text('You must be at least 18 to use Nomad Mingle.'),
-        findsOneWidget,
-      );
-      expect(find.text('Choose at least 3 interests.'), findsOneWidget);
       expect(find.text('Create Your Account'), findsOneWidget);
+      expect(auth.currentUser, isNull);
     });
 
-    testWidgets('valid form saves a draft (no password) and registers', (
+    testWidgets('asks only for credentials; profile comes from onboarding', (
+      t,
+    ) async {
+      await open(t, FakeAuthRepository());
+      expect(find.text('Email address'), findsOneWidget);
+      expect(find.text('Password'), findsOneWidget);
+      expect(find.text('Date of birth'), findsNothing);
+      expect(find.text('Select Location'), findsNothing);
+      expect(find.textContaining('Interests'), findsNothing);
+    });
+
+    testWidgets('valid credentials register and go to email verification', (
       t,
     ) async {
       final auth = FakeAuthRepository();
       await open(t, auth);
-      await t.enterText(find.widgetWithText(TextFormField, 'Name'), 'Asha Rao');
-      await t.enterText(find.widgetWithText(TextFormField, 'Email'), 'a@b.co');
+      await t.enterText(find.byKey(const ValueKey('signup-email')), 'a@b.co');
       await t.enterText(
-        find.widgetWithText(TextFormField, 'Password'),
+        find.byKey(const ValueKey('signup-password')),
         'longenough1',
       );
-      await pickDobByTyping(t, '04/02/1998');
-      await t.tap(find.byType(DropdownButtonFormField<String>));
-      await settle(t);
-      await t.tap(find.text('Pune').last);
-      await settle(t);
-      for (final label in ['Food', 'Travel', 'Hiking']) {
-        final f = find.text(label);
-        await t.ensureVisible(f);
-        await t.tap(f);
-      }
-      await settle(t);
-      await t.ensureVisible(find.text('Create Account'));
       await t.tap(find.text('Create Account'));
       await settle(t);
-      final d = await const SignupDraftStore().load();
-      expect(d, isNotNull);
-      expect(d!.name, 'Asha Rao');
-      expect(d.city, 'pune');
-      expect(d.dateOfBirth, DateTime(1998, 4, 2));
-      expect(d.interests.length, 3);
       expect(auth.currentUser?.email, 'a@b.co');
       expect(find.text('Verify your email'), findsOneWidget);
     });

@@ -8,6 +8,7 @@ import '../../../core/config/map_config.dart';
 import '../../../core/utils/countries.dart';
 import '../../../core/services/image_upload_service.dart';
 import '../../../core/widgets/photo_source_sheet.dart';
+import '../../../core/widgets/picker_sheets.dart';
 import '../../../core/widgets/user_avatar.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/utils/app_exception.dart';
@@ -269,6 +270,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
+  Future<void> _pickCountry() async {
+    final v = await showOptionSheet<String>(
+      context,
+      title: 'Where are you from?',
+      selected: kCountries.containsKey(_country) ? _country : '',
+      searchable: true,
+      options: [
+        const PickerOption('', 'Not shown'),
+        for (final e in kCountries.entries)
+          PickerOption(e.key, e.value, leading: flagEmoji(e.key)),
+      ],
+    );
+    if (v != null) setState(() => _country = v);
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
@@ -347,6 +363,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 validator: Validators.displayName,
               ),
               const SizedBox(height: AppSpacing.lg),
+              _AgeInfo(
+                ageRange: context.read<SessionController>().profile?.ageRange,
+              ),
+              const SizedBox(height: AppSpacing.lg),
               AppFormField(
                 label: 'Bio',
                 controller: _bio,
@@ -369,23 +389,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 },
               ),
               const SizedBox(height: AppSpacing.lg),
-              Text('Country', style: t.textTheme.titleMedium),
-              const SizedBox(height: AppSpacing.sm),
-              DropdownButtonFormField<String>(
-                initialValue: kCountries.containsKey(_country) ? _country : '',
-                isExpanded: true,
-                decoration: const InputDecoration(
-                  hintText: 'Where are you from?',
-                ),
-                items: [
-                  const DropdownMenuItem(value: '', child: Text('Not shown')),
-                  for (final e in kCountries.entries)
-                    DropdownMenuItem(
-                      value: e.key,
-                      child: Text('${flagEmoji(e.key)}  ${e.value}'),
-                    ),
-                ],
-                onChanged: (v) => setState(() => _country = v ?? ''),
+              PickerField(
+                label: 'Country',
+                hint: 'Where are you from?',
+                valueText: kCountries.containsKey(_country)
+                    ? '${flagEmoji(_country)}  ${kCountries[_country]}'
+                    : 'Not shown',
+                onTap: _pickCountry,
               ),
               const SizedBox(height: AppSpacing.md),
               Text('City', style: t.textTheme.titleMedium),
@@ -452,6 +462,54 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               PrimaryButton(label: 'Save', loading: _busy, onPressed: _save),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Read-only: the birthday is set once at sign-up, so show what others see
+/// (an age range) and say plainly that it can't be edited.
+class _AgeInfo extends StatelessWidget {
+  const _AgeInfo({required this.ageRange});
+  final String? ageRange;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    final has = (ageRange ?? '').isNotEmpty;
+    return Semantics(
+      container: true,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.field,
+          borderRadius: BorderRadius.circular(AppRadius.field),
+          border: Border.all(color: AppColors.outline),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.cake_outlined, color: AppColors.inkMuted),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    has ? 'Age range: $ageRange' : 'Age range',
+                    style: t.textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Others see only this range, never your birthday. '
+                    'Your birthday was set at sign-up and can\'t be edited.',
+                    style: t.textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

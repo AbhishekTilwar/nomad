@@ -2,15 +2,17 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-/// Chat wallpaper: a near-white indigo wash with faint topographic contour
+import '../theme/app_tokens.dart';
+
+/// Chat wallpaper: a near-white teal wash with faint topographic contour
 /// lines (a trail-map motif that fits Nomad Mingle) and a sprinkle of tiny
 /// stars. Painted once, so scrolling messages never repaint it.
 class ChatBackground extends StatelessWidget {
   const ChatBackground({super.key, required this.child});
   final Widget child;
 
-  static const _light = Color(0xFFF8F9FF);
-  static const _dark = Color(0xFF141622);
+  static const _light = Color(0xFFF6F8F5);
+  static const _dark = Color(0xFF0F1A19);
 
   @override
   Widget build(BuildContext context) {
@@ -24,11 +26,11 @@ class ChatBackground extends StatelessWidget {
             child: RepaintBoundary(
               child: CustomPaint(
                 painter: _TopoPainter(
-                  line:
-                      (dark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5))
-                          .withValues(alpha: dark ? 0.10 : 0.07),
-                  dot: (dark ? Colors.white : const Color(0xFF4F46E5))
-                      .withValues(alpha: dark ? 0.10 : 0.10),
+                  line: (dark ? AppColors.primaryDark : AppColors.primary)
+                      .withValues(alpha: dark ? 0.10 : 0.07),
+                  dot: (dark ? Colors.white : AppColors.primary).withValues(
+                    alpha: dark ? 0.10 : 0.10,
+                  ),
                 ),
               ),
             ),

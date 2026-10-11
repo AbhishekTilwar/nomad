@@ -10,6 +10,7 @@ class PhotoSourceSheet {
   static Future<PhotoSource?> show(BuildContext context) =>
       showModalBottomSheet<PhotoSource>(
         context: context,
+        useRootNavigator: true,
         showDragHandle: true,
         builder: (sheet) => SafeArea(
           child: Column(

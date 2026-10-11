@@ -20,6 +20,7 @@ class TravelersSheet extends StatefulWidget {
 
   static Future<void> show(BuildContext context) => showModalBottomSheet<void>(
     context: context,
+    useRootNavigator: true,
     isScrollControlled: true,
     showDragHandle: true,
     useSafeArea: true,

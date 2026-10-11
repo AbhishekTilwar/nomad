@@ -4,7 +4,7 @@ import '../../features/chat/models/chat_message.dart';
 import '../utils/formatters.dart';
 import 'user_avatar.dart';
 
-/// Shared by the global room and activity chats. Design look: mine = indigo bubble, white text,
+/// Shared by the global room and activity chats. Design look: mine = primary bubble, white text,
 /// time + double ticks below; others = avatar, grey name above, white bordered bubble.
 class CommunityMessageBubble extends StatelessWidget {
   const CommunityMessageBubble({

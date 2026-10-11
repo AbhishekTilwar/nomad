@@ -308,7 +308,7 @@ test('nearby: geohash cover + haversine post-filter, distance sort, map markers'
     const map = await e.api('GET', `${A}/map?lat=19.076&lng=72.8777&radiusKm=10`, { token: host.token });
     assert.equal(map.status, 200);
     assert.equal(map.body.data.length, 2);
-    assert.deepEqual(Object.keys(map.body.data[0]).sort(), ['category', 'city', 'costType', 'distanceKm', 'id', 'latitude', 'longitude', 'spotsLeft', 'startAt', 'title']);
+    assert.deepEqual(Object.keys(map.body.data[0]).sort(), ['approvalRequired', 'category', 'city', 'costType', 'distanceKm', 'hostDisplayName', 'hostPhotoUrl', 'id', 'latitude', 'longitude', 'spotsLeft', 'startAt', 'title', 'venueName']);
     assert.equal((await e.api('GET', `${A}/map?radiusKm=10`, { token: host.token })).status, 400);
   } finally { await e.close(); }
 });

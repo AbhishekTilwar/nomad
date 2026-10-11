@@ -161,6 +161,14 @@ class ExploreController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Resets category, price and date filters (keeps city and radius).
+  void clearFilters() {
+    categories.clear();
+    freeOnly = false;
+    dateFilter = DateFilter.any;
+    notifyListeners();
+  }
+
   void setFreeOnly(bool v) {
     freeOnly = v;
     notifyListeners();

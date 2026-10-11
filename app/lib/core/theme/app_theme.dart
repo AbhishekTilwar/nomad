@@ -15,7 +15,10 @@ class AppTheme {
     ).copyWith(
       primary: AppColors.primary,
       onPrimary: AppColors.onPrimary,
+      primaryContainer: AppColors.primaryLight,
+      onPrimaryContainer: AppColors.primaryPressed,
       secondary: AppColors.secondary,
+      secondaryContainer: AppColors.secondaryLight,
       surface: AppColors.surface,
       onSurface: AppColors.ink,
       onSurfaceVariant: AppColors.inkMuted,
@@ -83,7 +86,7 @@ class AppTheme {
       borderRadius: BorderRadius.circular(AppRadius.md),
     );
     OutlineInputBorder border(Color c, [double w = 1]) => OutlineInputBorder(
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(AppRadius.field),
       borderSide: BorderSide(color: c, width: w),
     );
 
@@ -96,6 +99,7 @@ class AppTheme {
         centerTitle: false,
         titleSpacing: 20,
         titleTextStyle: text.titleLarge,
+        surfaceTintColor: Colors.transparent,
       ),
       cardTheme: CardThemeData(
         color: scheme.surface,
@@ -108,6 +112,9 @@ class AppTheme {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
+          backgroundColor: scheme.primary,
+          foregroundColor: scheme.onPrimary,
+          disabledBackgroundColor: scheme.onSurface.withValues(alpha: 0.12),
           minimumSize: const Size.fromHeight(48),
           shape: btnShape,
           elevation: 0,
@@ -132,7 +139,9 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: scheme.surface,
+        fillColor: scheme.brightness == Brightness.light
+            ? AppColors.field
+            : scheme.surface,
         isDense: true,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 14,
@@ -151,14 +160,16 @@ class AppTheme {
         focusedErrorBorder: border(scheme.error, 1.5),
       ),
       chipTheme: base.chipTheme.copyWith(
-        shape: const StadiumBorder(),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.chip),
+        ),
         labelStyle: text.labelMedium,
         side: BorderSide(color: scheme.outline),
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: scheme.surface,
         surfaceTintColor: Colors.transparent,
-        indicatorColor: Colors.transparent, // design: no pill, tint only
+        indicatorColor: Colors.transparent, // tint only, no pill
         elevation: 0,
         height: 66,
         iconTheme: WidgetStateProperty.resolveWith(

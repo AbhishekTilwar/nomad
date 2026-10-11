@@ -91,4 +91,17 @@ void main() {
       expect(Validators.message('a' * 501), isNotNull);
     });
   });
+
+  test('ageRange buckets match the server', () {
+    expect(Validators.ageRange(18), '18-24');
+    expect(Validators.ageRange(24), '18-24');
+    expect(Validators.ageRange(25), '25-34');
+    expect(Validators.ageRange(34), '25-34');
+    expect(Validators.ageRange(35), '35-44');
+    expect(Validators.ageRange(44), '35-44');
+    expect(Validators.ageRange(45), '45-54');
+    expect(Validators.ageRange(54), '45-54');
+    expect(Validators.ageRange(55), '55+');
+    expect(Validators.ageRange(90), '55+');
+  });
 }

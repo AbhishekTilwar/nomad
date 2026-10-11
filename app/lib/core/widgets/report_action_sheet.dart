@@ -30,6 +30,7 @@ class ReportActionSheet extends StatefulWidget {
     required String title,
   }) => showModalBottomSheet<ReportResult>(
     context: context,
+    useRootNavigator: true,
     isScrollControlled: true,
     showDragHandle: true,
     builder: (_) => ReportActionSheet(title: title),

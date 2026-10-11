@@ -81,7 +81,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
         ),
         const SizedBox(height: 28),
         PrimaryButton(
-          backgroundColor: AppColors.navy,
+          backgroundColor: AppColors.primary,
           label: 'I\'ve verified my email',
           loading: _checking,
           onPressed: _check,

@@ -3,13 +3,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/config/app_config.dart';
 import '../../../core/config/map_config.dart';
 import '../../../core/widgets/basemap_layer.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/utils/app_exception.dart';
 import '../../../core/utils/category_style.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/primary_button.dart';
 import '../../../core/widgets/activity_marker.dart';
 import '../../../core/widgets/error_state.dart';
 import '../../../core/widgets/join_activity_button.dart';
@@ -17,6 +21,7 @@ import '../../../core/widgets/loading_skeleton.dart';
 import '../../../core/widgets/report_action_sheet.dart';
 import '../../../core/widgets/secondary_button.dart';
 import '../../../core/widgets/user_avatar.dart';
+import '../../profile/application/photo_gate.dart';
 import '../../profile/data/user_profile.dart';
 import '../../safety/data/safety_repository.dart';
 import '../data/activity_repository.dart';
@@ -67,6 +72,31 @@ class _DetailViewState extends State<_DetailView> {
       );
     } on AppException catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
+  Future<void> _share(Activity a) => SharePlus.instance.share(
+    ShareParams(
+      subject: a.title,
+      text:
+          '${a.title}\n${Formatters.activityRange(a.startAt, a.endAt)}\n'
+          '${a.venueName}\n\nFind it on Nomad Mingle: ${AppConfig.inviteUrl}',
+    ),
+  );
+
+  Future<void> _directions(Activity a) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final uri = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=${a.latitude},${a.longitude}',
+    );
+    var ok = false;
+    try {
+      ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {}
+    if (!ok) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Couldn\'t open a maps app.')),
+      );
     }
   }
 
@@ -132,9 +162,6 @@ class _DetailViewState extends State<_DetailView> {
     final color = CategoryStyle.color(a.category);
     final joinState = joinUiStateFor(a);
     final isMember = a.isHost || a.membership == MembershipStatus.approved;
-    final capFraction = a.capacity == 0
-        ? 0.0
-        : (a.participantCount / a.capacity).clamp(0.0, 1.0);
 
     Widget fact(IconData icon, String text, {String? sub}) => Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -186,6 +213,7 @@ class _DetailViewState extends State<_DetailView> {
             ),
             onSelected: (v) {
               if (v == 'report') _report(a);
+              if (v == 'share') _share(a);
               if (v == 'cancel') {
                 _confirm(
                   'Cancel this plan?',
@@ -202,6 +230,7 @@ class _DetailViewState extends State<_DetailView> {
               }
             },
             itemBuilder: (_) => [
+              const PopupMenuItem(value: 'share', child: Text('Share plan')),
               if (a.isHost && a.status == ActivityStatus.scheduled) ...[
                 const PopupMenuItem(value: 'edit', child: Text('Edit plan')),
                 const PopupMenuItem(
@@ -275,6 +304,13 @@ class _DetailViewState extends State<_DetailView> {
                           ),
                       ],
                     ),
+                    if (isMember && a.status == ActivityStatus.scheduled) ...[
+                      const SizedBox(height: 16),
+                      _GoingCard(
+                        activity: a,
+                        onDirections: () => _directions(a),
+                      ),
+                    ],
                     const SizedBox(height: 16),
                     fact(
                       Icons.calendar_today_outlined,
@@ -291,19 +327,11 @@ class _DetailViewState extends State<_DetailView> {
                           Formatters.distance(a.distanceKm),
                       ].where((s) => s.isNotEmpty).join(' · '),
                     ),
-                    Row(
-                      children: [
-                        UserAvatar(
-                          name: a.hostDisplayName,
-                          photoUrl: a.hostPhotoUrl,
-                          size: 24,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '${a.participantCount} going',
-                          style: t.textTheme.bodyMedium,
-                        ),
-                      ],
+                    fact(
+                      Icons.group_outlined,
+                      a.isFull
+                          ? '${a.participantCount} going · full'
+                          : '${a.participantCount} going · ${a.spotsLeft} spot${a.spotsLeft == 1 ? '' : 's'} left',
                     ),
                     if (!a.isFree && a.costDescription.isNotEmpty) ...[
                       const SizedBox(height: 10),
@@ -361,24 +389,7 @@ class _DetailViewState extends State<_DetailView> {
                     const SizedBox(height: 16),
                     Text(a.description, style: t.textTheme.bodyMedium),
                     const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        Text('Capacity', style: t.textTheme.titleSmall),
-                        const Spacer(),
-                        Text(
-                          '${a.participantCount} / ${a.capacity}',
-                          style: t.textTheme.titleSmall,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(AppRadius.pill),
-                      child: LinearProgressIndicator(
-                        minHeight: 6,
-                        value: capFraction,
-                      ),
-                    ),
+                    _WhatToExpect(activity: a),
                     if (a.safetyNotes.isNotEmpty ||
                         a.cancellationPolicy.isNotEmpty) ...[
                       const SizedBox(height: 20),
@@ -429,18 +440,16 @@ class _DetailViewState extends State<_DetailView> {
                     const SizedBox(height: 8),
                     _MiniMap(activity: a),
                     const SizedBox(height: 8),
+                    SecondaryButton(
+                      icon: Icons.directions_outlined,
+                      label: 'Get directions',
+                      onPressed: () => _directions(a),
+                    ),
+                    const SizedBox(height: 8),
                     Text(
                       'Meet in a public place and let a friend know where you\'re going.',
                       style: t.textTheme.bodySmall,
                     ),
-                    if (isMember && a.status == ActivityStatus.scheduled) ...[
-                      const SizedBox(height: 16),
-                      SecondaryButton(
-                        icon: Icons.chat_bubble_outline,
-                        label: 'Open group chat',
-                        onPressed: () => context.push('/activity/${a.id}/chat'),
-                      ),
-                    ],
                   ],
                 ),
               ),
@@ -451,20 +460,208 @@ class _DetailViewState extends State<_DetailView> {
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-          child: JoinActivityButton(
-            state: joinState,
-            loading: c.busy,
-            onJoin: c.join,
-            onLeave: () => _confirm(
-              joinState == JoinUiState.requested
-                  ? 'Withdraw your request?'
-                  : 'Leave this plan?',
-              'You can request to join again later if there\'s space.',
-              joinState == JoinUiState.requested ? 'Withdraw' : 'Leave',
-              c.leave,
-            ),
-          ),
+          child:
+              (joinState == JoinUiState.joined ||
+                  joinState == JoinUiState.hosting)
+              // Going: the next step is the chat; leaving (or managing, for
+              // the host) is a smaller secondary action beside it.
+              ? Row(
+                  children: [
+                    Expanded(
+                      child: PrimaryButton(
+                        label: 'Open group chat',
+                        onPressed: () => context.push('/activity/${a.id}/chat'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    SizedBox(
+                      height: 52,
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(96, 52),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                          ),
+                        ),
+                        onPressed: c.busy
+                            ? null
+                            : a.isHost
+                            ? () => context.push('/activity/${a.id}/members')
+                            : () => _confirm(
+                                'Leave this plan?',
+                                'You can request to join again later if there\'s space.',
+                                'Leave',
+                                c.leave,
+                              ),
+                        child: Text(a.isHost ? 'Manage' : 'Leave'),
+                      ),
+                    ),
+                  ],
+                )
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (joinState == JoinUiState.requested)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Text(
+                          'You\'ll see the host\'s reply under the bell on the map.',
+                          style: t.textTheme.bodySmall,
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    JoinActivityButton(
+                      state: joinState,
+                      loading: c.busy,
+                      onJoin: () async {
+                        if (await ensureProfilePhoto(
+                          context,
+                          reason: 'Add one to join this plan.',
+                        )) {
+                          c.join();
+                        }
+                      },
+                      onLeave: () => _confirm(
+                        'Withdraw your request?',
+                        'You can request to join again later if there\'s space.',
+                        'Withdraw',
+                        c.leave,
+                      ),
+                    ),
+                  ],
+                ),
         ),
+      ),
+    );
+  }
+}
+
+/// Plain-language summary of what joining means, built only from real plan
+/// fields so a first-timer can decide without guessing.
+class _WhatToExpect extends StatelessWidget {
+  const _WhatToExpect({required this.activity});
+  final Activity activity;
+
+  @override
+  Widget build(BuildContext context) {
+    final a = activity;
+    final t = Theme.of(context);
+    final mins = a.endAt.difference(a.startAt).inMinutes;
+    final duration = mins <= 0
+        ? null
+        : mins < 60
+        ? '$mins min'
+        : '${(mins / 60).toStringAsFixed(mins % 60 == 0 ? 0 : 1)} hr';
+    final lines = <(IconData, String)>[
+      (
+        Icons.groups_2_outlined,
+        'A group of up to ${a.capacity} people${duration == null ? '' : ', about $duration'}.',
+      ),
+      (
+        a.approvalRequired
+            ? Icons.how_to_reg_outlined
+            : Icons.lock_open_outlined,
+        a.approvalRequired
+            ? 'The host reviews each request before you\'re in.'
+            : 'No approval needed. Join and you\'re in.',
+      ),
+      (
+        Icons.payments_outlined,
+        a.isFree
+            ? 'Free to join.'
+            : a.costDescription.isEmpty
+            ? 'Paid. Ask the host in the group chat what it covers.'
+            : 'Paid: ${a.costDescription}',
+      ),
+      (
+        Icons.chat_bubble_outline,
+        'After joining you can chat with the group and the host.',
+      ),
+    ];
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        border: Border.all(color: t.colorScheme.outline),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('What to expect', style: t.textTheme.titleSmall),
+          const SizedBox(height: 8),
+          for (final (icon, text) in lines)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(icon, size: 18, color: t.colorScheme.primary),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(text, style: t.textTheme.bodyMedium)),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Shown once you are in: the two things people look for after joining,
+/// when and where, plus a one-tap route. Real data only, no countdowns.
+class _GoingCard extends StatelessWidget {
+  const _GoingCard({required this.activity, required this.onDirections});
+  final Activity activity;
+  final VoidCallback onDirections;
+
+  @override
+  Widget build(BuildContext context) {
+    final a = activity;
+    final t = Theme.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.primaryLight,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.check_circle,
+                color: AppColors.primary,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                a.isHost ? 'You\'re hosting' : 'You\'re going',
+                style: t.textTheme.titleSmall?.copyWith(
+                  color: AppColors.primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            Formatters.activityWhen(a.startAt),
+            style: t.textTheme.titleMedium,
+          ),
+          Text(a.venueName, style: t.textTheme.bodyMedium),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              backgroundColor: Colors.white,
+              minimumSize: const Size(0, 44),
+            ),
+            onPressed: onDirections,
+            icon: const Icon(Icons.directions_outlined, size: 18),
+            label: const Text('Get directions'),
+          ),
+        ],
       ),
     );
   }

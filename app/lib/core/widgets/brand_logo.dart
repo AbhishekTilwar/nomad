@@ -21,7 +21,7 @@ class BrandLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = onDark ? Colors.white : AppColors.navy;
+    final color = onDark ? Colors.white : AppColors.primary;
     final iconW = size * 1.15;
     return Semantics(
       label: 'Nomad Mingle',

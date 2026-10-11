@@ -44,6 +44,16 @@ class Validators {
     return age;
   }
 
+  /// The bucket other members see instead of an exact age. Mirrors the
+  /// server's `ageRangeFor` so the app can say so before the birthday is set.
+  static String ageRange(int age) {
+    if (age < 25) return '18-24';
+    if (age < 35) return '25-34';
+    if (age < 45) return '35-44';
+    if (age < 55) return '45-54';
+    return '55+';
+  }
+
   static String? dateOfBirth(DateTime? dob, {DateTime? now}) {
     if (dob == null) return 'Select your date of birth.';
     final today = now ?? DateTime.now();

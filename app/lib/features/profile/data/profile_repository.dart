@@ -14,6 +14,7 @@ abstract class ProfileRepository {
     required List<String> interests,
     required List<String> preferredActivityTypes,
     String? photoUrl,
+    String? gender,
   });
 
   Future<UserProfile> updateProfile({
@@ -59,6 +60,7 @@ class ApiProfileRepository implements ProfileRepository {
     required List<String> interests,
     required List<String> preferredActivityTypes,
     String? photoUrl,
+    String? gender,
   }) async {
     final res = await _api.put(
       '/users/me',
@@ -70,6 +72,7 @@ class ApiProfileRepository implements ProfileRepository {
         'interests': interests,
         'preferredActivityTypes': preferredActivityTypes,
         'photoUrl': ?photoUrl,
+        'gender': ?gender,
       },
     );
     return UserProfile.fromJson(res.asMap);

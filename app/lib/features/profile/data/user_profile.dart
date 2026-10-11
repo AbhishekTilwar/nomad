@@ -13,6 +13,7 @@ class UserProfile {
     this.countryCode,
     this.instagram,
     this.photos = const [],
+    this.ageRange,
   });
 
   final String uid;
@@ -28,10 +29,28 @@ class UserProfile {
   final String? countryCode;
   final String? instagram;
 
+  /// Bucketed age (e.g. "25-34") from the server. The exact birthday is never
+  /// returned and cannot be changed after sign-up.
+  final String? ageRange;
+
   /// Extra gallery photos (max 6), shown on the public profile.
   final List<String> photos;
 
   bool get isStaff => role == 'admin' || role == 'moderator';
+
+  /// How complete the profile is, 0-100: photo, bio, Instagram, hometown,
+  /// at least three interests and at least one gallery photo (1/6 each).
+  int get completionPercent {
+    final done = [
+      (photoUrl ?? '').isNotEmpty,
+      bio.trim().isNotEmpty,
+      (instagram ?? '').isNotEmpty,
+      (countryCode ?? '').isNotEmpty,
+      interests.length >= 3,
+      photos.isNotEmpty,
+    ].where((x) => x).length;
+    return (done * 100 / 6).round();
+  }
 
   factory UserProfile.fromJson(Map<String, dynamic> j) => UserProfile(
     uid: (j['uid'] ?? j['id']) as String,
@@ -49,6 +68,7 @@ class UserProfile {
     countryCode: j['countryCode'] as String?,
     instagram: j['instagram'] as String?,
     photos: List<String>.from(j['photos'] as List? ?? const []),
+    ageRange: j['ageRange'] as String?,
   );
 }
 

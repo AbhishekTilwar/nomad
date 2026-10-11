@@ -151,7 +151,7 @@ class AuthSwitchRow extends StatelessWidget {
           child: Text(
             action,
             style: t.textTheme.bodyMedium?.copyWith(
-              color: AppColors.navy,
+              color: AppColors.primary,
               fontWeight: FontWeight.w700,
             ),
           ),

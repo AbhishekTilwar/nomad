@@ -16,6 +16,22 @@ class AppConfig {
     defaultValue: 'localhost',
   );
 
+  static const firestoreEmulatorPort = int.fromEnvironment(
+    'FIRESTORE_EMULATOR_PORT',
+    defaultValue: 8080,
+  );
+  static const storageEmulatorPort = int.fromEnvironment(
+    'STORAGE_EMULATOR_PORT',
+    defaultValue: 9199,
+  );
+
+  /// Link placed in invitations. Override per build with
+  /// `--dart-define=INVITE_URL=...` once the store listing / landing page exists.
+  static const inviteUrl = String.fromEnvironment(
+    'INVITE_URL',
+    defaultValue: 'https://nomadmingle.app',
+  );
+
   static const apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
     defaultValue: 'http://localhost:8080/api/v1',

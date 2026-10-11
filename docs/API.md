@@ -7,7 +7,7 @@ Error codes: `unauthenticated`(401) `forbidden`(403) `not_found`(404) `validatio
 
 ## Users
 - `GET /users/me` → own profile + private fields (no DOB; returns `ageRange`, `role`)
-- `PUT /users/me` (create/complete profile on first call) / `PATCH /users/me`: `displayName(2-40) bio(<=300) city interests[] preferredActivityTypes[] dateOfBirth(ISO, required on creation, must be >=18) photoUrl countryCode(ISO alpha-2|null) instagram(handle 1-30 [A-Za-z0-9._], leading @ stripped|null)`
+- `PUT /users/me` (create/complete profile on first call) / `PATCH /users/me`: `displayName(2-40) bio(<=300) city interests[] preferredActivityTypes[] dateOfBirth(ISO, required on creation, must be >=18) photoUrl countryCode(ISO alpha-2|null) instagram(handle 1-30 [A-Za-z0-9._], leading @ stripped|null) gender(male|female|non_binary, optional, private)`
 - `DELETE /users/me` → deletes profile data, blocks, tokens; marks messages' sender as deleted user; deletes Auth user
 - `GET /users/:uid` → public fields only, plus `friendship: none|friends|request_sent|request_received` relative to the caller
 - `PUT /users/me/location {lat, lng, discoverable}` → `{discoverable}`. Stores only a 2-decimal approximate location while discoverable; `discoverable:false` removes it. (20/min/user)
@@ -56,7 +56,7 @@ Error codes: `unauthenticated`(401) `forbidden`(403) `not_found`(404) `validatio
 - `visibility=private` activities are not listed, are `404` for non-members, and every join is a `requested` (approval) join. Join by id is still possible (ids are unguessable).
 - Join conflicts (`409`, `details.reason`): `already_joined`, `full`, `rejected`, `is_host`, `not_scheduled`, `ended`. A user `removed` by the host gets `403 forbidden` on rejoin; `left` users may rejoin.
 - Listing: `GET /activities` returns items in `data` + `nextCursor` (opaque). Date sort is index-backed (`status[+city][+category]+startAt`); `q`, `free`, `minSpots` and `visibility` are applied in memory over scanned pages (up to 5 batches), so a page can be shorter than `limit` only at the end. With `lat`+`lng` (`radiusKm` default 10, max 100) the geohash path is used: items carry `distanceKm`; `sort` defaults to `proximity`; each page re-reads the covering cells (max 150 docs per cell). `sort=relevance` reorders within the fetched page only.
-- `GET /activities/map` marker: `{id,title,category,latitude,longitude,startAt,city,spotsLeft,costType,distanceKm}`; `lat`,`lng` required, `radiusKm` default 10.
+- `GET /activities/map` marker: `{id,title,category,latitude,longitude,startAt,city,spotsLeft,costType,venueName,hostDisplayName,hostPhotoUrl,approvalRequired,distanceKm}` (venue/host fields added so list cards can show who and where without a second request); `lat`,`lng` required, `radiusKm` default 10.
 - `GET /activities/:id/messages?limit&cursor` returns newest first (`createdAt desc`), visible messages only, excluding senders the caller blocked.
 - Messages in a cancelled/completed activity are read-only (`POST` → `409`, `details.reason=read_only`) and readable by approved members for 30 days after `updatedAt`.
 

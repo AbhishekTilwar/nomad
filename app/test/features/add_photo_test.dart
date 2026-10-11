@@ -70,6 +70,12 @@ Future<(FakeImages, SessionController, FakeProfileRepository)> pumpScreen(
   return (images, session, repo);
 }
 
+Future<void> choose(WidgetTester t, String option) async {
+  await t.tap(find.byKey(const Key('photo-tile')));
+  await t.pumpAndSettle();
+  await t.tap(find.text(option));
+}
+
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
@@ -78,34 +84,45 @@ void main() {
     (t) async {
       final (images, session, repo) = await pumpScreen(t);
       expect(session.status, SessionStatus.needsPhoto);
-      await t.tap(find.text('Take photo'));
+      await choose(t, 'Take photo');
       await t.pumpAndSettle();
       expect(images.calls.single, (kind: ImageKind.avatar, camera: true));
       expect(repo.lastPhotoUrl, 'https://example.com/me.jpg');
       expect(find.text('Looking good!'), findsOneWidget);
       await t.tap(find.text('Continue'));
       await t.pump();
-      expect(session.status, SessionStatus.ready);
+      expect(session.status, SessionStatus.needsProfileExtras);
     },
   );
 
   testWidgets('Choose from gallery uses the gallery', (t) async {
     final (images, _, _) = await pumpScreen(t);
-    await t.tap(find.text('Choose from gallery'));
+    await choose(t, 'Choose from gallery');
     await t.pumpAndSettle();
     expect(images.calls.single.camera, isFalse);
   });
 
-  testWidgets('a photo is required: there is no Skip', (t) async {
+  testWidgets('onboarding: the photo can be skipped for now', (t) async {
     final (images, session, _) = await pumpScreen(t);
-    expect(find.text('Skip'), findsNothing);
+    expect(find.text('Skip for now'), findsOneWidget);
     expect(images.calls, isEmpty);
     expect(session.status, SessionStatus.needsPhoto);
+    await t.tap(find.text('Skip for now'));
+    await t.pump();
+    expect(session.status, SessionStatus.needsProfileExtras);
+    expect(session.profile?.photoUrl, isNull);
+  });
+
+  testWidgets('Skip disappears once a photo is chosen', (t) async {
+    await pumpScreen(t);
+    await choose(t, 'Take photo');
+    await t.pumpAndSettle();
+    expect(find.text('Skip for now'), findsNothing);
   });
 
   testWidgets('first photo also seeds the gallery', (t) async {
     final (_, _, repo) = await pumpScreen(t);
-    await t.tap(find.text('Take photo'));
+    await choose(t, 'Take photo');
     await t.pumpAndSettle();
     expect(repo.profile!.photos, ['https://example.com/me.jpg']);
   });
@@ -117,7 +134,7 @@ void main() {
     images.error = const AppException(
       'That photo is too large. Pick one under 5 MB.',
     );
-    await t.tap(find.text('Choose from gallery'));
+    await choose(t, 'Choose from gallery');
     await t.pumpAndSettle();
     expect(find.textContaining('too large'), findsOneWidget);
     expect(session.status, SessionStatus.needsPhoto);

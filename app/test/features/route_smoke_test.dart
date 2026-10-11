@@ -7,6 +7,8 @@ import 'package:nomad_mingle/app/app.dart';
 import 'package:nomad_mingle/core/services/image_upload_service.dart';
 import 'package:nomad_mingle/core/services/location_service.dart';
 import 'package:nomad_mingle/core/services/translation_service.dart';
+import 'package:nomad_mingle/features/activities/data/my_activities_repository.dart';
+import 'package:nomad_mingle/features/activities/models/activity.dart';
 import 'package:nomad_mingle/features/auth/data/auth_repository.dart';
 import 'package:nomad_mingle/features/onboarding/application/intro_store.dart';
 import 'package:nomad_mingle/features/shell/main_shell.dart';
@@ -59,6 +61,9 @@ class _Location implements LocationService {
       const LatLng(18.5204, 73.8567),
     );
   }
+
+  @override
+  Future<LocationResult> currentIfPermitted() => current();
 
   @override
   Future<void> openSettings() async {}
@@ -137,7 +142,10 @@ late _Images _images;
 late _Location _location;
 late _Social _social;
 
-Future<void> pumpSignedIn(WidgetTester t) async {
+Future<void> pumpSignedIn(
+  WidgetTester t, {
+  FakeMyActivitiesRepository? mine,
+}) async {
   usePhone(t);
   _images = _Images();
   _location = _Location();
@@ -148,7 +156,7 @@ Future<void> pumpSignedIn(WidgetTester t) async {
       auth: FakeAuthRepository(_user),
       profiles: FakeProfileRepository(profile: _profile),
       activities: FakeActivityRepository([sampleActivity()]),
-      myActivities: FakeMyActivitiesRepository(),
+      myActivities: mine ?? FakeMyActivitiesRepository(),
       publicProfiles: _PublicProfiles(),
       safety: FakeSafetyRepository(),
       images: _images,
@@ -209,7 +217,7 @@ void main() {
     expect(find.byTooltip('Create a plan'), findsOneWidget);
     await t.tap(find.byTooltip('Create a plan'));
     await settle(t);
-    expect(find.text('Create a Meetup'), findsOneWidget);
+    expect(find.text('Create a Plan'), findsOneWidget);
     await t.tap(find.byTooltip('Back'));
     await settle(t);
     expect(find.byTooltip('Create a plan'), findsOneWidget);
@@ -231,12 +239,81 @@ void main() {
     expect(find.byTooltip('Create a plan'), findsOneWidget);
   });
 
+  testWidgets('chats: filters, search and the + invite button', (t) async {
+    await pumpSignedIn(t);
+    await t.tap(find.byKey(const ValueKey('nav-Chat')));
+    await settle(t);
+    // Filter chips: Plans hides the pinned community chat, All brings it back.
+    expect(find.text('Unread'), findsOneWidget);
+    await t.tap(find.text('Plans'));
+    await settle(t);
+    expect(find.text('Mingle Community'), findsNothing);
+    await t.tap(find.text('All'));
+    await settle(t);
+    expect(find.text('Mingle Community'), findsOneWidget);
+    // Search narrows the list.
+    await t.tap(find.byKey(const ValueKey('chats-search')));
+    await settle(t);
+    await t.enterText(find.byType(TextField), 'zzz');
+    await settle(t);
+    expect(find.text('Mingle Community'), findsNothing);
+    expect(find.text('No matching chats'), findsOneWidget);
+    await t.tap(find.byTooltip('Close search'));
+    await settle(t);
+    // + opens Invite friends.
+    await t.tap(find.byKey(const ValueKey('chats-invite')));
+    await settle(t);
+    expect(find.text('Invite friends'), findsWidgets);
+    expect(find.text('Share on WhatsApp'), findsOneWidget);
+  });
+
   testWidgets('map header: travelers sheet lists nearby members', (t) async {
     await pumpSignedIn(t);
     await t.tap(find.text('1 nearby'));
     await settle(t);
     expect(find.text('Ivan K'), findsOneWidget);
     expect(find.text('Show me here'), findsOneWidget);
+  });
+
+  testWidgets('bottom sheets cover the floating nav bar, not sit under it', (
+    t,
+  ) async {
+    await pumpSignedIn(t);
+    await t.tap(find.text('1 nearby'));
+    await settle(t);
+    expect(find.text('Show me here'), findsOneWidget);
+    // The sheet is above the bar, so a tap where the bar's Chat tab is lands
+    // on the sheet: it stays open and no tab switch happens behind it.
+    await t.tap(find.byKey(const ValueKey('nav-Chat')), warnIfMissed: false);
+    await settle(t);
+    expect(find.text('Show me here'), findsOneWidget);
+    expect(find.byKey(const ValueKey('chats-invite')), findsNothing);
+  });
+
+  testWidgets('map stays clear of per-plan banners, even with plans joined', (
+    t,
+  ) async {
+    final mine = FakeMyActivitiesRepository()
+      ..byRole[MyActivitiesRole.joined] = [
+        MyActivity(
+          activity: sampleActivity(
+            id: 'later',
+            title: 'Later hike',
+            membership: MembershipStatus.approved,
+          ),
+        ),
+        MyActivity(
+          activity: sampleActivity(
+            id: 'other',
+            title: 'Other walk',
+            membership: MembershipStatus.approved,
+          ),
+        ),
+      ];
+    await pumpSignedIn(t, mine: mine);
+    expect(find.textContaining('Later hike'), findsNothing);
+    expect(find.textContaining('Other walk'), findsNothing);
+    expect(find.byIcon(Icons.event_available), findsNothing);
   });
 
   testWidgets('routes: every screen builds without errors', (t) async {
@@ -258,7 +335,7 @@ void main() {
       '/community': null,
       '/user/other': 'Sarah Johnson',
       '/activity/a1': null,
-      '/explore/create': 'Create a Meetup',
+      '/explore/create': 'Create a Plan',
     };
     for (final e in routes.entries) {
       routerOf(t).go(e.key);

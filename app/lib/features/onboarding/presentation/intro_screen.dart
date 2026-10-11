@@ -16,18 +16,18 @@ class _IntroPage {
 const _pages = <_IntroPage>[
   _IntroPage(
     HeroSceneKind.sunsetHills,
-    'Real People,\nShared Adventures',
-    'Join a global community of travelers,\ncreators and explorers.',
+    'Find Your People',
+    'Coffee, hikes, food walks and more.\nSmall group plans near you in Mumbai\nand Pune.',
   ),
   _IntroPage(
     HeroSceneKind.cliffVillage,
-    'Explore Activities\n& Meet Locals',
-    'Join group activities, discover new\nplaces and make real connections.',
+    'Make a Plan',
+    'Browse plans on the map, see who is\nhosting and what to expect, then join.',
   ),
   _IntroPage(
     HeroSceneKind.campfire,
-    'A Community\nThat Feels Like Home',
-    'Chat, join rooms, share stories.\nYou\'re not just a traveler anymore.',
+    'Go Together',
+    'Chat with your group before you meet,\nso the first hello isn\'t at the door.',
   ),
 ];
 
@@ -93,7 +93,7 @@ class _IntroScreenState extends State<IntroScreen> {
                             _Dots(index: _page, count: _pages.length),
                             const SizedBox(height: 18),
                             PrimaryButton(
-                              backgroundColor: AppColors.navy,
+                              backgroundColor: AppColors.primary,
                               label: last ? 'Get Started' : 'Next',
                               onPressed: last ? _finish : _next,
                             ),
@@ -226,7 +226,7 @@ class _Dots extends StatelessWidget {
               height: 8,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: i == index ? AppColors.navy : AppColors.outline,
+                color: i == index ? AppColors.primary : AppColors.outline,
               ),
             ),
         ],

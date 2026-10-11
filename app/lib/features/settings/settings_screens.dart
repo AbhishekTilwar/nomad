@@ -59,7 +59,8 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  // Push Notifications master switch. Initial state comes from `GET /users/me`
+  // Notifications master switch (the app has no push delivery yet, so it is
+  // not labelled "push"). Initial state comes from `GET /users/me`
   // (private.notificationPrefs); if that fails we default to on (the server default).
   bool _push = true;
   bool _busy = false;
@@ -140,8 +141,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _tile(
             context,
             Icons.notifications_none,
-            'Push Notifications',
+            'Allow notifications',
             null,
+            subtitle: 'Join replies, plan changes and messages',
             trailing: Switch(value: _push, onChanged: _busy ? null : _setPush),
           ),
           if (_error != null)
@@ -277,7 +279,7 @@ class LocationSwitchScreen extends StatelessWidget {
   }
 }
 
-/// Light grey-indigo city skyline with a hill line behind it (decorative).
+/// Light grey-teal city skyline with a hill line behind it (decorative).
 class _SkylinePainter extends CustomPainter {
   const _SkylinePainter();
 
@@ -285,13 +287,13 @@ class _SkylinePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final base = h - 6;
-    const ink = Color(0xFFB9BEE6);
+    const ink = Color(0xFFA9C9C2);
     final line = Paint()
       ..color = ink
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.4
       ..strokeJoin = StrokeJoin.round;
-    final fill = Paint()..color = const Color(0xFFEEF0FF);
+    final fill = Paint()..color = AppColors.primaryLight;
 
     // Hills on the right.
     final hills = Path()

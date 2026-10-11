@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoDatePickerMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -9,14 +10,18 @@ import '../../../core/config/map_config.dart';
 import '../../../core/services/image_upload_service.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/utils/app_exception.dart';
+import '../../../core/utils/category_style.dart';
+import '../../../core/utils/validators.dart';
 import '../../../core/widgets/activity_card.dart';
 import '../../../core/widgets/form_field.dart';
 import '../../../core/widgets/app_chip.dart';
+import '../../../core/widgets/picker_sheets.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../../core/widgets/secondary_button.dart';
 import '../../activities/data/activity_repository.dart';
 import '../../activities/models/activity.dart';
 import '../../auth/application/session_controller.dart';
+import '../../profile/application/photo_gate.dart';
 import '../../explore/presentation/explore_controller.dart';
 import '../../profile/data/user_profile.dart';
 import 'create_activity_controller.dart';
@@ -96,29 +101,68 @@ class _CreateViewState extends State<_CreateView> {
 
   Future<void> _pickDateTime(CreateActivityController c) async {
     final now = DateTime.now();
-    final date = await showDatePicker(
-      context: context,
-      initialDate: c.startAt ?? now.add(const Duration(days: 1)),
-      firstDate: now,
-      lastDate: now.add(const Duration(days: 180)),
+    // Wheels move in 5-minute steps; keep every bound on that grid.
+    DateTime up5(DateTime d) {
+      final extra = (5 - d.minute % 5) % 5;
+      return DateTime(d.year, d.month, d.day, d.hour, d.minute + extra);
+    }
+
+    final min = up5(now);
+    var initial = up5(c.startAt ?? now.add(const Duration(days: 1)));
+    if (initial.isBefore(min)) initial = min;
+    final picked = await showDateWheelSheet(
+      context,
+      title: 'When does it start?',
+      helper: 'Plans start at least 30 minutes from now.',
+      mode: CupertinoDatePickerMode.dateAndTime,
+      initial: initial,
+      min: min,
+      max: now.add(const Duration(days: 180)),
+      minuteInterval: 5,
+      confirmLabel: 'Set date and time',
+      error: (d) => Validators.startTime(d),
+      summary: (d) => DateFormat('EEE, d MMM · h:mm a').format(d),
     );
-    if (date == null || !mounted) return;
-    final time = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(
-        c.startAt ?? now.add(const Duration(hours: 3)),
-      ),
+    if (picked != null) c.update(() => c.startAt = picked);
+  }
+
+  Future<void> _pickCategory(CreateActivityController c) async {
+    final v = await showOptionSheet<String>(
+      context,
+      title: 'What kind of plan is it?',
+      selected: c.category,
+      options: [
+        for (final i in kInterests)
+          PickerOption(
+            i.id,
+            i.label,
+            icon: CategoryStyle.icon(i.id),
+            iconColor: CategoryStyle.color(i.id),
+          ),
+      ],
     );
-    if (time == null) return;
-    c.update(
-      () => c.startAt = DateTime(
-        date.year,
-        date.month,
-        date.day,
-        time.hour,
-        time.minute,
-      ),
+    if (v != null) c.update(() => c.category = v);
+  }
+
+  static const _durationLabels = {
+    60: '1 hour',
+    120: '2 hours',
+    180: '3 hours',
+    240: '4 hours',
+    360: '6 hours',
+    600: 'Most of the day',
+  };
+
+  Future<void> _pickDuration(CreateActivityController c) async {
+    final v = await showOptionSheet<int>(
+      context,
+      title: 'How long will it run?',
+      selected: c.durationMinutes,
+      options: [
+        for (final e in _durationLabels.entries) PickerOption(e.key, e.value),
+      ],
     );
+    if (v != null) c.update(() => c.durationMinutes = v);
   }
 
   Future<void> _pickLocation(CreateActivityController c) async {
@@ -158,6 +202,13 @@ class _CreateViewState extends State<_CreateView> {
       await _saveEdit(c);
       return;
     }
+    if (!await ensureProfilePhoto(
+      context,
+      reason: 'Add one before you host a plan.',
+    )) {
+      return;
+    }
+    if (!mounted) return;
     final session = context.read<SessionController>();
     final d = c.buildDraft();
     final preview = Activity(
@@ -185,6 +236,7 @@ class _CreateViewState extends State<_CreateView> {
     );
     final publish = await showModalBottomSheet<bool>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       showDragHandle: true,
       builder: (sheet) => Padding(
@@ -222,6 +274,9 @@ class _CreateViewState extends State<_CreateView> {
       messenger.showSnackBar(
         SnackBar(
           content: const Text('Your plan is live on the map!'),
+          // Action snackbars stay forever by default; this one is just news.
+          persist: false,
+          duration: const Duration(seconds: 5),
           action: SnackBarAction(
             label: 'View',
             onPressed: () => router.push('/activity/${created.id}'),
@@ -295,7 +350,7 @@ class _CreateViewState extends State<_CreateView> {
           onPressed: () =>
               context.canPop() ? context.pop() : context.go('/explore'),
         ),
-        title: Text(c.isEditing ? 'Edit Meetup' : 'Create a Meetup'),
+        title: Text(c.isEditing ? 'Edit Plan' : 'Create a Plan'),
       ),
       body: SafeArea(
         child: ListView(
@@ -313,45 +368,30 @@ class _CreateViewState extends State<_CreateView> {
               textInputAction: TextInputAction.next,
             ),
             gap,
-            AppDropdownField<String>(
+            PickerField(
               label: 'Category',
               hint: 'Select category',
-              value: c.category,
-              items: [
-                for (final i in kInterests)
-                  DropdownMenuItem(value: i.id, child: Text(i.label)),
-              ],
-              onChanged: (v) => c.update(() => c.category = v),
-              validator: (_) => err['category'],
+              valueText: c.category == null ? null : interestLabel(c.category!),
+              errorText: err['category'],
+              onTap: () => _pickCategory(c),
             ),
             gap,
-            AppFormField(
+            PickerField(
               label: 'Date & Time',
               hint: 'Select date & time',
-              initialValue: c.startAt == null
-                  ? ''
+              icon: Icons.calendar_today_outlined,
+              valueText: c.startAt == null
+                  ? null
                   : DateFormat('EEE, d MMM · h:mm a').format(c.startAt!),
-              readOnly: true,
+              errorText: err['startAt'],
               onTap: () => _pickDateTime(c),
-              suffixIcon: const Icon(Icons.calendar_today_outlined, size: 20),
-              validator: (_) => err['startAt'],
             ),
             gap,
-            DropdownButtonFormField<int>(
-              initialValue: c.durationMinutes,
-              decoration: const InputDecoration(),
-              items: const [
-                DropdownMenuItem(value: 60, child: Text('Duration: 1 hour')),
-                DropdownMenuItem(value: 120, child: Text('Duration: 2 hours')),
-                DropdownMenuItem(value: 180, child: Text('Duration: 3 hours')),
-                DropdownMenuItem(value: 240, child: Text('Duration: 4 hours')),
-                DropdownMenuItem(value: 360, child: Text('Duration: 6 hours')),
-                DropdownMenuItem(
-                  value: 600,
-                  child: Text('Duration: most of the day'),
-                ),
-              ],
-              onChanged: (v) => c.update(() => c.durationMinutes = v ?? 120),
+            PickerField(
+              label: 'Duration',
+              hint: 'How long will it run?',
+              valueText: _durationLabels[c.durationMinutes],
+              onTap: () => _pickDuration(c),
             ),
             gap,
             AppFormField(
@@ -368,7 +408,7 @@ class _CreateViewState extends State<_CreateView> {
               hint: 'Choose on map',
               initialValue: c.location == null
                   ? ''
-                  : 'Pinned (${c.location!.latitude.toStringAsFixed(4)}, ${c.location!.longitude.toStringAsFixed(4)})',
+                  : 'Pin dropped on the map. Tap to change.',
               readOnly: true,
               prefixIcon: Icons.place_outlined,
               onTap: () => _pickLocation(c),
@@ -453,8 +493,8 @@ class _CreateViewState extends State<_CreateView> {
             ),
             section('Good to know (optional)'),
             AppFormField(
-              label: 'Safety notes',
-              hint: 'Meeting point details, what to bring…',
+              label: 'Meeting point and notes',
+              hint: 'Where exactly to meet, what to bring, anything to know…',
               controller: _safety,
               maxLines: 2,
               maxLength: 500,
@@ -464,6 +504,8 @@ class _CreateViewState extends State<_CreateView> {
             gap,
             AppFormField(
               label: 'Cancellation policy',
+              hint:
+                  'e.g. Please tell the group 24 hours ahead if you can\'t come.',
               controller: _cancel,
               maxLines: 2,
               maxLength: 500,

@@ -205,6 +205,9 @@ export function createActivitiesService({ db, fv, now, notifications, config, qu
       return {
         id: d.id, title: a.title, category: a.category, latitude: a.latitude, longitude: a.longitude,
         startAt: toJson(a.startAt), city: a.city, spotsLeft: a.capacity - a.participantCount, costType: a.costType,
+        // Shown on list cards so people can judge a plan without opening it; same fields GET /activities returns.
+        venueName: a.venueName, hostDisplayName: a.hostDisplayName, hostPhotoUrl: a.hostPhotoUrl ?? null,
+        approvalRequired: Boolean(a.approvalRequired),
         distanceKm: r.distances[d.id],
       };
     });

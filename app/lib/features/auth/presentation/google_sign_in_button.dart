@@ -61,7 +61,7 @@ class _GoogleSignInButtonState extends State<GoogleSignInButton> {
               height: 22,
               child: CircularProgressIndicator(
                 strokeWidth: 2.5,
-                color: AppColors.navy,
+                color: AppColors.primary,
               ),
             )
           : Row(

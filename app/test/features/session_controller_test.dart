@@ -3,7 +3,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:nomad_mingle/app/router.dart';
 import 'package:nomad_mingle/core/utils/app_exception.dart';
 import 'package:nomad_mingle/features/auth/application/session_controller.dart';
-import 'package:nomad_mingle/features/auth/application/signup_draft.dart';
 import 'package:nomad_mingle/features/auth/data/auth_repository.dart';
 import 'package:nomad_mingle/features/profile/data/user_profile.dart';
 
@@ -64,29 +63,35 @@ void main() {
     // Brand-new profile with no photo gets the one-time "add a photo" step.
     expect(s.status, SessionStatus.needsPhoto);
     s.finishPhotoPrompt();
+    // ...then the optional story / hometown step, then done.
+    expect(s.status, SessionStatus.needsProfileExtras);
+    s.finishProfileExtras();
     expect(s.status, SessionStatus.ready);
     expect(repo.lastDob, DateTime(1998, 1, 1));
     s.dispose();
   });
 
-  test('new profile that already has a photo skips the photo step', () async {
-    final s = SessionController(
-      auth: FakeAuthRepository(_pwUser),
-      profiles: FakeProfileRepository(),
-    );
-    await pump();
-    await s.completeOnboarding(
-      displayName: 'Asha',
-      dateOfBirth: DateTime(1998, 1, 1),
-      city: 'pune',
-      bio: '',
-      interests: ['food'],
-      preferredActivityTypes: const [],
-      photoUrl: 'https://example.com/me.jpg',
-    );
-    expect(s.status, SessionStatus.ready);
-    s.dispose();
-  });
+  test(
+    'new profile that already has a photo skips to the extras step',
+    () async {
+      final s = SessionController(
+        auth: FakeAuthRepository(_pwUser),
+        profiles: FakeProfileRepository(),
+      );
+      await pump();
+      await s.completeOnboarding(
+        displayName: 'Asha',
+        dateOfBirth: DateTime(1998, 1, 1),
+        city: 'pune',
+        bio: '',
+        interests: ['food'],
+        preferredActivityTypes: const [],
+        photoUrl: 'https://example.com/me.jpg',
+      );
+      expect(s.status, SessionStatus.needsProfileExtras);
+      s.dispose();
+    },
+  );
 
   test('existing users with no photo are not nagged on sign-in', () async {
     final s = SessionController(
@@ -117,6 +122,15 @@ void main() {
       expect(redirectFor(SessionStatus.ready, '/add-photo'), '/explore');
     },
   );
+
+  test('router sends needsProfileExtras to /about-you only', () {
+    expect(
+      redirectFor(SessionStatus.needsProfileExtras, '/explore'),
+      '/about-you',
+    );
+    expect(redirectFor(SessionStatus.needsProfileExtras, '/about-you'), isNull);
+    expect(redirectFor(SessionStatus.ready, '/about-you'), '/explore');
+  });
 
   test('unverified password user is held at email verification', () async {
     final auth = FakeAuthRepository(
@@ -245,77 +259,23 @@ void main() {
     });
   });
 
-  group('sign-up draft', () {
-    final draft = SignupDraft(
-      name: 'Asha Rao',
-      dateOfBirth: DateTime(1998, 4, 2),
-      city: 'mumbai',
-      interests: const ['food', 'travel', 'music'],
-    );
-
+  group('profile setup is identical for every sign-in method', () {
     setUp(() => SharedPreferences.setMockInitialValues({}));
 
-    test('password user without a profile gets one from the draft', () async {
-      await const SignupDraftStore().save(draft);
-      final repo = FakeProfileRepository();
-      final s = SessionController(
-        auth: FakeAuthRepository(_pwUser),
-        profiles: repo,
-      );
-      await pump();
-      await pump();
-      expect(s.status, SessionStatus.needsPhoto);
-      expect(s.profile?.displayName, 'Asha Rao');
-      expect(s.profile?.city, 'mumbai');
-      expect(repo.lastDob, DateTime(1998, 4, 2));
-      expect(await const SignupDraftStore().load(), isNull);
-      s.dispose();
-    });
-
-    test(
-      'Google user keeps the onboarding flow and draft is ignored',
-      () async {
-        await const SignupDraftStore().save(draft);
+    for (final entry in {
+      'email': _pwUser,
+      'google': const AuthUser(uid: 'g', email: 'g@x.com', emailVerified: true),
+    }.entries) {
+      test('${entry.key} user without a profile gets onboarding', () async {
         final s = SessionController(
-          auth: FakeAuthRepository(
-            const AuthUser(uid: 'g', email: 'g@x.com', emailVerified: true),
-          ),
+          auth: FakeAuthRepository(entry.value),
           profiles: FakeProfileRepository(),
         );
         await pump();
         await pump();
         expect(s.status, SessionStatus.needsOnboarding);
         s.dispose();
-      },
-    );
-
-    test('invalid (under-18) draft is discarded, onboarding shown', () async {
-      await const SignupDraftStore().save(
-        SignupDraft(
-          name: 'Kid',
-          dateOfBirth: DateTime.now().subtract(const Duration(days: 365 * 10)),
-          city: 'pune',
-          interests: const ['food'],
-        ),
-      );
-      final s = SessionController(
-        auth: FakeAuthRepository(_pwUser),
-        profiles: FakeProfileRepository(),
-      );
-      await pump();
-      await pump();
-      expect(s.status, SessionStatus.needsOnboarding);
-      expect(await const SignupDraftStore().load(), isNull);
-      s.dispose();
-    });
-
-    test('draft never contains a password and round-trips', () async {
-      final raw = draft.encode();
-      expect(raw.toLowerCase().contains('password'), isFalse);
-      final back = SignupDraft.decode(raw)!;
-      expect(back.dateOfBirth, DateTime(1998, 4, 2));
-      expect(back.interests, ['food', 'travel', 'music']);
-      expect(SignupDraft.decode('garbage'), isNull);
-    });
+      });
+    }
   });
 }

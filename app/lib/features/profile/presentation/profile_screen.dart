@@ -8,6 +8,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../core/utils/app_exception.dart';
 import '../../../core/utils/category_style.dart';
+import '../../../core/utils/countries.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/instagram_pill.dart';
 import '../../../core/widgets/interest_chip.dart';
@@ -169,94 +170,109 @@ class _ProfileScreenState extends State<ProfileScreen> {
             padding: const EdgeInsets.only(bottom: 32),
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 8, 0),
-                child: Row(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                child: Column(
                   children: [
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: IconButton.outlined(
+                        tooltip: 'Settings',
+                        icon: const Icon(Icons.settings_outlined),
+                        onPressed: () => context.push('/settings'),
+                      ),
+                    ),
+                    // A plain avatar: no completion score, no ring. Missing
+                    // pieces are offered as quiet prompts below instead.
                     UserAvatar(
                       name: p.displayName,
                       photoUrl: p.photoUrl,
-                      size: 64,
+                      size: 112,
                     ),
-                    const SizedBox(width: AppSpacing.lg),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            p.displayName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: t.textTheme.titleLarge?.copyWith(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
+                    const SizedBox(height: AppSpacing.md),
+                    Text(
+                      p.displayName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: t.textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      [
+                        cityName,
+                        if (countryName(p.countryCode).isNotEmpty)
+                          countryName(p.countryCode),
+                        if ((p.ageRange ?? '').isNotEmpty) p.ageRange!,
+                      ].join('  ·  '),
+                      textAlign: TextAlign.center,
+                      style: t.textTheme.bodyMedium?.copyWith(color: grey),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    OutlinedButton.icon(
+                      key: const ValueKey('edit-profile'),
+                      onPressed: () => context.push('/profile/edit'),
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      label: const Text('Edit profile'),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    (p.instagram ?? '').isNotEmpty
+                        ? InstagramPill(
+                            handle: p.instagram!,
+                            onTap: () => openInstagram(p.instagram!),
+                          )
+                        : ActionChip(
+                            key: const ValueKey('add-instagram'),
+                            avatar: const Icon(
+                              Icons.camera_alt_outlined,
+                              size: 18,
                             ),
+                            label: const Text('Add Instagram'),
+                            onPressed: () => context.push('/profile/edit'),
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            cityName,
-                            style: t.textTheme.bodySmall?.copyWith(
-                              fontSize: 13,
-                              color: grey,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: 'Settings',
-                      icon: const Icon(Icons.settings_outlined),
-                      onPressed: () => context.push('/settings'),
-                    ),
                   ],
+                ),
+              ),
+              Padding(
+                padding: AppSpacing.page.copyWith(top: AppSpacing.xl),
+                child: _SectionCard(
+                  caption: 'About me',
+                  onTap: p.bio.isEmpty
+                      ? () => context.push('/profile/edit')
+                      : null,
+                  child: p.bio.isEmpty
+                      ? Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Add a bio so others can get to know you',
+                                style: t.textTheme.bodyLarge,
+                              ),
+                            ),
+                            Icon(Icons.chevron_right, color: grey),
+                          ],
+                        )
+                      : Text(
+                          p.bio,
+                          style: t.textTheme.bodyLarge?.copyWith(height: 1.4),
+                        ),
                 ),
               ),
               Padding(
                 padding: AppSpacing.page.copyWith(top: AppSpacing.md),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: (p.instagram ?? '').isNotEmpty
-                      ? InstagramPill(
-                          handle: p.instagram!,
-                          onTap: () => openInstagram(p.instagram!),
-                        )
-                      : ActionChip(
-                          key: const ValueKey('add-instagram'),
-                          avatar: const Icon(
-                            Icons.camera_alt_outlined,
-                            size: 18,
-                          ),
-                          label: const Text('Add Instagram'),
-                          onPressed: () => context.push('/profile/edit'),
+                child: _SectionCard(
+                  caption: 'My Photos',
+                  trailing: TextButton(
+                    key: const ValueKey('manage-photos'),
+                    onPressed: () => context.push('/profile/edit'),
+                    child: Text(p.photos.isEmpty ? 'Add photos' : 'Manage'),
+                  ),
+                  child: p.photos.isNotEmpty
+                      ? PhotoGalleryStrip(urls: p.photos, height: 104)
+                      : _EmptyPhotos(
+                          onTap: () => context.push('/profile/edit'),
                         ),
                 ),
               ),
-              if (p.bio.isNotEmpty)
-                Padding(
-                  padding: AppSpacing.page.copyWith(top: AppSpacing.md),
-                  child: Text(
-                    p.bio,
-                    style: t.textTheme.bodyMedium?.copyWith(height: 1.4),
-                  ),
-                ),
-              Padding(
-                padding: AppSpacing.page.copyWith(top: AppSpacing.lg),
-                child: Row(
-                  children: [
-                    Text('My Photos', style: t.textTheme.titleMedium),
-                    const Spacer(),
-                    TextButton(
-                      key: const ValueKey('manage-photos'),
-                      onPressed: () => context.push('/profile/edit'),
-                      child: Text(p.photos.isEmpty ? 'Add photos' : 'Manage'),
-                    ),
-                  ],
-                ),
-              ),
-              if (p.photos.isNotEmpty)
-                Padding(
-                  padding: AppSpacing.page.copyWith(top: AppSpacing.xs),
-                  child: PhotoGalleryStrip(urls: p.photos, height: 104),
-                ),
               Padding(
                 padding: AppSpacing.page.copyWith(top: AppSpacing.lg),
                 child: Row(
@@ -281,16 +297,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               Padding(
                 padding: AppSpacing.page.copyWith(top: AppSpacing.xl),
-                child: Text('My Interests', style: t.textTheme.titleMedium),
-              ),
-              Padding(
-                padding: AppSpacing.page.copyWith(top: AppSpacing.md),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final i in p.interests) InterestChip(interestId: i),
-                  ],
+                child: _SectionCard(
+                  caption: 'My Interests',
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final i in p.interests) InterestChip(interestId: i),
+                    ],
+                  ),
                 ),
               ),
               Padding(
@@ -306,14 +321,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
               else
                 Padding(
                   padding: AppSpacing.page.copyWith(top: AppSpacing.md),
-                  child: Text(
-                    stats == null && !_statsFailed
-                        ? 'Loading…'
-                        : _statsFailed
-                        ? 'Couldn\'t load your meetups. Pull down to retry.'
-                        : 'No upcoming meetups yet. Join or host one!',
-                    key: const ValueKey('upcoming-empty'),
-                    style: t.textTheme.bodySmall?.copyWith(color: grey),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          stats == null && !_statsFailed
+                              ? 'Loading…'
+                              : _statsFailed
+                              ? 'Couldn\'t load your meetups. Pull down to retry.'
+                              : 'Nothing planned yet.',
+                          key: const ValueKey('upcoming-empty'),
+                          style: t.textTheme.bodySmall?.copyWith(color: grey),
+                        ),
+                      ),
+                      if (stats != null && stats.upcoming.isEmpty)
+                        TextButton(
+                          onPressed: () => context.go('/explore'),
+                          child: const Text('Find a plan'),
+                        ),
+                    ],
                   ),
                 ),
               const SizedBox(height: AppSpacing.lg),
@@ -446,6 +472,103 @@ class _Stat extends StatelessWidget {
           const SizedBox(height: 2),
           Text(label, style: t.textTheme.bodySmall?.copyWith(fontSize: 12)),
         ],
+      ),
+    );
+  }
+}
+
+/// Soft grey card with a small caption and optional trailing action.
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({
+    required this.caption,
+    required this.child,
+    this.trailing,
+    this.onTap,
+  });
+  final String caption;
+  final Widget child;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    return Material(
+      color: AppColors.field,
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      caption,
+                      style: t.textTheme.labelLarge?.copyWith(
+                        color: AppColors.inkMuted,
+                      ),
+                    ),
+                  ),
+                  ?trailing,
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              child,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyPhotos extends StatelessWidget {
+  const _EmptyPhotos({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
+          child: SizedBox(
+            width: double.infinity,
+            child: Column(
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: const BoxDecoration(
+                    color: AppColors.primaryLight,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.add_photo_alternate_outlined,
+                    color: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Text('Add your first photo', style: t.textTheme.titleMedium),
+                const SizedBox(height: 2),
+                Text(
+                  'Share your plans and memories',
+                  style: t.textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

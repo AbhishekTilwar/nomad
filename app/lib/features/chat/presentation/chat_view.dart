@@ -134,6 +134,7 @@ class _ChatViewState extends State<ChatView> {
     if (m.pending) return;
     final action = await showModalBottomSheet<String>(
       context: context,
+      useRootNavigator: true,
       showDragHandle: true,
       builder: (ctx) => SafeArea(
         child: Column(
@@ -184,6 +185,7 @@ class _ChatViewState extends State<ChatView> {
   Future<void> _failedSheet(ChatMessage m) async {
     final action = await showModalBottomSheet<String>(
       context: context,
+      useRootNavigator: true,
       showDragHandle: true,
       builder: (ctx) => SafeArea(
         child: Column(

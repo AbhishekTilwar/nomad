@@ -92,7 +92,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         if (_error != null) ...[const SizedBox(height: 12), AuthError(_error!)],
         const SizedBox(height: 24),
         PrimaryButton(
-          backgroundColor: AppColors.navy,
+          backgroundColor: AppColors.primary,
           label: 'Send reset link',
           loading: _busy,
           onPressed: _submit,

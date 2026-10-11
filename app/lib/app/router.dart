@@ -24,7 +24,10 @@ import '../features/profile/presentation/memories_screen.dart';
 import '../features/profile/presentation/profile_screen.dart';
 import '../features/settings/notifications_screen.dart';
 import '../features/settings/settings_screens.dart';
+import '../features/invite/presentation/invite_contacts_screen.dart';
+import '../features/invite/presentation/invite_screen.dart';
 import '../features/onboarding/presentation/add_photo_screen.dart';
+import '../features/onboarding/presentation/profile_extras_screen.dart';
 import '../features/profile/presentation/public_profile_screen.dart';
 import '../features/chat/presentation/activity_chat_screen.dart';
 import '../features/chat/presentation/chats_list_screen.dart';
@@ -54,6 +57,8 @@ String? redirectFor(SessionStatus status, String location) {
       return location == '/onboarding' ? null : '/onboarding';
     case SessionStatus.needsPhoto:
       return location == '/add-photo' ? null : '/add-photo';
+    case SessionStatus.needsProfileExtras:
+      return location == '/about-you' ? null : '/about-you';
     case SessionStatus.profileError:
       return location == '/profile-error' ? null : '/profile-error';
     case SessionStatus.restricted:
@@ -69,6 +74,7 @@ String? redirectFor(SessionStatus status, String location) {
         '/verify-email',
         '/onboarding',
         '/add-photo',
+        '/about-you',
         '/profile-error',
         '/restricted',
       };
@@ -143,6 +149,11 @@ GoRouter buildRouter(
         builder: (_, _) => const NotificationsScreen(),
       ),
       GoRoute(path: '/memories', builder: (_, _) => const MemoriesScreen()),
+      GoRoute(path: '/invite', builder: (_, _) => const InviteScreen()),
+      GoRoute(
+        path: '/invite/contacts',
+        builder: (_, _) => const InviteContactsScreen(),
+      ),
       GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
       GoRoute(
         path: '/location',
@@ -154,6 +165,10 @@ GoRouter buildRouter(
         builder: (_, _) => const BlockedUsersScreen(),
       ),
       GoRoute(path: '/add-photo', builder: (_, _) => const AddPhotoScreen()),
+      GoRoute(
+        path: '/about-you',
+        builder: (_, _) => const ProfileExtrasScreen(),
+      ),
       GoRoute(
         path: '/user/:uid',
         builder: (_, s) {

@@ -35,6 +35,7 @@ class Activity {
     this.isHost = false,
     this.distanceKm,
     this.isSummary = false,
+    this.hasHostInfo = true,
   });
 
   final String id;
@@ -66,6 +67,9 @@ class Activity {
 
   /// True for slim map-marker payloads (no host/description/capacity detail).
   final bool isSummary;
+
+  /// False for older slim payloads that carry no host name or venue.
+  final bool hasHostInfo;
 
   LatLng get position => LatLng(latitude, longitude);
   int get spotsLeft => (capacity - participantCount).clamp(0, capacity);
@@ -105,6 +109,7 @@ class Activity {
     isHost: isHost,
     distanceKm: distanceKm ?? this.distanceKm,
     isSummary: isSummary,
+    hasHostInfo: hasHostInfo,
   );
 
   factory Activity.fromJson(Map<String, dynamic> j) {
@@ -130,6 +135,7 @@ class Activity {
           0,
       participantCount: (j['participantCount'] as num?)?.toInt() ?? 0,
       isSummary: j['capacity'] == null,
+      hasHostInfo: j['hostDisplayName'] != null,
       costType: j['costType'] == 'paid' ? CostType.paid : CostType.free,
       costDescription: j['costDescription'] as String? ?? '',
       coverImageUrl: j['coverImageUrl'] as String?,

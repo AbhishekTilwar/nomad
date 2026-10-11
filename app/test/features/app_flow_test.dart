@@ -4,6 +4,7 @@ import 'package:nomad_mingle/app/app.dart';
 import 'package:nomad_mingle/core/utils/app_exception.dart';
 import 'package:nomad_mingle/features/auth/data/auth_repository.dart';
 import 'package:nomad_mingle/features/onboarding/application/intro_store.dart';
+import 'package:nomad_mingle/features/onboarding/presentation/onboarding_widgets.dart';
 import 'package:nomad_mingle/features/shell/main_shell.dart';
 import 'package:nomad_mingle/features/profile/data/user_profile.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -53,7 +54,10 @@ void main() {
       ),
     );
     await settle(t);
-    expect(find.text('New places. New people.\nSame sky.'), findsOneWidget);
+    expect(
+      find.text('Find your people.\nMake a plan. Go together.'),
+      findsOneWidget,
+    );
     expect(find.text('Continue with Google'), findsOneWidget);
     expect(find.text('Continue with Email'), findsOneWidget);
     await t.tap(find.text('Continue with Email'));
@@ -120,14 +124,44 @@ void main() {
       ),
     );
     await settle(t);
-    expect(find.text('Let\'s get you set up'), findsOneWidget);
+    expect(find.text('What should we call you?'), findsOneWidget);
 
-    // Continue without name/DOB -> errors, stays on step 1.
-    await t.tap(find.text('Continue'));
-    await settle(t);
-    expect(find.text('Name must be at least 2 characters.'), findsOneWidget);
-    expect(find.text('Select your date of birth.'), findsOneWidget);
-    expect(find.text('Step 1 of 3'), findsOneWidget);
+    // Continue stays disabled until a valid name and an 18+ birthday exist.
+    FilledButton cont() =>
+        t.widget<FilledButton>(find.widgetWithText(FilledButton, 'Continue'));
+    expect(cont().onPressed, isNull);
+    await t.enterText(find.byType(TextField).first, 'Asha');
+    await t.pump();
+    expect(cont().onPressed, isNull);
+    expect(find.text('Select your birthday'), findsOneWidget);
+  });
+
+  testWidgets('birthday tile shows age badge, or the under-18 message', (
+    t,
+  ) async {
+    DateTime? dob = DateTime(DateTime.now().year - 30, 1, 1);
+    await t.pumpWidget(
+      MaterialApp(
+        home: StatefulBuilder(
+          builder: (_, set) => Scaffold(
+            body: DobPickerTile(
+              value: dob,
+              onChanged: (d) => set(() => dob = d),
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(find.text('30 yrs'), findsOneWidget);
+    dob = DateTime.now().subtract(const Duration(days: 365 * 10));
+    await t.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: DobPickerTile(value: dob, onChanged: (_) {}),
+        ),
+      ),
+    );
+    expect(find.textContaining('at least 18'), findsOneWidget);
   });
 
   testWidgets(

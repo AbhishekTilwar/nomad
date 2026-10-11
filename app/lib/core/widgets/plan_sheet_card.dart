@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../features/activities/data/activity_repository.dart';
+import '../../features/profile/application/photo_gate.dart';
 import '../../features/activities/models/activity.dart';
 import '../../features/safety/data/safety_repository.dart';
 import '../services/translation_service.dart';
@@ -140,19 +141,19 @@ class _PlanSheetCardState extends State<PlanSheetCard> {
 
   Future<void> _join() async {
     if (_busy) return;
+    if (!await ensureProfilePhoto(
+      context,
+      reason: 'Add one to join this plan.',
+    )) {
+      return;
+    }
+    if (!mounted) return;
     final messenger = ScaffoldMessenger.of(context);
     setState(() => _busy = true);
     try {
-      final status = await context.read<ActivityRepository>().join(_a.id);
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            status == MembershipStatus.requested
-                ? 'Request sent. The host will review it.'
-                : 'You\'re in!',
-          ),
-        ),
-      );
+      // No success toast: it would cover this card's next-step button. The
+      // card itself shows the result (attendee list and button change).
+      await context.read<ActivityRepository>().join(_a.id);
     } on AppException catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
     }
@@ -184,12 +185,13 @@ class _PlanSheetCardState extends State<PlanSheetCard> {
           children: [
             Row(
               children: [
-                IconButton(
-                  tooltip: 'Report plan',
-                  color: AppColors.danger,
-                  icon: const Icon(Icons.error_outline),
-                  onPressed: _report,
-                ),
+                if (!_a.isHost)
+                  IconButton(
+                    tooltip: 'Report plan',
+                    color: AppColors.danger,
+                    icon: const Icon(Icons.error_outline),
+                    onPressed: _report,
+                  ),
                 IconButton(
                   tooltip: 'Share plan',
                   icon: const Icon(Icons.share_outlined),
@@ -254,12 +256,27 @@ class _PlanSheetCardState extends State<PlanSheetCard> {
                     Text(
                       people == null
                           ? '${a.spotsLeft} spots left'
-                          : '$people ${people == 1 ? 'person' : 'people'}',
+                          : a.isFull
+                          ? '$people going · full'
+                          : '$people going · ${a.spotsLeft} spot${a.spotsLeft == 1 ? '' : 's'} left',
                       style: t.textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: t.textTheme.bodySmall?.color,
                       ),
                     ),
+                    if (people != null) ...[
+                      const SizedBox(height: 2),
+                      // What joining costs and requires, before the button.
+                      Text(
+                        [
+                          a.isFree ? 'Free' : 'Paid',
+                          a.approvalRequired
+                              ? 'Host approves requests'
+                              : 'Open to join',
+                        ].join(' · '),
+                        style: t.textTheme.bodySmall,
+                      ),
+                    ],
                   ],
                 ),
               ),

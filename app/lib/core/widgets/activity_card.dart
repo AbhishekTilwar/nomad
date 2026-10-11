@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../features/activities/models/activity.dart';
 import '../../features/profile/data/user_profile.dart';
@@ -14,11 +15,19 @@ class ActivityCard extends StatelessWidget {
     required this.activity,
     this.onTap,
     this.compact = false,
+    this.distanceFrom,
+    this.showServerDistance = true,
   });
 
   final Activity activity;
   final VoidCallback? onTap;
   final bool compact;
+
+  /// Where distances are measured from (the member's own position). When
+  /// null and [showServerDistance] is false, no distance is shown, so a
+  /// number never pretends to be measured from the member.
+  final LatLng? distanceFrom;
+  final bool showServerDistance;
 
   @override
   Widget build(BuildContext context) {
@@ -28,6 +37,13 @@ class ActivityCard extends StatelessWidget {
     final muted = t.textTheme.bodyMedium?.copyWith(
       color: t.colorScheme.onSurfaceVariant,
     );
+    final km = distanceFrom != null
+        ? const Distance().as(LengthUnit.Kilometer, distanceFrom!, a.position)
+        : (showServerDistance ? a.distanceKm : null);
+    final place = [
+      a.venueName,
+      if (km != null) Formatters.distance(km),
+    ].where((s) => s.isNotEmpty).join(' · ');
     final spots = a.status == ActivityStatus.cancelled
         ? 'Cancelled'
         : a.isFull
@@ -99,20 +115,14 @@ class ActivityCard extends StatelessWidget {
                       Formatters.activityWhen(a.startAt),
                       muted,
                     ),
-                    const SizedBox(height: 2),
-                    _iconLine(
-                      Icons.place_outlined,
-                      [
-                        a.venueName,
-                        if (a.distanceKm != null)
-                          Formatters.distance(a.distanceKm),
-                      ].where((s) => s.isNotEmpty).join(' · '),
-                      muted,
-                    ),
+                    if (place.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      _iconLine(Icons.place_outlined, place, muted),
+                    ],
                     const SizedBox(height: AppSpacing.md),
                     Row(
                       children: [
-                        if (!a.isSummary) ...[
+                        if (a.hasHostInfo) ...[
                           UserAvatar(
                             name: a.hostDisplayName,
                             photoUrl: a.hostPhotoUrl,
@@ -122,7 +132,9 @@ class ActivityCard extends StatelessWidget {
                         ],
                         Expanded(
                           child: Text(
-                            a.isSummary ? '' : 'Hosted by ${a.hostDisplayName}',
+                            a.hasHostInfo
+                                ? 'Hosted by ${a.hostDisplayName}'
+                                : '',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: muted,

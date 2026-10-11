@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/app_chip.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/error_state.dart';
 import '../../../core/widgets/loading_skeleton.dart';
@@ -24,8 +25,13 @@ class ChatsListScreen extends StatefulWidget {
   State<ChatsListScreen> createState() => _ChatsListScreenState();
 }
 
+enum _ChatFilter { all, unread, plans }
+
 class _ChatsListScreenState extends State<ChatsListScreen> {
   late final ChatsListController _c;
+  final _search = TextEditingController();
+  _ChatFilter _filter = _ChatFilter.all;
+  bool _searching = false;
 
   @override
   void initState() {
@@ -41,6 +47,7 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
 
   @override
   void dispose() {
+    _search.dispose();
     _c.dispose();
     super.dispose();
   }
@@ -50,12 +57,45 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 20,
-        title: Text(
-          'Chats',
-          style: Theme.of(
-            context,
-          ).textTheme.headlineMedium?.copyWith(fontSize: 22),
-        ),
+        title: _searching
+            ? TextField(
+                controller: _search,
+                autofocus: true,
+                onChanged: (_) => setState(() {}),
+                textInputAction: TextInputAction.search,
+                decoration: const InputDecoration(
+                  hintText: 'Search chats',
+                  prefixIcon: Icon(Icons.search),
+                ),
+              )
+            : Text('Chats', style: Theme.of(context).textTheme.headlineMedium),
+        actions: [
+          if (_searching)
+            IconButton.outlined(
+              tooltip: 'Close search',
+              icon: const Icon(Icons.close),
+              onPressed: () => setState(() {
+                _searching = false;
+                _search.clear();
+              }),
+            )
+          else ...[
+            IconButton.outlined(
+              key: const ValueKey('chats-search'),
+              tooltip: 'Search chats',
+              icon: const Icon(Icons.search),
+              onPressed: () => setState(() => _searching = true),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            IconButton.outlined(
+              key: const ValueKey('chats-invite'),
+              tooltip: 'Invite friends',
+              icon: const Icon(Icons.add),
+              onPressed: () => context.push('/invite'),
+            ),
+          ],
+          const SizedBox(width: AppSpacing.lg),
+        ],
       ),
       body: ListenableBuilder(
         listenable: _c,
@@ -70,34 +110,43 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                 onRetry: _c.load,
               );
             case ChatsListStatus.ready:
+              final q = _search.text.trim().toLowerCase();
+              final items = [
+                for (final i in _c.items)
+                  if ((_filter != _ChatFilter.unread || _c.isUnread(i)) &&
+                      (q.isEmpty || i.activity.title.toLowerCase().contains(q)))
+                    i,
+              ];
+              final showCommunity =
+                  _filter != _ChatFilter.plans &&
+                  (q.isEmpty || 'mingle community'.contains(q));
               return Column(
                 children: [
-                  const _PinnedCommunityTile(),
-                  const Divider(height: 1),
+                  _FilterRow(
+                    value: _filter,
+                    onChanged: (f) => setState(() => _filter = f),
+                  ),
+                  if (showCommunity)
+                    _PinnedCommunityTile(
+                      onlyUnread: _filter == _ChatFilter.unread,
+                    ),
                   Expanded(
-                    child: _c.items.isEmpty
-                        ? EmptyState(
-                            icon: Icons.chat_bubble_outline,
-                            title: 'No plan chats yet',
-                            message:
-                                'Join or host an activity and its group chat will show up here.',
-                            actionLabel: 'Find activities',
-                            onAction: () => context.go('/explore'),
-                          )
+                    child: items.isEmpty
+                        ? _emptyFor(context, q)
                         : RefreshIndicator(
                             onRefresh: _c.load,
                             child: ListView.separated(
                               physics: const AlwaysScrollableScrollPhysics(),
-                              itemCount: _c.items.length,
+                              itemCount: items.length,
                               separatorBuilder: (_, _) => const Divider(
                                 height: 1,
                                 indent: 20,
                                 endIndent: 20,
                               ),
                               itemBuilder: (context, i) => _ChatRow(
-                                item: _c.items[i],
-                                preview: _c.previewFor(_c.items[i]),
-                                unread: _c.isUnread(_c.items[i]),
+                                item: items[i],
+                                preview: _c.previewFor(items[i]),
+                                unread: _c.isUnread(items[i]),
                                 myUid: _c.myUid,
                               ),
                             ),
@@ -107,6 +156,60 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
               );
           }
         },
+      ),
+    );
+  }
+
+  Widget _emptyFor(BuildContext context, String q) {
+    if (q.isNotEmpty) {
+      return const EmptyState(
+        icon: Icons.search_off,
+        title: 'No matching chats',
+      );
+    }
+    if (_filter == _ChatFilter.unread) {
+      return const EmptyState(
+        icon: Icons.mark_chat_read_outlined,
+        title: 'No unread chats',
+        message: 'You\'re all caught up.',
+      );
+    }
+    return EmptyState(
+      icon: Icons.chat_bubble_outline,
+      title: 'No plan chats yet',
+      message: 'Join or host an activity and its group chat will show up here.',
+      actionLabel: 'Find activities',
+      onAction: () => context.go('/explore'),
+    );
+  }
+}
+
+class _FilterRow extends StatelessWidget {
+  const _FilterRow({required this.value, required this.onChanged});
+  final _ChatFilter value;
+  final ValueChanged<_ChatFilter> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    const labels = {
+      _ChatFilter.all: 'All',
+      _ChatFilter.unread: 'Unread',
+      _ChatFilter.plans: 'Plans',
+    };
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+      child: Row(
+        children: [
+          for (final f in _ChatFilter.values) ...[
+            AppChip(
+              label: labels[f]!,
+              selected: value == f,
+              style: AppChipStyle.tinted,
+              onSelected: (_) => onChanged(f),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+          ],
+        ],
       ),
     );
   }
@@ -212,7 +315,10 @@ class _ChatRow extends StatelessWidget {
 
 /// Mingle Community, always pinned above the plan chats.
 class _PinnedCommunityTile extends StatefulWidget {
-  const _PinnedCommunityTile();
+  const _PinnedCommunityTile({this.onlyUnread = false});
+
+  /// Hide the tile unless it has unread messages (Unread filter).
+  final bool onlyUnread;
 
   @override
   State<_PinnedCommunityTile> createState() => _PinnedCommunityTileState();
@@ -235,6 +341,7 @@ class _PinnedCommunityTileState extends State<_PinnedCommunityTile> {
       listenable: _unread,
       builder: (context, _) {
         final unread = _unread.hasUnread;
+        if (widget.onlyUnread && !unread) return const SizedBox.shrink();
         return Material(
           color: AppColors.tint,
           child: ListTile(

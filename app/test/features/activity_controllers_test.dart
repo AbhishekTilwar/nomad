@@ -25,6 +25,9 @@ class FakeLocation implements LocationService {
   }
 
   @override
+  Future<LocationResult> currentIfPermitted() => current();
+
+  @override
   Future<void> openSettings() async {}
 }
 

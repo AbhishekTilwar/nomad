@@ -37,8 +37,8 @@ class MapConfig {
 
   /// Launch cities. Adding a city = adding an entry (also see backend).
   static const cities = <CityInfo>[
-    CityInfo('mumbai', 'Mumbai', LatLng(19.0760, 72.8777)),
-    CityInfo('pune', 'Pune', LatLng(18.5204, 73.8567)),
+    CityInfo('mumbai', 'Mumbai', LatLng(19.0760, 72.8777), 'IN'),
+    CityInfo('pune', 'Pune', LatLng(18.5204, 73.8567), 'IN'),
   ];
 
   static CityInfo cityById(String? id) =>
@@ -46,8 +46,12 @@ class MapConfig {
 }
 
 class CityInfo {
-  const CityInfo(this.id, this.name, this.center);
+  const CityInfo(this.id, this.name, this.center, this.countryCode);
   final String id;
   final String name;
   final LatLng center;
+
+  /// ISO country the city is in; saved as the profile country so members are
+  /// not asked for location twice.
+  final String countryCode;
 }

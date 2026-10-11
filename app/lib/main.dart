@@ -1,7 +1,9 @@
 import 'dart:ui' show PlatformDispatcher;
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 
 import 'app/app.dart';
@@ -25,9 +27,23 @@ Future<void> main() async {
     return;
   }
 
-  await Firebase.initializeApp(options: options);
+  // Android/iOS may already have a native default app (google-services); reuse
+  // it instead of throwing core/duplicate-app.
+  try {
+    await Firebase.initializeApp(options: options);
+  } on FirebaseException catch (e) {
+    if (e.code != 'duplicate-app') rethrow;
+  }
   if (AppConfig.useEmulator) {
     await FirebaseAuth.instance.useAuthEmulator(AppConfig.emulatorHost, 9099);
+    FirebaseFirestore.instance.useFirestoreEmulator(
+      AppConfig.emulatorHost,
+      AppConfig.firestoreEmulatorPort,
+    );
+    await FirebaseStorage.instance.useStorageEmulator(
+      AppConfig.emulatorHost,
+      AppConfig.storageEmulatorPort,
+    );
   }
 
   // Crash reporting only on real mobile builds.

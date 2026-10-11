@@ -4,34 +4,39 @@ import 'package:flutter/material.dart';
 class AppColors {
   const AppColors._();
 
-  // Brand: indigo on soft lavender surfaces.
-  static const primary = Color(0xFF4F46E5);
-  static const primaryDark = Color(0xFF818CF8);
+  // Brand: deep forest teal with a warm amber accent on warm-white surfaces.
+  static const primary = Color(0xFF0F4C45);
+  static const primaryPressed = Color(0xFF0B332F);
+  static const primaryLight = Color(0xFFDCEFEA);
   static const onPrimary = Colors.white;
 
-  /// Dark navy primary button used across the first-run / auth flow.
-  static const navy = Color(0xFF1B2A3B);
-  static const secondary = Color(0xFF3B6FE0);
-  static const secondaryDark = Color(0xFF8DB1FF);
+  static const secondary = Color(0xFFE99A32);
+  static const secondaryLight = Color(0xFFFFF0D8);
 
-  static const sand = Color(0xFFFFFFFF); // screens are white in the design
-  static const sandDark = Color(0xFF12121C);
+  /// Brighter primary for dark theme (readable on dark surfaces).
+  static const primaryDark = Color(0xFF5FB3A5);
+  static const secondaryDark = Color(0xFFF0B25E);
+
+  static const sand = Color(0xFFFAF9F6); // app background
+  static const sandDark = Color(0xFF0F1A19);
   static const surface = Colors.white;
-  static const surfaceDark = Color(0xFF1C1C2A);
+  static const surfaceDark = Color(0xFF172625);
 
-  static const ink = Color(0xFF111827);
-  static const inkMuted = Color(0xFF6B7280);
-  static const inkDark = Color(0xFFF1F1FA);
-  static const inkMutedDark = Color(0xFFA9ACC6);
+  static const ink = Color(0xFF172B2A);
+  static const inkMuted = Color(0xFF64716F);
+  static const inkFaint = Color(0xFF89938F); // timestamps, low-priority meta
+  static const inkDark = Color(0xFFEDF3F1);
+  static const inkMutedDark = Color(0xFFA3B2AE);
 
-  static const outline = Color(0xFFE5E7EB);
-  static const field = Color(0xFFF9FAFB);
-  static const tint = Color(0xFFEEF0FF); // light indigo wash
-  static const outlineDark = Color(0xFF34354A);
+  static const outline = Color(0xFFE2E7E3);
+  static const field = Color(0xFFF1F3F0); // input / subtle container fill
+  static const tint = primaryLight;
+  static const outlineDark = Color(0xFF2C3E3B);
 
-  static const success = Color(0xFF1E8A4C);
-  static const warning = Color(0xFFB7791F);
-  static const danger = Color(0xFFC62F3B);
+  static const success = Color(0xFF23845B);
+  static const warning = Color(0xFFB96D12);
+  static const danger = Color(0xFFC83F42);
+  static const info = Color(0xFF326CCB);
 
   /// Category accents for markers and chips.
   static const categoryColors = <String, Color>{
@@ -52,31 +57,35 @@ class AppColors {
 
 class AppSpacing {
   const AppSpacing._();
-  static const xs = 4.0;
+  static const xxs = 4.0;
+  static const xs = 4.0; // legacy alias of xxs
   static const sm = 8.0;
   static const md = 12.0;
   static const lg = 16.0;
   static const xl = 24.0;
   static const xxl = 32.0;
+  static const section = 40.0;
   static const page = EdgeInsets.symmetric(horizontal: 20);
 }
 
 class AppRadius {
   const AppRadius._();
+  static const chip = 12.0;
   static const sm = 8.0;
-  static const md = 12.0;
-  static const lg = 16.0;
-  static const xl = 24.0;
+  static const field = 12.0;
+  static const md = 14.0; // buttons
+  static const lg = 16.0; // cards
+  static const xl = 24.0; // sheets / large panels
   static const pill = 999.0;
 }
 
 class AppShadows {
   const AppShadows._();
   static const card = [
-    BoxShadow(color: Color(0x141E2140), blurRadius: 16, offset: Offset(0, 4)),
+    BoxShadow(color: Color(0x120F2A28), blurRadius: 16, offset: Offset(0, 4)),
   ];
   static const raised = [
-    BoxShadow(color: Color(0x241E2140), blurRadius: 24, offset: Offset(0, 8)),
+    BoxShadow(color: Color(0x1F0F2A28), blurRadius: 24, offset: Offset(0, 8)),
   ];
 }
 

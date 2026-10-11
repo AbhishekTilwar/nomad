@@ -43,7 +43,7 @@ class NavItem {
 }
 
 /// Floating pill with icon + label per destination; the selected one sits in
-/// a soft indigo capsule.
+/// a soft teal capsule.
 class FloatingNavBar extends StatelessWidget {
   const FloatingNavBar({
     super.key,

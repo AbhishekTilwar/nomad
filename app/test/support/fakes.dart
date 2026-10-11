@@ -119,6 +119,7 @@ class FakeProfileRepository implements ProfileRepository {
   UserProfile? profile;
   Object? fetchError;
   DateTime? lastDob;
+  String? lastGender;
 
   @override
   Future<UserProfile?> fetchMe() async {
@@ -135,8 +136,10 @@ class FakeProfileRepository implements ProfileRepository {
     required List<String> interests,
     required List<String> preferredActivityTypes,
     String? photoUrl,
+    String? gender,
   }) async {
     lastDob = dateOfBirth;
+    lastGender = gender;
     return profile = UserProfile(
       uid: 'u1',
       displayName: displayName,
@@ -163,6 +166,10 @@ class FakeProfileRepository implements ProfileRepository {
   }) async {
     lastPhotoUrl = photoUrl;
     lastRemovePhoto = removePhoto;
+    updateCalls++;
+    lastBio = bio;
+    lastInstagram = instagram;
+    lastCountry = countryCode;
     return profile = UserProfile(
       uid: profile!.uid,
       displayName: displayName ?? profile!.displayName,
@@ -179,6 +186,10 @@ class FakeProfileRepository implements ProfileRepository {
 
   String? lastPhotoUrl;
   bool lastRemovePhoto = false;
+  int updateCalls = 0;
+  String? lastBio;
+  String? lastInstagram;
+  String? lastCountry;
 
   @override
   Future<void> deleteAccountData() async {}

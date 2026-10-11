@@ -8,9 +8,16 @@ const isoDate = z
     const d = new Date(`${s}T00:00:00Z`);
     return !Number.isNaN(d.getTime()) && d.toISOString().startsWith(s);
   }, 'Invalid date');
+/**
+ * Photo URLs must be https. Local development against the Firebase Storage emulator is the one
+ * exception: the emulator serves download URLs over http, so they are accepted only when the
+ * emulator host is configured and NODE_ENV is not production.
+ */
+const allowsHttp = () => Boolean(process.env.FIREBASE_STORAGE_EMULATOR_HOST) && process.env.NODE_ENV !== 'production';
 const httpsUrl = z.string().trim().max(1000).refine((u) => {
   try {
-    return new URL(u).protocol === 'https:';
+    const { protocol } = new URL(u);
+    return protocol === 'https:' || (protocol === 'http:' && allowsHttp());
   } catch {
     return false;
   }
@@ -35,6 +42,7 @@ const fields = {
   photos: z.array(httpsUrl).max(6),
   countryCode: countryCode.nullable(),
   instagram: instagram.nullable(),
+  gender: z.enum(['male', 'female', 'non_binary']),
 };
 
 /** PUT: create (displayName, city, dateOfBirth required) or complete/replace editable fields. */
@@ -50,6 +58,7 @@ export const putProfileSchema = z
     photos: fields.photos.optional(),
     countryCode: fields.countryCode.optional(),
     instagram: fields.instagram.optional(),
+    gender: fields.gender.optional(),
   })
   .strict();
 
@@ -65,6 +74,7 @@ export const patchProfileSchema = z
     photos: fields.photos.optional(),
     countryCode: fields.countryCode.optional(),
     instagram: fields.instagram.optional(),
+    gender: fields.gender.optional(),
   })
   .strict()
   .refine((o) => Object.keys(o).length > 0, 'At least one field is required');

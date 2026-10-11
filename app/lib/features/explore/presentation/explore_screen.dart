@@ -353,10 +353,23 @@ class _Body extends StatelessWidget {
     if (c.view == ExploreView.list) {
       final list = c.visible;
       if (list.isEmpty) {
+        // Filters hiding everything is a different situation from a city
+        // with no plans: offer the way out first.
+        if (c.hasActiveFilters) {
+          return EmptyState(
+            icon: Icons.filter_alt_off_outlined,
+            title: 'No plans match your filters',
+            message:
+                'Try removing a filter to see everything in ${c.city.name}.',
+            actionLabel: 'Clear filters',
+            onAction: c.clearFilters,
+          );
+        }
         return EmptyState(
           icon: Icons.event_busy_outlined,
           title: 'No plans here yet',
-          message: 'Be the first to host something in ${c.city.name}.',
+          message:
+              'Nothing is scheduled in ${c.city.name} right now. Host a coffee or a walk and others can join you.',
           actionLabel: 'Create a plan',
           onAction: () => context.push('/explore/create'),
         );
@@ -369,6 +382,9 @@ class _Body extends StatelessWidget {
           separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
           itemBuilder: (_, i) => ActivityCard(
             activity: list[i],
+            // The marker feed measures from the map centre, not the member.
+            showServerDistance: false,
+            distanceFrom: c.userLocation,
             onTap: () => context.push('/activity/${list[i].id}'),
           ),
         ),
@@ -415,13 +431,13 @@ class _MapViewState extends State<_MapView> {
     }
   }
 
-  /// First time the map is shown: ask for permission and centre on the user.
-  /// Silent on failure (the city view is a fine fallback; the button retries).
+  /// First time the map is shown: centre on the user only if location was
+  /// already allowed. Never prompts here; the locate button asks, in context.
   Future<void> _autoLocate() async {
     final c = widget.controller;
     if (c.autoLocateDone) return;
     c.autoLocateDone = true;
-    final r = await context.read<LocationService>().current();
+    final r = await context.read<LocationService>().currentIfPermitted();
     if (!mounted || r.position == null) return;
     c.setUserLocation(r.position!);
     c.loadNearby(context.read<SocialRepository>(), r.position!);
@@ -437,6 +453,7 @@ class _MapViewState extends State<_MapView> {
     if (p == null) {
       messenger.showSnackBar(
         SnackBar(
+          persist: false,
           content: Text(locationMessage(r.outcome)),
           action: r.outcome == LocationOutcome.deniedForever
               ? SnackBarAction(
@@ -567,9 +584,27 @@ class _MapViewState extends State<_MapView> {
             left: 16,
             right: 16,
             child: Card(
-              child: const Padding(
-                padding: EdgeInsets.all(12),
-                child: Text('No plans in this area yet. Try moving the map.'),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 8, 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        c.hasActiveFilters
+                            ? 'No plans match your filters here.'
+                            : 'No plans in this area yet.',
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: c.hasActiveFilters
+                          ? c.clearFilters
+                          : () => context.push('/explore/create'),
+                      child: Text(
+                        c.hasActiveFilters ? 'Clear filters' : 'Host one',
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

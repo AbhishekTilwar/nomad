@@ -139,6 +139,7 @@ export function createUsersService({ db, auth, fv, now, logger, activities }) {
           dateOfBirth: privUpdate.dateOfBirth,
           ageVerifiedAt: privUpdate.ageVerifiedAt,
           preferredActivityTypes: body.preferredActivityTypes ?? [],
+          gender: body.gender ?? null,
           notificationPrefs: DEFAULT_PREFS,
           role: 'user',
           mutedUntil: null,
@@ -147,6 +148,7 @@ export function createUsersService({ db, auth, fv, now, logger, activities }) {
       } else {
         const upd = { ...privUpdate };
         if (body.preferredActivityTypes !== undefined) upd.preferredActivityTypes = body.preferredActivityTypes;
+        if (body.gender !== undefined) upd.gender = body.gender;
         if (Object.keys(upd).length) tx.update(privRef(uid), upd);
       }
       const snapshotChanged =

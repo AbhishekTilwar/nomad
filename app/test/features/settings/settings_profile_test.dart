@@ -116,7 +116,7 @@ void main() {
       await pumpScreen(t, const SettingsScreen(), session: session, api: api);
 
       expect(find.text('Account'), findsOneWidget);
-      expect(find.text('Push Notifications'), findsOneWidget);
+      expect(find.text('Allow notifications'), findsOneWidget);
       expect(find.text('Terms & Conditions'), findsOneWidget);
       expect(t.widget<Switch>(find.byType(Switch)).value, isFalse);
 

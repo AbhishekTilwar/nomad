@@ -6,7 +6,7 @@ enum AppChipStyle {
   /// Selected = solid primary, white label (map filter row, date/location pickers).
   solid,
 
-  /// Selected = light indigo wash with primary label (sign-up interests).
+  /// Selected = light teal wash with primary label (sign-up interests).
   tinted,
 
   /// Plain grey read-only pill (profile interests).
@@ -56,9 +56,14 @@ class AppChip extends StatelessWidget {
       child: ExcludeSemantics(
         child: Material(
           color: bg,
-          shape: StadiumBorder(side: BorderSide(color: border)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.chip),
+            side: BorderSide(color: border),
+          ),
           child: InkWell(
-            customBorder: const StadiumBorder(),
+            customBorder: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.chip),
+            ),
             onTap: onSelected == null ? null : () => onSelected!(!selected),
             child: ConstrainedBox(
               constraints: const BoxConstraints(minHeight: 36),
