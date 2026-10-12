@@ -23,8 +23,9 @@ PY
 )
 D=(--dart-define=FIREBASE_API_KEY=$FB_KEY --dart-define=FIREBASE_APP_ID=$FB_APP \
    --dart-define=FIREBASE_MESSAGING_SENDER_ID=$FB_SENDER --dart-define=FIREBASE_PROJECT_ID=$FB_PROJECT \
-   --dart-define=FIREBASE_STORAGE_BUCKET=$FB_BUCKET --dart-define=API_BASE_URL=https://nomad-266138323486.europe-west1.run.app/api/v1 \
-   --dart-define=API_BACKUP_URL=https://nomad-emek.onrender.com/api/v1)
+   --dart-define=FIREBASE_STORAGE_BUCKET=$FB_BUCKET --dart-define=API_BASE_URL=https://nomad-266138323486.europe-west1.run.app/api/v1)
+# Render backup is switched OFF for now. To turn it back on, add this to D (before the closing paren):
+#   --dart-define=API_BACKUP_URL=https://nomad-emek.onrender.com/api/v1
 flutter build apk --release --split-per-abi "${D[@]}"
 flutter build appbundle --release "${D[@]}"
 ```
