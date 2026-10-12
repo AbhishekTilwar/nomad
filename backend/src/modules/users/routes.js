@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { parse, send, wrap } from '../../lib/http.js';
+import { invalid } from '../../lib/errors.js';
 import { requireProfile } from '../../middleware/auth.js';
 import { notificationPrefsSchema, deviceTokenSchema } from '../notifications/schemas.js';
 import { myActivitiesQuerySchema } from '../activities/schemas.js';
@@ -10,7 +11,7 @@ import { putProfileSchema, patchProfileSchema, uidParam, locationSchema, travele
 const friendWriteLimiter = userLimiter(30);
 const locationLimiter = userLimiter(20);
 
-export function usersRouter({ users, activities, friends }) {
+export function usersRouter({ users, activities, friends, chat }) {
   const r = Router();
 
   r.get('/me', wrap(async (req, res) => send(res, await users.getMe(req.user.uid))));
@@ -64,6 +65,12 @@ export function usersRouter({ users, activities, friends }) {
   }));
   r.post('/:uid/friend-request/accept', requireProfile, friendWriteLimiter, wrap(async (req, res) =>
     send(res, await friends.accept(req.user, parse(uidParam, req.params).uid))));
+  r.post('/:uid/messages', requireProfile, wrap(async (req, res) => {
+    const { uid } = parse(uidParam, req.params);
+    if (uid === req.user.uid) throw invalid('You cannot message yourself');
+    const out = await chat.postDirectMessage(req.user, uid, chat.parseMessageBody(req.body));
+    send(res, out.message, {}, out.duplicate ? 200 : 201);
+  }));
   r.delete('/:uid/friend', requireProfile, wrap(async (req, res) =>
     send(res, await friends.remove(req.user.uid, parse(uidParam, req.params).uid))));
   r.post('/:uid/block', requireProfile, wrap(async (req, res) =>

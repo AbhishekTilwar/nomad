@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_tokens.dart';
+import '../theme/theme_colors.dart';
 
 enum AppChipStyle {
   /// Selected = solid primary, white label (map filter row, date/location pickers).
@@ -41,11 +42,11 @@ class AppChip extends StatelessWidget {
         fg = selected ? c.onPrimary : c.onSurface;
         border = selected ? c.primary : c.outline;
       case AppChipStyle.tinted:
-        bg = selected ? AppColors.tint : c.surface;
+        bg = selected ? context.tint : c.surface;
         fg = selected ? c.primary : c.onSurfaceVariant;
         border = selected ? c.primary.withValues(alpha: 0.35) : c.outline;
       case AppChipStyle.quiet:
-        bg = AppColors.field;
+        bg = context.field;
         fg = c.onSurface;
         border = c.outline;
     }
@@ -112,7 +113,7 @@ class AppSegmented<T> extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: AppColors.field,
+        color: context.field,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: c.outline),
       ),

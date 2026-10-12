@@ -33,6 +33,8 @@ import '../features/profile/presentation/public_profile_screen.dart';
 import '../features/chat/presentation/activity_chat_screen.dart';
 import '../features/chat/presentation/chats_list_screen.dart';
 import '../features/chat/presentation/community_chat_screen.dart';
+import '../features/chat/presentation/direct_chat_screen.dart';
+import '../features/social/presentation/requests_screen.dart';
 import '../features/shell/main_shell.dart';
 import '../features/shell/status_screens.dart';
 
@@ -201,6 +203,18 @@ GoRouter buildRouter(
           );
         },
       ),
+      GoRoute(
+        path: '/dm/:uid',
+        builder: (_, s) {
+          final extra = (s.extra as Map?)?.cast<String, dynamic>();
+          return DirectChatScreen(
+            otherUid: s.pathParameters['uid']!,
+            fallbackName: extra?['name'] as String?,
+            fallbackPhotoUrl: extra?['photoUrl'] as String?,
+          );
+        },
+      ),
+      GoRoute(path: '/requests', builder: (_, _) => const RequestsScreen()),
       GoRoute(
         path: '/community',
         builder: (_, _) => const CommunityChatScreen(),

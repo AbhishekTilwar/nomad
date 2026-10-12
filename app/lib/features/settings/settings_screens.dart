@@ -7,6 +7,7 @@ import '../../core/config/map_config.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../core/utils/app_exception.dart';
 import '../auth/application/session_controller.dart';
+import '../../core/theme/theme_colors.dart';
 
 const _kPrefKeys = [
   'joinRequests',
@@ -211,13 +212,15 @@ class LocationSwitchScreen extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(bottom: AppSpacing.sm),
               child: Material(
-                color: current == c.id ? AppColors.tint : Colors.white,
+                color: current == c.id
+                    ? context.tint
+                    : Theme.of(context).colorScheme.surface,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(AppRadius.md),
                   side: BorderSide(
                     color: current == c.id
                         ? t.colorScheme.primary.withValues(alpha: 0.35)
-                        : AppColors.outline,
+                        : context.outline,
                   ),
                 ),
                 child: ListTile(
@@ -349,7 +352,7 @@ class SafetyScreen extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: AppColors.tint,
+              color: context.tint,
               borderRadius: BorderRadius.circular(AppRadius.md),
             ),
             child: Icon(icon, size: 20, color: t.colorScheme.primary),
@@ -408,7 +411,7 @@ class SafetyScreen extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(AppSpacing.lg),
               decoration: BoxDecoration(
-                color: AppColors.tint,
+                color: context.tint,
                 borderRadius: BorderRadius.circular(AppRadius.md),
               ),
               child: Column(

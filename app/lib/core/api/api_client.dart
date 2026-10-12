@@ -122,6 +122,13 @@ class ApiClient {
         : null;
     final reason = details is Map ? details['reason'] as String? : null;
     switch (code) {
+      case 'validation_failed':
+        return AppException(
+          _validationMessage(details) ??
+              serverMessage ??
+              'Please check what you entered.',
+          code: code,
+        );
       case 'rate_limited':
         return AppException(
           serverMessage ?? 'You\'re doing that too fast. Please wait a bit.',
@@ -155,6 +162,38 @@ class ApiClient {
       reason: reason,
     );
   }
+}
+
+/// Turns the server's `details: [{path, message}]` into one readable line, so
+/// "Validation failed" says which field to fix. An "Unrecognized key" means the
+/// app sent a field this server version doesn't know (e.g. the server has not
+/// been redeployed yet).
+String? _validationMessage(Object? details) {
+  if (details is! List || details.isEmpty) return null;
+  final first = details.first;
+  if (first is! Map) return null;
+  final path = (first['path'] as String? ?? '').trim();
+  final msg = (first['message'] as String? ?? '').trim();
+  if (msg.isEmpty) return null;
+  if (msg.toLowerCase().contains('unrecognized key')) {
+    return 'The server doesn\'t recognise something this app sent ($msg). '
+        'The server may need updating.';
+  }
+  const labels = {
+    'displayName': 'Name',
+    'dateOfBirth': 'Birthday',
+    'city': 'City',
+    'bio': 'Bio',
+    'interests': 'Interests',
+    'preferredActivityTypes': 'Preferences',
+    'instagram': 'Instagram',
+    'countryCode': 'Country',
+    'gender': 'Gender',
+    'photoUrl': 'Photo',
+    'photos': 'Photos',
+  };
+  final label = labels[path.split('.').first];
+  return label == null ? msg : '$label: $msg';
 }
 
 class ApiResponse {

@@ -7,7 +7,10 @@ before(async () => { env = await createEnv(); });
 after(async () => { await env.close(); });
 
 test('health and ready need no auth', async () => {
-  assert.equal((await env.api('GET', '/health')).status, 200);
+  const health = await env.api('GET', '/health');
+  assert.equal(health.status, 200);
+  assert.equal(health.body.status, 'ok');
+  assert.ok('version' in health.body, 'health reports which commit is deployed (null when unknown)');
   const r = await env.api('GET', '/ready');
   assert.equal(r.status, 200);
 });

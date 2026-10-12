@@ -10,11 +10,12 @@ import '../../features/safety/data/safety_repository.dart';
 import '../services/translation_service.dart';
 import '../theme/app_tokens.dart';
 import '../utils/app_exception.dart';
-import '../utils/category_style.dart';
 import '../utils/formatters.dart';
 import 'join_activity_button.dart';
+import 'plan_pin.dart';
 import 'report_action_sheet.dart';
 import 'user_avatar.dart';
+import '../theme/theme_colors.dart';
 
 /// Quick-look card shown over the map for the selected pin: category badge,
 /// title, headcount, host (crown) + attendee avatars, and a one-tap
@@ -24,9 +25,14 @@ class PlanSheetCard extends StatefulWidget {
     super.key,
     required this.activity,
     required this.onClose,
+    this.onChanged,
   });
   final Activity activity;
   final VoidCallback onClose;
+
+  /// Called after the plan may have changed (joined/left here or on a screen
+  /// this card opened), so the map can refresh its pin and counts.
+  final VoidCallback? onChanged;
 
   @override
   State<PlanSheetCard> createState() => _PlanSheetCardState();
@@ -73,6 +79,15 @@ class _PlanSheetCardState extends State<PlanSheetCard> {
     } on AppException {
       // Keep the slim marker data; the card still works as a link to details.
     }
+  }
+
+  /// Opens [location] and refreshes the card and the map pin on return: the
+  /// plan may have been joined, left or cancelled over there.
+  Future<void> _open(String location) async {
+    await context.push<Object?>(location);
+    if (!mounted) return;
+    widget.onChanged?.call();
+    await _load();
   }
 
   Future<void> _translate() async {
@@ -157,6 +172,7 @@ class _PlanSheetCardState extends State<PlanSheetCard> {
     } on AppException catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
     }
+    widget.onChanged?.call();
     if (mounted) {
       await _load();
       if (mounted) setState(() => _busy = false);
@@ -167,7 +183,6 @@ class _PlanSheetCardState extends State<PlanSheetCard> {
   Widget build(BuildContext context) {
     final t = Theme.of(context);
     final a = _a;
-    final color = CategoryStyle.color(a.category);
     final state = joinUiStateFor(a);
     final canChat = state == JoinUiState.joined || state == JoinUiState.hosting;
     final people = a.isSummary ? null : a.participantCount;
@@ -210,14 +225,11 @@ class _PlanSheetCardState extends State<PlanSheetCard> {
                   onPressed: _translate,
                 ),
                 const SizedBox(width: 4),
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.14),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(CategoryStyle.icon(a.category), color: color),
+                PlanEmojiBadge(
+                  key: ValueKey('badge-${a.id}'),
+                  title: a.title,
+                  category: a.category,
+                  size: 52,
                 ),
                 const Spacer(),
                 IconButton(
@@ -228,7 +240,7 @@ class _PlanSheetCardState extends State<PlanSheetCard> {
               ],
             ),
             InkWell(
-              onTap: () => context.push('/activity/${a.id}'),
+              onTap: () => _open('/activity/${a.id}'),
               borderRadius: BorderRadius.circular(AppRadius.md),
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
@@ -295,7 +307,7 @@ class _PlanSheetCardState extends State<PlanSheetCard> {
                   vertical: 10,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.field,
+                  color: context.field,
                   borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),
                 child: Row(
@@ -319,14 +331,14 @@ class _PlanSheetCardState extends State<PlanSheetCard> {
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.success,
                       ),
-                      onPressed: () => context.push('/activity/${a.id}/chat'),
+                      onPressed: () => _open('/activity/${a.id}/chat'),
                       icon: const Icon(Icons.chat_bubble_outline),
                       label: const Text('Join Chat'),
                     )
                   : JoinActivityButton(
                       state: state,
                       onJoin: _join,
-                      onLeave: () => context.push('/activity/${a.id}'),
+                      onLeave: () => _open('/activity/${a.id}'),
                       loading: _busy,
                     ),
             ),
@@ -420,17 +432,17 @@ class _Attendees extends StatelessWidget {
                       width: 64,
                       child: Column(
                         children: [
-                          const CircleAvatar(
+                          CircleAvatar(
                             radius: 26,
-                            backgroundColor: AppColors.outline,
-                            child: Icon(Icons.lock, color: AppColors.inkMuted),
+                            backgroundColor: context.outline,
+                            child: Icon(Icons.lock, color: context.inkMuted),
                           ),
                           const SizedBox(height: 4),
                           Container(
                             height: 10,
                             width: 40,
                             decoration: BoxDecoration(
-                              color: AppColors.outline,
+                              color: context.outline,
                               borderRadius: BorderRadius.circular(5),
                             ),
                           ),

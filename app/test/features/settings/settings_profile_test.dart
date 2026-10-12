@@ -209,7 +209,7 @@ void main() {
 
       expect(find.text('Rahul Verma'), findsOneWidget);
       expect(find.text('Mumbai'), findsWidgets);
-      expect(find.text('Meetups hosted'), findsOneWidget);
+      expect(find.text('Hosted'), findsOneWidget);
       Text stat(String k) => t.widget<Text>(
         find
             .descendant(
@@ -221,7 +221,7 @@ void main() {
       expect(stat('stat-hosted').data, '2');
       expect(stat('stat-joined').data, '3');
       expect(stat('stat-interests').data, '3');
-      expect(find.text('Upcoming Meetups'), findsOneWidget);
+      expect(find.text('My plans'), findsOneWidget);
       expect(find.text('Trek to Kalsubai'), findsOneWidget);
 
       await t.tap(find.byTooltip('Settings'));

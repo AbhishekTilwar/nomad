@@ -128,11 +128,12 @@ class Activity {
       longitude: (j['longitude'] as num).toDouble(),
       startAt: DateTime.parse(j['startAt'] as String).toLocal(),
       endAt: DateTime.parse((j['endAt'] ?? j['startAt']) as String).toLocal(),
-      // Map markers are slim: they carry `spotsLeft` instead of capacity/count.
+      // Map markers are slim: they carry `spotsLeft` + `participantCount`
+      // instead of capacity, so capacity is their sum.
       capacity:
           (j['capacity'] as num?)?.toInt() ??
-          (j['spotsLeft'] as num?)?.toInt() ??
-          0,
+          ((j['spotsLeft'] as num?)?.toInt() ?? 0) +
+              ((j['participantCount'] as num?)?.toInt() ?? 0),
       participantCount: (j['participantCount'] as num?)?.toInt() ?? 0,
       isSummary: j['capacity'] == null,
       hasHostInfo: j['hostDisplayName'] != null,

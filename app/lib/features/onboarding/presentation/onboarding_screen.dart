@@ -11,6 +11,7 @@ import '../../../core/widgets/primary_button.dart';
 import '../../auth/application/session_controller.dart';
 import '../../profile/data/user_profile.dart';
 import 'onboarding_widgets.dart';
+import '../../../core/theme/theme_colors.dart';
 
 const kPreferenceOptions = <String, String>{
   'small_groups': 'Small groups',
@@ -101,7 +102,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         interests: _interests.toList(),
         preferredActivityTypes: _prefs.toList(),
         gender: _gender,
-        photoUrl: session.user?.photoUrl,
+        // Never the Google account's picture: people add their own photo next.
       );
     } on AppException catch (e) {
       if (mounted) setState(() => _error = e.message);
@@ -212,7 +213,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           child: Text(
             '${_interests.length}/$kMaxInterests',
             style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: AppColors.inkMuted,
+              color: context.inkMuted,
               fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),

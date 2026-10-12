@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/picker_sheets.dart';
+import '../../../core/theme/theme_colors.dart';
 
 /// Shared chrome for the step-by-step onboarding: round back button and a
 /// slim progress bar on top, heading block, scrolling body and a pinned
@@ -105,7 +106,7 @@ class OnboardingFrame extends StatelessWidget {
                             width: 48,
                             height: 48,
                             decoration: BoxDecoration(
-                              color: AppColors.secondaryLight,
+                              color: context.secondaryLight,
                               borderRadius: BorderRadius.circular(AppRadius.lg),
                             ),
                             child: Icon(
@@ -146,7 +147,7 @@ class _RoundBackButton extends StatelessWidget {
     child: ExcludeSemantics(
       child: Material(
         color: Theme.of(context).colorScheme.surface,
-        shape: const CircleBorder(side: BorderSide(color: AppColors.outline)),
+        shape: CircleBorder(side: BorderSide(color: context.outline)),
         child: InkWell(
           customBorder: const CircleBorder(),
           onTap: onPressed,
@@ -178,7 +179,7 @@ class _ProgressBar extends StatelessWidget {
           builder: (_, v, _) => LinearProgressIndicator(
             value: v,
             minHeight: 4,
-            backgroundColor: AppColors.outline,
+            backgroundColor: context.outline,
             color: AppColors.primary,
           ),
         ),
@@ -221,7 +222,7 @@ class ChoiceTile extends StatelessWidget {
       label: label,
       child: ExcludeSemantics(
         child: Material(
-          color: selected ? AppColors.primaryLight : AppColors.field,
+          color: selected ? context.primaryLight : context.field,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.md),
             side: BorderSide(
@@ -244,7 +245,7 @@ class ChoiceTile extends StatelessWidget {
                       child: Text(
                         label,
                         style: t.textTheme.bodyLarge?.copyWith(
-                          color: selected ? AppColors.primary : AppColors.ink,
+                          color: selected ? AppColors.primary : context.ink,
                           fontWeight: selected
                               ? FontWeight.w600
                               : FontWeight.w400,
@@ -315,11 +316,11 @@ class DobPickerTile extends StatelessWidget {
               : 'Birthday, ${DateFormat.yMMMMd().format(dob)}',
           child: ExcludeSemantics(
             child: Material(
-              color: AppColors.field,
+              color: context.field,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppRadius.field),
                 side: BorderSide(
-                  color: error == null ? AppColors.outline : AppColors.danger,
+                  color: error == null ? context.outline : AppColors.danger,
                 ),
               ),
               child: InkWell(
@@ -333,9 +334,9 @@ class DobPickerTile extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 14),
                     child: Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.cake_outlined,
-                          color: AppColors.inkMuted,
+                          color: context.inkMuted,
                           size: 22,
                         ),
                         const SizedBox(width: 12),
@@ -346,8 +347,8 @@ class DobPickerTile extends StatelessWidget {
                                 : DateFormat.yMMMMd().format(dob),
                             style: t.textTheme.bodyLarge?.copyWith(
                               color: dob == null
-                                  ? AppColors.inkMuted
-                                  : AppColors.ink,
+                                  ? context.inkMuted
+                                  : context.ink,
                             ),
                           ),
                         ),
@@ -358,7 +359,7 @@ class DobPickerTile extends StatelessWidget {
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.primaryLight,
+                              color: context.primaryLight,
                               borderRadius: BorderRadius.circular(
                                 AppRadius.chip,
                               ),
@@ -375,9 +376,9 @@ class DobPickerTile extends StatelessWidget {
                             ),
                           )
                         else
-                          const Icon(
+                          Icon(
                             Icons.chevron_right,
-                            color: AppColors.inkMuted,
+                            color: context.inkMuted,
                           ),
                       ],
                     ),

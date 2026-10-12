@@ -23,6 +23,7 @@ import 'package:nomad_mingle/features/chat/presentation/community_chat_button.da
 import 'package:nomad_mingle/features/chat/presentation/community_chat_screen.dart';
 import 'package:nomad_mingle/features/profile/data/user_profile.dart';
 import 'package:nomad_mingle/features/safety/data/safety_repository.dart';
+import 'package:nomad_mingle/features/social/data/social_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../support/fakes.dart';
@@ -358,6 +359,7 @@ void main() {
         MultiProvider(
           providers: [
             Provider<ChatRepository>.value(value: repo),
+            Provider<SocialRepository>.value(value: FakeSocialRepository()),
             Provider<SafetyRepository>.value(value: safety),
             Provider<ActivityRepository>.value(
               value: activities ?? FakeActivityRepository([sampleActivity()]),

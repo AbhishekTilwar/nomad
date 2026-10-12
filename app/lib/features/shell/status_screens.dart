@@ -7,6 +7,7 @@ import '../../core/widgets/brand_mark.dart';
 import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/error_state.dart';
 import '../auth/application/session_controller.dart';
+import '../../core/theme/theme_colors.dart';
 
 /// Shown while the session loads: the logo animates in on the brand
 /// background, with a quiet progress line underneath.
@@ -16,7 +17,7 @@ class SplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
     // Fixed brand background (the logo image carries its own light backdrop).
-    backgroundColor: AppColors.sand,
+    backgroundColor: context.sand,
     body: Stack(
       fit: StackFit.expand,
       children: [
@@ -32,10 +33,10 @@ class SplashScreen extends StatelessWidget {
             width: 120,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(AppRadius.pill),
-              child: const LinearProgressIndicator(
+              child: LinearProgressIndicator(
                 minHeight: 3,
                 semanticsLabel: 'Loading',
-                backgroundColor: AppColors.primaryLight,
+                backgroundColor: context.primaryLight,
               ),
             ),
           ),

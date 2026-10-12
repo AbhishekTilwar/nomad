@@ -9,6 +9,7 @@ import '../../../core/widgets/primary_button.dart';
 import '../../auth/application/session_controller.dart';
 import 'onboarding_screen.dart' show kOnboardingSteps;
 import 'onboarding_widgets.dart';
+import '../../../core/theme/theme_colors.dart';
 
 /// Photo step. During onboarding it can be skipped (people should see the
 /// product before being asked for a selfie); joining or hosting later asks for
@@ -154,7 +155,7 @@ class _PhotoTile extends StatelessWidget {
             child: ClipRRect(
               borderRadius: radius,
               child: ColoredBox(
-                color: AppColors.field,
+                color: context.field,
                 child: Stack(
                   fit: StackFit.expand,
                   children: [

@@ -1,21 +1,30 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/services/user_photo_cache.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_chip.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/error_state.dart';
 import '../../../core/widgets/loading_skeleton.dart';
+import '../../activities/data/activity_repository.dart';
 import '../../activities/data/my_activities_repository.dart';
 import '../../activities/models/activity.dart';
+import '../../../core/widgets/user_avatar.dart';
+import '../../social/application/requests_controller.dart';
+import '../../social/data/social_repository.dart';
+import '../../social/presentation/requests_screen.dart';
 import '../application/chat_read_store.dart';
 import '../application/community_unread_controller.dart';
 import '../application/chats_list_controller.dart';
 import '../data/chat_repository.dart';
 import 'chat_header.dart';
 import 'chat_identity.dart';
+import '../../../core/theme/theme_colors.dart';
 
 /// The Chats tab: activities I host or have joined, with last message, time and unread dot.
 class ChatsListScreen extends StatefulWidget {
@@ -25,10 +34,15 @@ class ChatsListScreen extends StatefulWidget {
   State<ChatsListScreen> createState() => _ChatsListScreenState();
 }
 
-enum _ChatFilter { all, unread, plans }
+enum _ChatFilter { all, unread, plans, direct, requests }
 
 class _ChatsListScreenState extends State<ChatsListScreen> {
   late final ChatsListController _c;
+  late final RequestsController _requests;
+  late final ChatReadStore _store;
+  late final String _myUid;
+  StreamSubscription<List<DmConversation>>? _dmSub;
+  List<DmConversation> _dms = const [];
   final _search = TextEditingController();
   _ChatFilter _filter = _ChatFilter.all;
   bool _searching = false;
@@ -43,10 +57,50 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
       myUid: ChatIdentity.of(context).uid,
       blockedIds: chat.blockedIds,
     )..load();
+    _store = context.read<ChatReadStore>();
+    _myUid = ChatIdentity.of(context).uid;
+    _store.addListener(_onStore);
+    _requests = RequestsController(
+      social: context.read<SocialRepository>(),
+      mine: context.read<MyActivitiesRepository>(),
+      activities: context.read<ActivityRepository>(),
+    )..load();
+    _dmSub = chat.watchConversations(_myUid).listen(
+      (list) {
+        if (mounted) setState(() => _dms = list);
+      },
+      onError: (_) {}, // direct chats are optional; plans still show
+    );
   }
+
+  void _onStore() {
+    if (mounted) setState(() {});
+  }
+
+  bool _dmUnread(DmConversation d) => _store.isUnread(
+    'dm:${d.otherUid}',
+    latest: d.updatedAt,
+    senderId: d.lastSenderId,
+    myUid: _myUid,
+  );
+
+  Widget _filterRow() => ListenableBuilder(
+    listenable: _requests,
+    builder: (_, _) => _FilterRow(
+      value: _filter,
+      requestCount: _requests.count,
+      onChanged: (f) {
+        setState(() => _filter = f);
+        if (f == _ChatFilter.requests) _requests.load();
+      },
+    ),
+  );
 
   @override
   void dispose() {
+    _store.removeListener(_onStore);
+    _dmSub?.cancel();
+    _requests.dispose();
     _search.dispose();
     _c.dispose();
     super.dispose();
@@ -118,37 +172,66 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                     i,
               ];
               final showCommunity =
-                  _filter != _ChatFilter.plans &&
+                  (_filter == _ChatFilter.all ||
+                      _filter == _ChatFilter.unread) &&
                   (q.isEmpty || 'mingle community'.contains(q));
+              if (_filter == _ChatFilter.requests) {
+                return Column(
+                  children: [
+                    _filterRow(),
+                    Expanded(child: RequestsView(controller: _requests)),
+                  ],
+                );
+              }
+              final showPlans = _filter != _ChatFilter.direct;
+              final plans = showPlans ? items : const <MyActivity>[];
+              final dms = _filter == _ChatFilter.plans
+                  ? const <DmConversation>[]
+                  : [
+                      for (final d in _dms)
+                        if ((_filter != _ChatFilter.unread || _dmUnread(d)) &&
+                            (q.isEmpty ||
+                                (UserPhotoCache.instance
+                                        .watch(d.otherUid)
+                                        .value
+                                        ?.name
+                                        .toLowerCase()
+                                        .contains(q) ??
+                                    false) ||
+                                d.lastText.toLowerCase().contains(q)))
+                          d,
+                    ];
               return Column(
                 children: [
-                  _FilterRow(
-                    value: _filter,
-                    onChanged: (f) => setState(() => _filter = f),
-                  ),
+                  _filterRow(),
                   if (showCommunity)
                     _PinnedCommunityTile(
                       onlyUnread: _filter == _ChatFilter.unread,
                     ),
                   Expanded(
-                    child: items.isEmpty
+                    child: plans.isEmpty && dms.isEmpty
                         ? _emptyFor(context, q)
                         : RefreshIndicator(
-                            onRefresh: _c.load,
-                            child: ListView.separated(
+                            onRefresh: () async {
+                              await Future.wait([_c.load(), _requests.load()]);
+                            },
+                            child: ListView(
                               physics: const AlwaysScrollableScrollPhysics(),
-                              itemCount: items.length,
-                              separatorBuilder: (_, _) => const Divider(
-                                height: 1,
-                                indent: 20,
-                                endIndent: 20,
-                              ),
-                              itemBuilder: (context, i) => _ChatRow(
-                                item: items[i],
-                                preview: _c.previewFor(items[i]),
-                                unread: _c.isUnread(items[i]),
-                                myUid: _c.myUid,
-                              ),
+                              children: [
+                                for (final d in dms)
+                                  _DmRow(
+                                    convo: d,
+                                    unread: _dmUnread(d),
+                                    myUid: _myUid,
+                                  ),
+                                for (final p in plans)
+                                  _ChatRow(
+                                    item: p,
+                                    preview: _c.previewFor(p),
+                                    unread: _c.isUnread(p),
+                                    myUid: _c.myUid,
+                                  ),
+                              ],
                             ),
                           ),
                   ),
@@ -165,6 +248,14 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
       return const EmptyState(
         icon: Icons.search_off,
         title: 'No matching chats',
+      );
+    }
+    if (_filter == _ChatFilter.direct) {
+      return const EmptyState(
+        icon: Icons.person_outline,
+        title: 'No direct chats yet',
+        message:
+            'Become friends with someone, then message them from the People list on the map.',
       );
     }
     if (_filter == _ChatFilter.unread) {
@@ -185,32 +276,125 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
 }
 
 class _FilterRow extends StatelessWidget {
-  const _FilterRow({required this.value, required this.onChanged});
+  const _FilterRow({
+    required this.value,
+    required this.onChanged,
+    required this.requestCount,
+  });
   final _ChatFilter value;
+  final int requestCount;
   final ValueChanged<_ChatFilter> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    const labels = {
+    final labels = {
       _ChatFilter.all: 'All',
       _ChatFilter.unread: 'Unread',
       _ChatFilter.plans: 'Plans',
+      _ChatFilter.direct: 'Friends',
+      _ChatFilter.requests: requestCount > 0
+          ? 'Requests · $requestCount'
+          : 'Requests',
     };
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-      child: Row(
-        children: [
-          for (final f in _ChatFilter.values) ...[
-            AppChip(
-              label: labels[f]!,
-              selected: value == f,
-              style: AppChipStyle.tinted,
-              onSelected: (_) => onChanged(f),
-            ),
-            const SizedBox(width: AppSpacing.sm),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            for (final f in _ChatFilter.values) ...[
+              AppChip(
+                label: labels[f]!,
+                selected: value == f,
+                style: AppChipStyle.tinted,
+                onSelected: (_) => onChanged(f),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+            ],
           ],
-        ],
+        ),
       ),
+    );
+  }
+}
+
+/// A one-to-one conversation; name and photo come from the friend's profile.
+class _DmRow extends StatelessWidget {
+  const _DmRow({
+    required this.convo,
+    required this.unread,
+    required this.myUid,
+  });
+  final DmConversation convo;
+  final bool unread;
+  final String myUid;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    return ValueListenableBuilder<UserSummary?>(
+      valueListenable: UserPhotoCache.instance.watch(convo.otherUid),
+      builder: (context, who, _) {
+        final name = who?.name ?? 'Friend';
+        return ListTile(
+          key: ValueKey('dm-${convo.otherUid}'),
+          minTileHeight: 72,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.xs,
+          ),
+          onTap: () => context.push(
+            '/dm/${convo.otherUid}',
+            extra: {'name': name, 'photoUrl': who?.photoUrl},
+          ),
+          leading: UserAvatar(name: name, photoUrl: who?.photoUrl, size: 48),
+          title: Text(
+            name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: t.textTheme.titleMedium?.copyWith(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          subtitle: Text(
+            '${convo.lastSenderId == myUid ? 'You: ' : ''}${convo.lastText}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: t.textTheme.bodyMedium?.copyWith(
+              fontSize: 13,
+              color: unread
+                  ? t.colorScheme.onSurface
+                  : t.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          trailing: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                Formatters.chatTime(convo.updatedAt),
+                style: t.textTheme.bodySmall?.copyWith(
+                  fontSize: 11,
+                  color: t.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 6),
+              if (unread)
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: t.colorScheme.primary,
+                    shape: BoxShape.circle,
+                  ),
+                )
+              else
+                const SizedBox(height: 10),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -343,7 +527,7 @@ class _PinnedCommunityTileState extends State<_PinnedCommunityTile> {
         final unread = _unread.hasUnread;
         if (widget.onlyUnread && !unread) return const SizedBox.shrink();
         return Material(
-          color: AppColors.tint,
+          color: context.tint,
           child: ListTile(
             minTileHeight: 72,
             contentPadding: const EdgeInsets.symmetric(

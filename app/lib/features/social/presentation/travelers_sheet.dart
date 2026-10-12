@@ -9,6 +9,7 @@ import '../../../core/utils/app_exception.dart';
 import '../../../core/utils/countries.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/user_avatar.dart';
+import '../../../core/widgets/loading_skeleton.dart';
 import '../data/social_repository.dart';
 
 const _kDiscoverableKey = 'discoverable_v1';
@@ -39,6 +40,10 @@ class _TravelersSheetState extends State<TravelersSheet> {
   bool _discoverable = false;
   double? _lat;
   double? _lng;
+  int _tab = 0; // 0 nearby, 1 friends
+  List<FriendEntry>? _friends;
+  int _requestCount = 0;
+  String? _friendsError;
 
   @override
   void initState() {
@@ -46,7 +51,26 @@ class _TravelersSheetState extends State<TravelersSheet> {
     _init();
   }
 
+  Future<void> _loadFriends() async {
+    final social = context.read<SocialRepository>();
+    try {
+      final res = await Future.wait([
+        social.friends(),
+        social.friendRequests(),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _friends = res[0];
+        _requestCount = res[1].length;
+        _friendsError = null;
+      });
+    } on AppException catch (e) {
+      if (mounted) setState(() => _friendsError = e.message);
+    }
+  }
+
   Future<void> _init() async {
+    _loadFriends();
     final prefs = await SharedPreferences.getInstance();
     _discoverable = prefs.getBool(_kDiscoverableKey) ?? false;
     await _load();
@@ -195,6 +219,7 @@ class _TravelersSheetState extends State<TravelersSheet> {
         },
       );
     }
+    if (_tab == 1) body = _friendsBody(t);
     return Column(
       children: [
         Padding(
@@ -203,9 +228,7 @@ class _TravelersSheetState extends State<TravelersSheet> {
             children: [
               Expanded(
                 child: Text(
-                  items == null
-                      ? 'Travelers in area'
-                      : '${items.length} travelers in area',
+                  'People',
                   style: t.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
@@ -219,17 +242,131 @@ class _TravelersSheetState extends State<TravelersSheet> {
             ],
           ),
         ),
-        SwitchListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-          title: const Text('Show me here'),
-          subtitle: const Text(
-            'Others nearby can see your name, photo and rough distance. Turn off any time.',
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+          child: SegmentedButton<int>(
+            showSelectedIcon: false,
+            segments: [
+              ButtonSegment(
+                value: 0,
+                label: Text(
+                  items == null ? 'Nearby' : 'Nearby · ${items.length}',
+                ),
+              ),
+              ButtonSegment(
+                value: 1,
+                label: Text(
+                  _friends == null
+                      ? 'Friends'
+                      : 'Friends · ${_friends!.length}',
+                ),
+              ),
+            ],
+            selected: {_tab},
+            onSelectionChanged: (s) => setState(() => _tab = s.first),
           ),
-          value: _discoverable,
-          onChanged: _toggle,
         ),
+        if (_tab == 0)
+          SwitchListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+            title: const Text('Show me here'),
+            subtitle: const Text(
+              'Others nearby can see your name, photo and rough distance. Turn off any time.',
+            ),
+            value: _discoverable,
+            onChanged: _toggle,
+          ),
         const Divider(height: 1),
         Expanded(child: body),
+      ],
+    );
+  }
+
+  Widget _friendsBody(ThemeData t) {
+    final friends = _friends;
+    if (_friendsError != null && friends == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(_friendsError!, textAlign: TextAlign.center),
+              const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: _loadFriends,
+                child: const Text('Try again'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    if (friends == null) return LoadingSkeleton.list(count: 3);
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+      children: [
+        if (_requestCount > 0)
+          Card(
+            margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: ListTile(
+              key: const ValueKey('friend-requests-row'),
+              leading: const Icon(Icons.person_add_alt_1),
+              title: Text(
+                _requestCount == 1
+                    ? '1 friend request'
+                    : '$_requestCount friend requests',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () async {
+                Navigator.of(context).pop();
+                context.push('/requests');
+              },
+            ),
+          ),
+        if (friends.isEmpty)
+          const Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'No friends yet. Open someone\'s profile from Nearby and tap Add Friend.',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        for (final f in friends)
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: UserAvatar(
+              name: f.displayName,
+              photoUrl: f.photoUrl,
+              size: 48,
+            ),
+            title: Text(
+              f.displayName,
+              style: t.textTheme.titleMedium?.copyWith(fontSize: 15),
+            ),
+            subtitle: countryName(f.countryCode).isEmpty
+                ? null
+                : Text(countryName(f.countryCode)),
+            onTap: () {
+              Navigator.of(context).pop();
+              context.push(
+                '/user/${f.uid}',
+                extra: {'name': f.displayName, 'photoUrl': f.photoUrl},
+              );
+            },
+            trailing: IconButton.outlined(
+              key: ValueKey('message-${f.uid}'),
+              tooltip: 'Message ${f.displayName}',
+              icon: const Icon(Icons.chat_bubble_outline),
+              onPressed: () {
+                Navigator.of(context).pop();
+                context.push(
+                  '/dm/${f.uid}',
+                  extra: {'name': f.displayName, 'photoUrl': f.photoUrl},
+                );
+              },
+            ),
+          ),
       ],
     );
   }

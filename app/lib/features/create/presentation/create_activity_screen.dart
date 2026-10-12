@@ -11,6 +11,7 @@ import '../../../core/services/image_upload_service.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/utils/app_exception.dart';
 import '../../../core/utils/category_style.dart';
+import '../../../core/utils/plan_emoji.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/activity_card.dart';
 import '../../../core/widgets/form_field.dart';
@@ -26,11 +27,40 @@ import '../../explore/presentation/explore_controller.dart';
 import '../../profile/data/user_profile.dart';
 import 'create_activity_controller.dart';
 
+/// Opens the "host a plan" flow as a drawer over the current screen.
+Future<void> showCreatePlanSheet(BuildContext context) {
+  final explore = context.read<ExploreController>();
+  return showModalBottomSheet<void>(
+    context: context,
+    useRootNavigator: true,
+    isScrollControlled: true,
+    useSafeArea: true,
+    showDragHandle: true,
+    builder: (sheet) {
+      final h = MediaQuery.sizeOf(sheet).height;
+      final keyboard = MediaQuery.viewInsetsOf(sheet).bottom;
+      return Padding(
+        padding: EdgeInsets.only(bottom: keyboard),
+        child: ChangeNotifierProvider.value(
+          value: explore,
+          child: SizedBox(
+            height: (h * 0.92).clamp(0, h - keyboard - 24),
+            child: const CreateActivityScreen(asSheet: true),
+          ),
+        ),
+      );
+    },
+  );
+}
+
 class CreateActivityScreen extends StatelessWidget {
-  const CreateActivityScreen({super.key, this.editing});
+  const CreateActivityScreen({super.key, this.editing, this.asSheet = false});
 
   /// When set, the form edits this existing plan instead of creating one.
   final Activity? editing;
+
+  /// True when shown inside the drawer from [showCreatePlanSheet].
+  final bool asSheet;
 
   @override
   Widget build(BuildContext context) {
@@ -41,13 +71,14 @@ class CreateActivityScreen extends StatelessWidget {
         city: editing?.city ?? session.profile?.city ?? 'mumbai',
         editing: editing,
       ),
-      child: const _CreateView(),
+      child: _CreateView(asSheet: asSheet),
     );
   }
 }
 
 class _CreateView extends StatefulWidget {
-  const _CreateView();
+  const _CreateView({required this.asSheet});
+  final bool asSheet;
 
   @override
   State<_CreateView> createState() => _CreateViewState();
@@ -57,18 +88,17 @@ class _CreateViewState extends State<_CreateView> {
   final _title = TextEditingController();
   final _description = TextEditingController();
   final _venue = TextEditingController();
-  final _maxMembers = TextEditingController(text: '8');
   final _costDesc = TextEditingController();
   final _safety = TextEditingController();
   final _cancel = TextEditingController();
-  final _scroll = ScrollController();
   bool _uploading = false;
+  int _step = 0;
+  bool _forward = true;
 
   List<TextEditingController> get _all => [
     _title,
     _description,
     _venue,
-    _maxMembers,
     _costDesc,
     _safety,
     _cancel,
@@ -83,7 +113,6 @@ class _CreateViewState extends State<_CreateView> {
       _title.text = a.title;
       _description.text = a.description;
       _venue.text = a.venueName;
-      _maxMembers.text = '${a.capacity}';
       _costDesc.text = a.costDescription;
       _safety.text = a.safetyNotes;
       _cancel.text = a.cancellationPolicy;
@@ -95,7 +124,6 @@ class _CreateViewState extends State<_CreateView> {
     for (final c in _all) {
       c.dispose();
     }
-    _scroll.dispose();
     super.dispose();
   }
 
@@ -124,24 +152,6 @@ class _CreateViewState extends State<_CreateView> {
       summary: (d) => DateFormat('EEE, d MMM · h:mm a').format(d),
     );
     if (picked != null) c.update(() => c.startAt = picked);
-  }
-
-  Future<void> _pickCategory(CreateActivityController c) async {
-    final v = await showOptionSheet<String>(
-      context,
-      title: 'What kind of plan is it?',
-      selected: c.category,
-      options: [
-        for (final i in kInterests)
-          PickerOption(
-            i.id,
-            i.label,
-            icon: CategoryStyle.icon(i.id),
-            iconColor: CategoryStyle.color(i.id),
-          ),
-      ],
-    );
-    if (v != null) c.update(() => c.category = v);
   }
 
   static const _durationLabels = {
@@ -195,7 +205,13 @@ class _CreateViewState extends State<_CreateView> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fix the highlighted fields.')),
       );
-      _scroll.animateTo(0, duration: AppMotion.normal, curve: Curves.easeOut);
+      final bad = CreateActivityController.firstStepWithError(c.errors);
+      if (bad != null) {
+        setState(() {
+          _forward = bad > _step;
+          _step = bad;
+        });
+      }
       return;
     }
     if (c.isEditing) {
@@ -270,6 +286,7 @@ class _CreateViewState extends State<_CreateView> {
       final router = GoRouter.of(context);
       // Show it on the map right away (and refresh from the server).
       context.read<ExploreController>().showPosted(created);
+      if (widget.asSheet) Navigator.of(context).pop();
       router.go('/explore');
       messenger.showSnackBar(
         SnackBar(
@@ -310,7 +327,7 @@ class _CreateViewState extends State<_CreateView> {
     for (final t in _all) {
       t.clear();
     }
-    _maxMembers.text = '8';
+    _step = 0;
     c.update(() {
       c.title = '';
       c.description = '';
@@ -330,18 +347,48 @@ class _CreateViewState extends State<_CreateView> {
     });
   }
 
+  static const _steps = <(String, String, String)>[
+    ('🎯', 'What\'s the plan?', 'Pick a vibe and give it a name. A description is optional.'),
+    ('🗓️', 'When & where?', 'Set the time and drop a pin so people find you.'),
+    ('👥', 'Who\'s it for?', 'Group size, cost and how people get in.'),
+    ('✨', 'Finishing touches', 'All optional, but a photo and a clear meeting spot help people say yes.'),
+  ];
+
+  void _next(CreateActivityController c) {
+    FocusScope.of(context).unfocus();
+    if (!c.validateStep(_step)) {
+      HapticFeedback.lightImpact();
+      return;
+    }
+    setState(() {
+      _forward = true;
+      _step++;
+    });
+  }
+
+  void _back(CreateActivityController c) {
+    FocusScope.of(context).unfocus();
+    if (_step == 0) return;
+    c.update(() => c.errors = const {});
+    setState(() {
+      _forward = false;
+      _step--;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.watch<CreateActivityController>();
     final t = Theme.of(context);
-    final err = c.errors;
-    const gap = SizedBox(height: 16);
-
-    Widget section(String s) => Padding(
-      padding: const EdgeInsets.only(top: 24, bottom: 10),
-      child: Text(s, style: t.textTheme.titleMedium),
-    );
-
+    final wizard = _wizard(context, c, t);
+    if (widget.asSheet) {
+      // Transparent so the drawer's own background shows through (no seam
+      // under the drag handle).
+      return Material(
+        color: Colors.transparent,
+        child: SafeArea(top: false, child: wizard),
+      );
+    }
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -352,30 +399,225 @@ class _CreateViewState extends State<_CreateView> {
         ),
         title: Text(c.isEditing ? 'Edit Plan' : 'Create a Plan'),
       ),
-      body: SafeArea(
-        child: ListView(
-          controller: _scroll,
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      body: SafeArea(child: wizard),
+    );
+  }
+
+  Widget _wizard(BuildContext context, CreateActivityController c, ThemeData t) {
+    final last = _step == _steps.length - 1;
+    final (emoji, title, subtitle) = _steps[_step];
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 12, 0),
+          child: Row(
+            children: [
+              if (widget.asSheet)
+                Text(
+                  c.isEditing ? 'Edit plan' : 'Host a plan',
+                  style: t.textTheme.titleMedium,
+                )
+              else
+                Text(
+                  'Step ${_step + 1} of ${_steps.length}',
+                  style: t.textTheme.labelLarge?.copyWith(
+                    color: t.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              const Spacer(),
+              if (widget.asSheet)
+                IconButton(
+                  tooltip: 'Close',
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 6, 20, 0),
+          child: Row(
+            children: [
+              for (var i = 0; i < _steps.length; i++) ...[
+                if (i > 0) const SizedBox(width: 6),
+                Expanded(
+                  child: AnimatedContainer(
+                    duration: AppMotion.normal,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: i <= _step
+                          ? t.colorScheme.primary
+                          : t.colorScheme.outlineVariant,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        if (widget.asSheet)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 6, 20, 0),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Step ${_step + 1} of ${_steps.length}',
+                style: t.textTheme.labelMedium?.copyWith(
+                  color: t.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 4),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('$emoji  $title', style: t.textTheme.headlineSmall),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: t.textTheme.bodyMedium?.copyWith(
+                    color: t.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        Expanded(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 260),
+            // Fill the area and pin to the top (the default centres the step).
+            layoutBuilder: (current, previous) => Stack(
+              fit: StackFit.expand,
+              alignment: Alignment.topCenter,
+              children: [...previous, ?current],
+            ),
+            transitionBuilder: (child, anim) => FadeTransition(
+              opacity: anim,
+              child: SlideTransition(
+                position: Tween(
+                  begin: Offset(_forward ? 0.08 : -0.08, 0),
+                  end: Offset.zero,
+                ).animate(anim),
+                child: child,
+              ),
+            ),
+            child: KeyedSubtree(
+              key: ValueKey(_step),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                child: _stepBody(context, c, t),
+              ),
+            ),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
+          decoration: BoxDecoration(
+            border: Border(top: BorderSide(color: t.colorScheme.outlineVariant)),
+          ),
+          child: Row(
+            children: [
+              if (_step > 0) ...[
+                Expanded(
+                  child: SecondaryButton(
+                    label: 'Back',
+                    onPressed: () => _back(c),
+                  ),
+                ),
+                const SizedBox(width: 12),
+              ],
+              Expanded(
+                flex: 2,
+                child: PrimaryButton(
+                  label: last
+                      ? (c.isEditing ? 'Save changes' : 'Review & publish')
+                      : 'Next',
+                  loading: last && c.submitting,
+                  onPressed: last ? () => _preview(c) : () => _next(c),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _stepBody(BuildContext context, CreateActivityController c, ThemeData t) {
+    final err = c.errors;
+    const gap = SizedBox(height: 16);
+    Widget section(String s) => Padding(
+      padding: const EdgeInsets.only(top: 24, bottom: 10),
+      child: Text(s, style: t.textTheme.titleMedium),
+    );
+    switch (_step) {
+      case 0:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text(
+              'Vibe',
+              style: t.textTheme.labelMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final i in kInterests)
+                  _CategoryTile(
+                    id: i.id,
+                    label: CategoryStyle.shortLabels[i.id] ?? i.label,
+                    selected: c.category == i.id,
+                    onTap: () => c.update(() => c.category = i.id),
+                  ),
+              ],
+            ),
+            if (err['category'] != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  err['category']!,
+                  style: t.textTheme.bodySmall?.copyWith(
+                    color: t.colorScheme.error,
+                  ),
+                ),
+              ),
+            gap,
             AppFormField(
               label: 'Title',
               hint: 'e.g. Weekend Trek to Lonavala',
               controller: _title,
               maxLength: 80,
-              onChanged: (v) => c.title = v,
-              validator: (_) => err['title'],
+              onChanged: (v) => c.edit(() => c.title = v),
+              errorText: err['title'],
               textInputAction: TextInputAction.next,
             ),
             gap,
-            PickerField(
-              label: 'Category',
-              hint: 'Select category',
-              valueText: c.category == null ? null : interestLabel(c.category!),
-              errorText: err['category'],
-              onTap: () => _pickCategory(c),
+            AppFormField(
+              label: 'Description (optional)',
+              hint: 'Tell people more about your plan...',
+              controller: _description,
+              maxLines: 4,
+              maxLength: 1000,
+              onChanged: (v) => c.edit(() => c.description = v),
+              errorText: err['description'],
             ),
-            gap,
+          ],
+        );
+      case 1:
+        return Column(
+          children: [
             PickerField(
               label: 'Date & Time',
               hint: 'Select date & time',
@@ -395,12 +637,12 @@ class _CreateViewState extends State<_CreateView> {
             ),
             gap,
             AppFormField(
-              label: 'Venue',
+              label: 'Venue name (optional)',
               hint: 'e.g. Cafe Leopold, Colaba',
               controller: _venue,
               maxLength: 100,
-              onChanged: (v) => c.venueName = v,
-              validator: (_) => err['venueName'],
+              onChanged: (v) => c.edit(() => c.venueName = v),
+              errorText: err['venueName'],
             ),
             gap,
             AppFormField(
@@ -412,29 +654,62 @@ class _CreateViewState extends State<_CreateView> {
               readOnly: true,
               prefixIcon: Icons.place_outlined,
               onTap: () => _pickLocation(c),
-              validator: (_) => err['location'],
+              errorText: err['location'],
             ),
-            gap,
-            AppFormField(
-              label: 'Description',
-              hint: 'Tell people about your plan...',
-              controller: _description,
-              maxLines: 4,
-              maxLength: 1000,
-              onChanged: (v) => c.description = v,
-              validator: (_) => err['description'],
+          ],
+        );
+      case 2:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Group size',
+              style: t.textTheme.labelMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
-            gap,
-            AppFormField(
-              label: 'Max Members',
-              hint: 'e.g. 10',
-              controller: _maxMembers,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              onChanged: (v) => c.capacity = int.tryParse(v) ?? 0,
-              validator: (_) => err['capacity'],
-              helper: 'Including you. Between 2 and 50.',
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                IconButton.filledTonal(
+                  tooltip: 'Fewer people',
+                  onPressed: c.capacity > Validators.minCapacity
+                      ? () => c.update(() => c.capacity--)
+                      : null,
+                  icon: const Icon(Icons.remove),
+                ),
+                Expanded(
+                  child: Column(
+                    children: [
+                      Text('${c.capacity}', style: t.textTheme.displaySmall),
+                      Text(
+                        'people, including you',
+                        style: t.textTheme.bodySmall?.copyWith(
+                          color: t.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton.filledTonal(
+                  tooltip: 'More people',
+                  onPressed: c.capacity < Validators.maxCapacity
+                      ? () => c.update(() => c.capacity++)
+                      : null,
+                  icon: const Icon(Icons.add),
+                ),
+              ],
             ),
+            if (err['capacity'] != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  err['capacity']!,
+                  style: t.textTheme.bodySmall?.copyWith(
+                    color: t.colorScheme.error,
+                  ),
+                ),
+              ),
             section('Cost'),
             AppSegmented<CostType>(
               options: const {CostType.free: 'Free', CostType.paid: 'Paid'},
@@ -448,8 +723,8 @@ class _CreateViewState extends State<_CreateView> {
                 hint: 'e.g. about ₹500 each, paid at the venue',
                 controller: _costDesc,
                 maxLength: 200,
-                onChanged: (v) => c.costDescription = v,
-                validator: (_) => err['costDescription'],
+                onChanged: (v) => c.edit(() => c.costDescription = v),
+                errorText: err['costDescription'],
                 helper:
                     'Nomad Mingle doesn\'t collect payments. Everyone pays the venue directly.',
               ),
@@ -471,6 +746,13 @@ class _CreateViewState extends State<_CreateView> {
               value: c.isPrivate,
               onChanged: (v) => c.update(() => c.isPrivate = v),
             ),
+          ],
+        );
+      default:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _SummaryCard(controller: c),
             section('Cover photo (optional)'),
             if (c.coverImageUrl != null)
               Padding(
@@ -498,8 +780,8 @@ class _CreateViewState extends State<_CreateView> {
               controller: _safety,
               maxLines: 2,
               maxLength: 500,
-              onChanged: (v) => c.safetyNotes = v,
-              validator: (_) => err['safetyNotes'],
+              onChanged: (v) => c.edit(() => c.safetyNotes = v),
+              errorText: err['safetyNotes'],
             ),
             gap,
             AppFormField(
@@ -509,17 +791,136 @@ class _CreateViewState extends State<_CreateView> {
               controller: _cancel,
               maxLines: 2,
               maxLength: 500,
-              onChanged: (v) => c.cancellationPolicy = v,
-              validator: (_) => err['cancellationPolicy'],
-            ),
-            const SizedBox(height: 24),
-            PrimaryButton(
-              label: c.isEditing ? 'Save Changes' : 'Create Plan',
-              loading: c.submitting,
-              onPressed: () => _preview(c),
+              onChanged: (v) => c.edit(() => c.cancellationPolicy = v),
+              errorText: err['cancellationPolicy'],
             ),
           ],
+        );
+    }
+  }
+}
+
+/// A category as a chunky, colourful tile: emoji + label.
+class _CategoryTile extends StatelessWidget {
+  const _CategoryTile({
+    required this.id,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+  final String id;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = CategoryStyle.color(id);
+    // Category colours are tuned for light backgrounds; lift them on dark.
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final labelColor = dark ? Color.lerp(color, Colors.white, 0.5)! : color;
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      child: AnimatedScale(
+        scale: selected ? 1.04 : 1,
+        duration: AppMotion.fast,
+        child: Material(
+          color: selected ? color : color.withValues(alpha: 0.1),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              color: selected ? color : color.withValues(alpha: 0.35),
+              width: 1.5,
+            ),
+          ),
+          child: InkWell(
+            customBorder: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            onTap: onTap,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 46),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      PlanEmoji.forCategory(id),
+                      style: const TextStyle(fontSize: 20),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      label,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: selected ? Colors.white : labelColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ),
+      ),
+    );
+  }
+}
+
+/// "Your plan so far", shown on the last step so the host can sanity-check it.
+class _SummaryCard extends StatelessWidget {
+  const _SummaryCard({required this.controller});
+  final CreateActivityController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    final c = controller;
+    final when = c.startAt == null
+        ? 'Time not set'
+        : DateFormat('EEE, d MMM · h:mm a').format(c.startAt!);
+    final emoji = PlanEmoji.of(c.title, c.category ?? '');
+    final cost = c.costType == CostType.free ? 'Free' : 'Paid';
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: t.colorScheme.primary.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 34)),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  c.title.trim().isEmpty ? 'Untitled plan' : c.title.trim(),
+                  style: t.textTheme.titleMedium,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$when\n${c.venueName.trim().isEmpty ? CreateActivityController.fallbackVenue : c.venueName.trim()}',
+                  style: t.textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Up to ${c.capacity} people · $cost'
+                  '${c.approvalRequired ? ' · Approval needed' : ''}'
+                  '${c.isPrivate ? ' · Private' : ''}',
+                  style: t.textTheme.bodySmall?.copyWith(
+                    color: t.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -5,6 +5,7 @@ import '../../../core/theme/app_tokens.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../auth/presentation/scenes/hero_scene.dart';
 import '../application/intro_store.dart';
+import '../../../core/theme/theme_colors.dart';
 
 class _IntroPage {
   const _IntroPage(this.scene, this.title, this.body);
@@ -191,7 +192,7 @@ class _PageBody extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: t.bodyMedium?.copyWith(
                       fontSize: 14,
-                      color: AppColors.inkMuted,
+                      color: context.inkMuted,
                       height: 1.45,
                     ),
                   ),
@@ -226,7 +227,7 @@ class _Dots extends StatelessWidget {
               height: 8,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: i == index ? AppColors.primary : AppColors.outline,
+                color: i == index ? AppColors.primary : context.outline,
               ),
             ),
         ],

@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/utils/avatar_url.dart';
 import '../../auth/application/session_controller.dart';
 
 /// The signed-in user as chat controllers need it.
@@ -15,7 +16,8 @@ class ChatIdentity {
     return ChatIdentity(
       s.user?.uid ?? '',
       s.profile?.displayName ?? s.user?.displayName ?? 'Me',
-      s.profile?.photoUrl ?? s.user?.photoUrl,
+      // Only the photo uploaded to Nomad Mingle, never the Google account's.
+      ownPhotoUrl(s.profile?.photoUrl),
     );
   }
 }

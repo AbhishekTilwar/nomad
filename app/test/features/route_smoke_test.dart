@@ -80,6 +80,10 @@ class _Translate implements TranslationService {
 class _Social implements SocialRepository {
   final sent = <String>[];
   @override
+  Future<List<FriendEntry>> friends() async => const [];
+  @override
+  Future<List<FriendEntry>> friendRequests() async => const [];
+  @override
   Future<Friendship> sendFriendRequest(String uid) async {
     sent.add(uid);
     return Friendship.requestSent;
@@ -187,8 +191,8 @@ void main() {
     expect(find.byTooltip('Mingle Community'), findsNothing);
     expect(find.text('1 nearby'), findsOneWidget);
     expect(find.byKey(const ValueKey('view-toggle')), findsOneWidget);
-    expect(find.text('List'), findsOneWidget);
-    await t.tap(find.text('List'));
+    expect(find.text('Browse'), findsOneWidget);
+    await t.tap(find.text('Browse'));
     await settle(t);
     expect(find.text('Map'), findsWidgets);
   });
@@ -217,9 +221,12 @@ void main() {
     expect(find.byTooltip('Create a plan'), findsOneWidget);
     await t.tap(find.byTooltip('Create a plan'));
     await settle(t);
-    expect(find.text('Create a Plan'), findsOneWidget);
-    await t.tap(find.byTooltip('Back'));
+    // The + button opens the stepped "host a plan" drawer over the map.
+    expect(find.text('Host a plan'), findsOneWidget);
+    expect(find.text('Step 1 of 4'), findsOneWidget);
+    await t.tap(find.byTooltip('Close'));
     await settle(t);
+    expect(find.text('Host a plan'), findsNothing);
     expect(find.byTooltip('Create a plan'), findsOneWidget);
   });
 
@@ -232,8 +239,7 @@ void main() {
     await settle(t);
     expect(find.text('Asha Rao'), findsWidgets);
     expect(find.text('@asha_r'), findsOneWidget);
-    expect(find.text('My Photos'), findsOneWidget);
-    expect(find.byKey(const ValueKey('gallery-photo-0')), findsOneWidget);
+    expect(find.text('My plans'), findsOneWidget);
     await t.tap(find.byKey(const ValueKey('nav-Map')));
     await settle(t);
     expect(find.byTooltip('Create a plan'), findsOneWidget);
@@ -321,7 +327,7 @@ void main() {
     final routes = <String, String?>{
       '/explore': null,
       '/chats': null,
-      '/profile': 'My Photos',
+      '/profile': 'My plans',
       '/profile/edit': 'Photos',
       '/profile/notifications': null,
       '/profile/blocked': null,

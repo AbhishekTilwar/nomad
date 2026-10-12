@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/widgets/user_avatar.dart';
 import '../../activities/data/my_activities_repository.dart';
+import '../../../core/theme/theme_colors.dart';
 
 /// Overlapping circular avatars (max [max]); used by chat headers and the Chats list.
 class OverlappedAvatars extends StatelessWidget {
@@ -74,7 +75,7 @@ class ChatHeaderTitle extends StatelessWidget {
         if (people.isEmpty)
           CircleAvatar(
             radius: 16,
-            backgroundColor: AppColors.tint,
+            backgroundColor: context.tint,
             child: Icon(fallbackIcon, size: 18, color: t.colorScheme.primary),
           )
         else

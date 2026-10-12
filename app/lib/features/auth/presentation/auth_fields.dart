@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_tokens.dart';
+import '../../../core/theme/theme_colors.dart';
 
 /// Sign-in field: bold 13px label above the input, grey hint inside, and for
 /// passwords an eye toggle separated from the text by a thin divider.
@@ -76,7 +76,7 @@ class _LabeledAuthFieldState extends State<LabeledAuthField> {
                         Container(
                           width: 1,
                           height: 24,
-                          color: AppColors.outline,
+                          color: context.outline,
                         ),
                         IconButton(
                           tooltip: _hidden ? 'Show password' : 'Hide password',

@@ -6,6 +6,7 @@ import '../../features/profile/data/user_profile.dart';
 import '../theme/app_theme.dart' show kFontFamily;
 import '../theme/app_tokens.dart';
 import '../utils/category_style.dart';
+import '../utils/plan_emoji.dart';
 import '../utils/formatters.dart';
 import 'user_avatar.dart';
 
@@ -156,7 +157,12 @@ class MapPreviewCard extends StatelessWidget {
 
   Widget _fallback(Color c) => ColoredBox(
     color: c.withValues(alpha: 0.14),
-    child: Icon(CategoryStyle.icon(activity.category), color: c, size: 34),
+    child: Center(
+      child: Text(
+        PlanEmoji.of(activity.title, activity.category),
+        style: const TextStyle(fontSize: 34, height: 1.1),
+      ),
+    ),
   );
 }
 

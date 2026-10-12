@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../theme/app_tokens.dart';
 import 'primary_button.dart';
+import '../theme/theme_colors.dart';
 
 /// One picker language for the whole app: every choice (a date, a category, a
 /// duration, a country) opens the same rounded bottom sheet with a title, a
@@ -65,12 +66,12 @@ class PickerField extends StatelessWidget {
           label: has ? '$label, $valueText' : '$label, not set',
           child: ExcludeSemantics(
             child: Material(
-              color: AppColors.field,
+              color: context.field,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppRadius.field),
                 side: BorderSide(
                   color: errorText == null
-                      ? AppColors.outline
+                      ? context.outline
                       : AppColors.danger,
                 ),
               ),
@@ -86,20 +87,20 @@ class PickerField extends StatelessWidget {
                     child: Row(
                       children: [
                         if (icon != null) ...[
-                          Icon(icon, size: 20, color: AppColors.inkMuted),
+                          Icon(icon, size: 20, color: context.inkMuted),
                           const SizedBox(width: 12),
                         ],
                         Expanded(
                           child: Text(
                             has ? valueText! : hint,
                             style: t.textTheme.bodyLarge?.copyWith(
-                              color: has ? AppColors.ink : AppColors.inkMuted,
+                              color: has ? context.ink : context.inkMuted,
                             ),
                           ),
                         ),
-                        const Icon(
+                        Icon(
                           Icons.keyboard_arrow_down,
-                          color: AppColors.inkMuted,
+                          color: context.inkMuted,
                         ),
                       ],
                     ),
@@ -251,7 +252,7 @@ class _OptionSheetState<T> extends State<_OptionSheet<T>> {
                                     AppRadius.md,
                                   ),
                                 ),
-                                tileColor: on ? AppColors.primaryLight : null,
+                                tileColor: on ? context.primaryLight : null,
                                 leading: o.icon != null
                                     ? CircleAvatar(
                                         radius: 18,
@@ -392,12 +393,13 @@ class _DateWheelSheetState extends State<_DateWheelSheet> {
             SizedBox(
               height: 200,
               child: CupertinoTheme(
-                data: const CupertinoThemeData(
+                data: CupertinoThemeData(
+                  brightness: Theme.of(context).brightness,
                   textTheme: CupertinoTextThemeData(
                     dateTimePickerTextStyle: TextStyle(
                       fontFamily: kFontFamily,
                       fontSize: 20,
-                      color: AppColors.ink,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                 ),
@@ -423,7 +425,7 @@ class _DateWheelSheetState extends State<_DateWheelSheet> {
                         textAlign: TextAlign.center,
                         style: t.textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w600,
-                          color: err == null ? AppColors.ink : AppColors.danger,
+                          color: err == null ? context.ink : AppColors.danger,
                         ),
                       ),
                     ),

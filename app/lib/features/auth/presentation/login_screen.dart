@@ -9,6 +9,7 @@ import '../data/auth_repository.dart';
 import 'auth_fields.dart';
 import 'auth_layout.dart';
 import 'google_sign_in_button.dart';
+import '../../../core/theme/theme_colors.dart';
 
 /// Email + password sign-in.
 class LoginScreen extends StatefulWidget {
@@ -112,7 +113,7 @@ class _LoginScreenState extends State<LoginScreen> {
           child: TextButton(
             style: TextButton.styleFrom(
               minimumSize: const Size(0, 48),
-              foregroundColor: AppColors.inkMuted,
+              foregroundColor: context.inkMuted,
             ),
             onPressed: () => context.push('/forgot-password'),
             child: const Text('Forgot password?'),

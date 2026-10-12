@@ -12,6 +12,7 @@ import '../../../core/widgets/basemap_layer.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/utils/app_exception.dart';
 import '../../../core/utils/category_style.dart';
+import '../../../core/widgets/plan_pin.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../../core/widgets/activity_marker.dart';
@@ -27,6 +28,7 @@ import '../../safety/data/safety_repository.dart';
 import '../data/activity_repository.dart';
 import '../models/activity.dart';
 import 'activity_detail_controller.dart';
+import '../../../core/theme/theme_colors.dart';
 
 class ActivityDetailScreen extends StatelessWidget {
   const ActivityDetailScreen({super.key, required this.activityId});
@@ -145,7 +147,7 @@ class _DetailViewState extends State<_DetailView> {
     }
 
     if (c.loading) {
-      return Scaffold(appBar: AppBar(), body: LoadingSkeleton.list(count: 2));
+      return Scaffold(appBar: AppBar(), body: const _DetailSkeleton());
     }
     if (a == null) {
       return Scaffold(
@@ -206,7 +208,7 @@ class _DetailViewState extends State<_DetailView> {
         actions: [
           PopupMenuButton<String>(
             tooltip: 'More',
-            icon: const CircleAvatar(
+            icon: CircleAvatar(
               radius: 18,
               backgroundColor: Colors.white,
               child: Icon(Icons.more_horiz, size: 20, color: AppColors.ink),
@@ -264,10 +266,12 @@ class _DetailViewState extends State<_DetailView> {
                   ? CachedNetworkImage(
                       imageUrl: a.coverImageUrl!,
                       fit: BoxFit.cover,
+                      fadeInDuration: const Duration(milliseconds: 200),
+                      placeholder: (_, _) => _HeroFallback(color, a.category, a.title),
                       errorWidget: (_, _, _) =>
-                          _HeroFallback(color, a.category),
+                          _HeroFallback(color, a.category, a.title),
                     )
-                  : _HeroFallback(color, a.category),
+                  : _HeroFallback(color, a.category, a.title),
             ),
             // Content sheet overlaps the hero with rounded top corners.
             Transform.translate(
@@ -397,7 +401,7 @@ class _DetailViewState extends State<_DetailView> {
                         width: double.infinity,
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: AppColors.tint,
+                          color: context.tint,
                           borderRadius: BorderRadius.circular(AppRadius.lg),
                         ),
                         child: Column(
@@ -623,7 +627,7 @@ class _GoingCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.primaryLight,
+        color: context.primaryLight,
         borderRadius: BorderRadius.circular(AppRadius.lg),
       ),
       child: Column(
@@ -631,16 +635,16 @@ class _GoingCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.check_circle,
-                color: AppColors.primary,
+                color: t.colorScheme.primary,
                 size: 20,
               ),
               const SizedBox(width: 8),
               Text(
                 a.isHost ? 'You\'re hosting' : 'You\'re going',
                 style: t.textTheme.titleSmall?.copyWith(
-                  color: AppColors.primary,
+                  color: t.colorScheme.primary,
                 ),
               ),
             ],
@@ -654,7 +658,7 @@ class _GoingCard extends StatelessWidget {
           const SizedBox(height: 10),
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(
-              backgroundColor: Colors.white,
+              backgroundColor: Theme.of(context).colorScheme.surface,
               minimumSize: const Size(0, 44),
             ),
             onPressed: onDirections,
@@ -682,7 +686,10 @@ class _Tag extends StatelessWidget {
     child: Text(
       text,
       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-        color: color,
+        // The tuned colours are for light backgrounds; lift them on dark.
+        color: Theme.of(context).brightness == Brightness.dark
+            ? Color.lerp(color, Colors.white, 0.5)
+            : color,
         fontWeight: FontWeight.w600,
         fontSize: 12,
       ),
@@ -735,9 +742,10 @@ class _MiniMap extends StatelessWidget {
 }
 
 class _HeroFallback extends StatelessWidget {
-  const _HeroFallback(this.color, this.category);
+  const _HeroFallback(this.color, this.category, this.title);
   final Color color;
   final String category;
+  final String title;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -749,7 +757,56 @@ class _HeroFallback extends StatelessWidget {
       ),
     ),
     child: Center(
-      child: Icon(CategoryStyle.icon(category), size: 84, color: Colors.white),
+      child: PlanEmojiBadge(
+        title: title,
+        category: category,
+        size: 128,
+        onDark: true,
+      ),
     ),
   );
+}
+
+/// Loading shape of the plan page: hero, title, and the host row, so the
+/// screen settles in place instead of jumping when the data arrives.
+class _DetailSkeleton extends StatelessWidget {
+  const _DetailSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: 'Loading',
+      child: ListView(
+        physics: const NeverScrollableScrollPhysics(),
+        children: [
+          const LoadingSkeleton(height: 246, radius: 0),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const LoadingSkeleton(height: 28, width: 240),
+                const SizedBox(height: 14),
+                const LoadingSkeleton(height: 16, width: 180),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    const LoadingSkeleton(height: 40, width: 40, radius: 20),
+                    const SizedBox(width: 12),
+                    const Expanded(child: LoadingSkeleton(height: 16)),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                const LoadingSkeleton(height: 14),
+                const SizedBox(height: 8),
+                const LoadingSkeleton(height: 14),
+                const SizedBox(height: 8),
+                const LoadingSkeleton(height: 14, width: 220),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

@@ -5,9 +5,13 @@ import { toJson } from '../../lib/serialize.js';
 import { containsLink, dupKey } from '../../lib/text.js';
 import { toMillis, ts } from '../../lib/time.js';
 import { cleanMessageText, messageBodySchema } from './schemas.js';
+import { friendshipId } from '../users/friends.js';
+import { actorData } from '../notifications/service.js';
 
 const RETENTION_MS = 30 * 24 * 3600_000;
 const ROOM_TOUCH_INTERVAL_MS = 30_000;
+const DM_PREVIEW_CHARS = 120;
+const truncate = (t, n) => (t.length > n ? `${t.slice(0, n - 1)}…` : t);
 
 /**
  * Chat write path for both the community room and activity chats. Every accepted or rejected-as-
@@ -15,7 +19,7 @@ const ROOM_TOUCH_INTERVAL_MS = 30_000;
  * requests from the same user cannot exceed the limit (the loser of a write conflict is retried
  * against fresh state). Message text is stored but never logged.
  */
-export function createChatService({ db, fv, now, config, users, logger }) {
+export function createChatService({ db, fv, now, config, users, logger, notifications }) {
   const cfg = config.community;
   const schema = messageBodySchema(cfg.maxLength);
   let lastRoomTouch = 0;
@@ -43,13 +47,15 @@ export function createChatService({ db, fv, now, config, users, logger }) {
     };
   };
 
-  /** Core write. `room` = { type: 'community' } | { type: 'activity', activityId }. */
+  /** Core write. `room` = { type: 'community' } | { type: 'activity', activityId } | { type: 'dm', otherUid }. */
   async function submit(user, room, { text, clientMessageId }) {
     const { uid } = user;
     if (room.type === 'community' && !(await communityRoomActive())) {
       throw conflict('The community room is temporarily closed', { reason: 'room_closed' });
     }
-    const colPath = room.type === 'community' ? 'communityRooms/global/messages' : `activities/${room.activityId}/messages`;
+    const pairId = room.type === 'dm' ? friendshipId(uid, room.otherUid) : null;
+    const colPath = room.type === 'community' ? 'communityRooms/global/messages'
+      : room.type === 'dm' ? `dms/${pairId}/messages` : `activities/${room.activityId}/messages`;
     const msgId = clientMessageId ? `${uid}_${clientMessageId}` : db.collection(colPath).doc().id;
     const msgRef = db.doc(`${colPath}/${msgId}`);
     const rlRef = db.doc(`userRateLimits/${uid}`);
@@ -62,7 +68,16 @@ export function createChatService({ db, fv, now, config, users, logger }) {
       if (room.type === 'activity') {
         reads.push(tx.get(db.doc(`activities/${room.activityId}`)), tx.get(db.doc(`activities/${room.activityId}/members/${uid}`)));
       }
-      const [priv, rl, existing, aSnap, mSnap] = await Promise.all(reads);
+      if (room.type === 'dm') {
+        reads.push(
+          tx.get(db.doc(`users/${room.otherUid}`)), tx.get(db.doc(`friendships/${pairId}`)),
+          tx.get(db.doc(`userBlocks/${uid}/blocked/${room.otherUid}`)), tx.get(db.doc(`userBlocks/${room.otherUid}/blocked/${uid}`)),
+        );
+      }
+      const res = await Promise.all(reads);
+      const [priv, rl, existing] = res;
+      const [aSnap, mSnap] = room.type === 'activity' ? res.slice(3, 5) : [];
+      const [tSnap, fSnap, blockedByMe, blockedByThem] = room.type === 'dm' ? res.slice(3, 7) : [];
 
       // --- account state
       const status = user.accountStatus;
@@ -77,6 +92,13 @@ export function createChatService({ db, fv, now, config, users, logger }) {
         if (!aSnap.exists) return { error: notFound('Activity not found') };
         if (!mSnap.exists || mSnap.data().status !== 'approved') return { error: forbidden('Only approved participants can use this chat', { reason: 'not_a_member' }) };
         if (aSnap.data().status !== 'scheduled') return { error: conflict('This activity chat is read-only', { reason: 'read_only' }) };
+      }
+
+      if (room.type === 'dm') {
+        const td = tSnap.data();
+        if (!tSnap.exists || td.accountStatus === 'deleted' || td.accountStatus === 'suspended') return { error: notFound('User not found') };
+        if (!fSnap.exists || fSnap.data().status !== 'accepted') return { error: forbidden('You can only message friends', { reason: 'not_friends' }) };
+        if (blockedByMe.exists || blockedByThem.exists) return { error: forbidden('You cannot message this user', { reason: 'blocked' }) };
       }
 
       // --- idempotent retry of the same clientMessageId: return the stored message, count nothing
@@ -135,12 +157,26 @@ export function createChatService({ db, fv, now, config, users, logger }) {
         windowStart: ts(windowStart), count: count + 1, lastTextHash: textKey, lastMessageAt: ts(t),
         cooldownUntil: cooldownMs ? ts(cooldownMs) : null, violations: st.violations ?? 0, lastViolationAt: st.lastViolationAt ?? null,
       });
+      if (room.type === 'dm') {
+        tx.set(db.doc(`dms/${pairId}`), {
+          users: [uid, room.otherUid].sort(),
+          lastMessage: { text: truncate(text, DM_PREVIEW_CHARS), senderId: uid, senderName: user.profile.displayName, createdAt: fv.serverTimestamp() },
+          updatedAt: fv.serverTimestamp(),
+        }, { merge: true });
+      }
       return { accepted: true, id: msgId };
     });
 
     if (outcome.error) throw outcome.error;
     if (outcome.duplicate) return { message: outcome.message, duplicate: true };
     if (room.type === 'community') touchRoom();
+    if (room.type === 'dm') {
+      // Best-effort: notify() swallows its own errors; the catch guards an unexpected throw.
+      Promise.resolve(notifications?.notify(room.otherUid, {
+        type: 'direct_message', title: user.profile.displayName, body: truncate(text, DM_PREVIEW_CHARS),
+        data: { userId: uid, ...actorData(uid, user.profile) },
+      })).catch((err) => logger.warn({ err: { message: err?.message } }, 'dm notification failed'));
+    }
     return { message: msgView(await msgRef.get()), duplicate: false };
   }
 
@@ -155,6 +191,8 @@ export function createChatService({ db, fv, now, config, users, logger }) {
 
   const postCommunityMessage = (user, parsed) => submit(user, { type: 'community' }, parsed);
   const postActivityMessage = (user, activityId, parsed) => submit(user, { type: 'activity', activityId }, parsed);
+
+  const postDirectMessage = (user, otherUid, parsed) => submit(user, { type: 'dm', otherUid }, parsed);
 
   async function listActivityMessages(user, activityId, { limit, cursor }) {
     const [aSnap, mSnap] = await Promise.all([
@@ -219,5 +257,5 @@ export function createChatService({ db, fv, now, config, users, logger }) {
     };
   }
 
-  return { parseMessageBody, postCommunityMessage, postActivityMessage, listActivityMessages, communityRoom };
+  return { parseMessageBody, postCommunityMessage, postActivityMessage, postDirectMessage, listActivityMessages, communityRoom };
 }

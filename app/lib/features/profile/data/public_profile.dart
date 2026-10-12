@@ -1,4 +1,5 @@
 import '../../../core/api/api_client.dart';
+import '../../../core/utils/avatar_url.dart';
 import '../../social/data/social_repository.dart';
 
 /// What any signed-in member may see about another member (`GET /users/:uid`).
@@ -41,7 +42,7 @@ class PublicProfile {
     return PublicProfile(
       uid: uid,
       displayName: j['displayName'] as String? ?? 'Member',
-      photoUrl: j['photoUrl'] as String?,
+      photoUrl: ownPhotoUrl(j['photoUrl'] as String?),
       bio: j['bio'] as String? ?? '',
       city: j['city'] as String? ?? '',
       interests: List<String>.from(j['interests'] as List? ?? const []),
@@ -52,7 +53,9 @@ class PublicProfile {
       countryCode: j['countryCode'] as String?,
       instagram: j['instagram'] as String?,
       friendship: friendshipFromString(j['friendship'] as String?),
-      photos: List<String>.from(j['photos'] as List? ?? const []),
+      photos: ownPhotoUrls(
+        List<String>.from(j['photos'] as List? ?? const []),
+      ),
     );
   }
 }

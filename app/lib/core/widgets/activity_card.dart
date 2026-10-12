@@ -6,6 +6,7 @@ import '../../features/activities/models/activity.dart';
 import '../../features/profile/data/user_profile.dart';
 import '../theme/app_tokens.dart';
 import '../utils/category_style.dart';
+import '../utils/plan_emoji.dart';
 import '../utils/formatters.dart';
 import 'user_avatar.dart';
 
@@ -80,16 +81,15 @@ class ActivityCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Icon(
-                          CategoryStyle.icon(a.category),
-                          size: 16,
-                          color: color,
+                        Text(
+                          PlanEmoji.of(a.title, a.category),
+                          style: const TextStyle(fontSize: 16, height: 1.1),
                         ),
                         const SizedBox(width: 6),
                         Text(
                           interestLabel(a.category),
                           style: t.textTheme.bodyMedium?.copyWith(
-                            color: color,
+                            color: CategoryStyle.textColor(context, a.category),
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -146,7 +146,9 @@ class ActivityCard extends StatelessWidget {
                             fontWeight: FontWeight.w700,
                             color: a.isFull
                                 ? AppColors.danger
-                                : AppColors.success,
+                                : (Theme.of(context).brightness == Brightness.dark
+                                      ? const Color(0xFF6FD3A4)
+                                      : AppColors.success),
                           ),
                         ),
                       ],

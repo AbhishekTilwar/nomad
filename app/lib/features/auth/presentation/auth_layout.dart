@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/widgets/brand_logo.dart';
+import '../../../core/theme/theme_colors.dart';
 
 /// Shared white page used by sign-in, sign-up, forgot-password and
 /// verify-email: back arrow, centred dark brand logo, bold 18 heading, grey 13
@@ -90,7 +91,7 @@ class AuthPage extends StatelessWidget {
                                     : TextAlign.start,
                                 style: t.textTheme.bodySmall?.copyWith(
                                   fontSize: 13,
-                                  color: AppColors.inkMuted,
+                                  color: context.inkMuted,
                                 ),
                               ),
                             ],
@@ -139,7 +140,7 @@ class AuthSwitchRow extends StatelessWidget {
         Flexible(
           child: Text(
             prompt,
-            style: t.textTheme.bodyMedium?.copyWith(color: AppColors.inkMuted),
+            style: t.textTheme.bodyMedium?.copyWith(color: context.inkMuted),
           ),
         ),
         TextButton(
@@ -168,17 +169,17 @@ class OrDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
     children: [
-      const Expanded(child: Divider(color: AppColors.outline)),
+      Expanded(child: Divider(color: context.outline)),
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12),
         child: Text(
           'or',
           style: Theme.of(
             context,
-          ).textTheme.bodySmall?.copyWith(color: AppColors.inkMuted),
+          ).textTheme.bodySmall?.copyWith(color: context.inkMuted),
         ),
       ),
-      const Expanded(child: Divider(color: AppColors.outline)),
+      Expanded(child: Divider(color: context.outline)),
     ],
   );
 }

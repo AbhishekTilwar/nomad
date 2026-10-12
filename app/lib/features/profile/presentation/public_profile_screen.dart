@@ -88,12 +88,27 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
   Widget _friendButtons(PublicProfile p) {
     switch (p.friendship) {
       case Friendship.friends:
-        return OutlinedButton.icon(
-          onPressed: _friendBusy
-              ? null
-              : () => _friendAction((s) => s.removeFriend(p.uid)),
-          icon: const Icon(Icons.check),
-          label: const Text('Friends'),
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FilledButton.icon(
+              key: const ValueKey('message-friend'),
+              onPressed: () => context.push(
+                '/dm/${p.uid}',
+                extra: {'name': p.displayName, 'photoUrl': p.photoUrl},
+              ),
+              icon: const Icon(Icons.chat_bubble_outline),
+              label: const Text('Message'),
+            ),
+            const SizedBox(width: 8),
+            OutlinedButton.icon(
+              onPressed: _friendBusy
+                  ? null
+                  : () => _friendAction((s) => s.removeFriend(p.uid)),
+              icon: const Icon(Icons.check),
+              label: const Text('Friends'),
+            ),
+          ],
         );
       case Friendship.requestSent:
         return OutlinedButton.icon(
@@ -243,7 +258,7 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
           if (!_isMe)
             PopupMenuButton<String>(
               tooltip: 'More',
-              icon: const CircleAvatar(
+              icon: CircleAvatar(
                 radius: 18,
                 backgroundColor: Colors.white,
                 child: Icon(Icons.more_horiz, size: 20, color: AppColors.ink),

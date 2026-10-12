@@ -68,7 +68,27 @@ class CreateActivityController extends ChangeNotifier {
 
   void update(void Function() change) {
     change();
+    _refreshErrors();
     notifyListeners();
+  }
+
+  /// For text fields: applies [change] and, only if errors are showing, drops
+  /// the ones that are now fixed (so typing doesn't rebuild the form otherwise).
+  void edit(void Function() change) {
+    change();
+    if (errors.isEmpty) return;
+    _refreshErrors();
+    notifyListeners();
+  }
+
+  /// Keeps only the shown errors that still apply, with up-to-date messages.
+  void _refreshErrors() {
+    if (errors.isEmpty) return;
+    final all = validate();
+    errors = {
+      for (final k in errors.keys)
+        if (all.containsKey(k)) k: all[k]!,
+    };
   }
 
   /// Returns field-keyed errors; empty means valid. [now] is injectable for tests.
@@ -79,18 +99,21 @@ class CreateActivityController extends ChangeNotifier {
     }
 
     add('title', Validators.activityTitle(title));
-    add('description', Validators.activityDescription(description));
+    // Description is optional; only the upper bound applies when given.
+    if (description.trim().length > 1000) {
+      e['description'] = 'Description can be at most 1000 characters.';
+    }
     if (category == null) e['category'] = 'Choose a category.';
     // When editing, an unchanged start time isn't re-checked against "now"
     // (the plan may start soon; other fields must still be editable).
     if (!(isEditing && startAt == editing!.startAt)) {
       add('startAt', Validators.startTime(startAt, now: now));
     }
-    final venue = venueName.trim();
-    if (venue.length < 2) {
-      e['venueName'] = 'Add the venue or meeting spot name.';
+    // Venue name is optional (the pinned location is what matters); a blank
+    // one is sent as [fallbackVenue] because the server wants a name.
+    if (venueName.trim().length > 100) {
+      e['venueName'] = 'Venue name is too long.';
     }
-    if (venue.length > 100) e['venueName'] = 'Venue name is too long.';
     if (location == null) e['location'] = 'Pick the spot on the map.';
     add('capacity', Validators.capacity(capacity));
     if (costType == CostType.paid && costDescription.trim().isEmpty) {
@@ -109,18 +132,49 @@ class CreateActivityController extends ChangeNotifier {
     return e;
   }
 
+  /// Which validation keys belong to each step of the form.
+  static const stepFields = <List<String>>[
+    ['category', 'title', 'description'],
+    ['startAt', 'venueName', 'location'],
+    ['capacity', 'costDescription'],
+    ['safetyNotes', 'cancellationPolicy'],
+  ];
+
+  /// Validates only the fields on [step] (so "Next" doesn't nag about steps
+  /// the host hasn't reached). Shows those errors; true when the step is ok.
+  bool validateStep(int step, {DateTime? now}) {
+    final all = validate(now: now);
+    errors = {
+      for (final k in stepFields[step])
+        if (all.containsKey(k)) k: all[k]!,
+    };
+    notifyListeners();
+    return errors.isEmpty;
+  }
+
+  /// The earliest step that has an entry in [errs], or null if none.
+  static int? firstStepWithError(Map<String, String> errs) {
+    for (var i = 0; i < stepFields.length; i++) {
+      if (stepFields[i].any(errs.containsKey)) return i;
+    }
+    return null;
+  }
+
   bool runValidation({DateTime? now}) {
     errors = validate(now: now);
     notifyListeners();
     return errors.isEmpty;
   }
 
+  /// Stand-in venue name when the host leaves it blank.
+  static const fallbackVenue = 'Pinned location';
+
   ActivityDraft buildDraft() => ActivityDraft(
     title: title,
     description: description,
     category: category!,
     city: city,
-    venueName: venueName,
+    venueName: venueName.trim().isEmpty ? fallbackVenue : venueName,
     latitude: location!.latitude,
     longitude: location!.longitude,
     startAt: startAt!,

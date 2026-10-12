@@ -8,6 +8,7 @@ import '../../../core/widgets/primary_button.dart';
 import '../../discover/presentation/discover_controller.dart' show DateFilter;
 import '../../profile/data/user_profile.dart';
 import 'explore_controller.dart';
+import '../../../core/theme/theme_colors.dart';
 
 /// Full-screen filters (design #12): category tiles, date, location, radius.
 class FilterScreen extends StatefulWidget {
@@ -177,7 +178,7 @@ class _CategoryTile extends StatelessWidget {
               height: 58,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: selected ? primary : AppColors.field,
+                color: selected ? primary : context.field,
                 border: Border.all(
                   color: selected ? primary : t.colorScheme.outline,
                 ),

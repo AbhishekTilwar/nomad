@@ -1,5 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/foundation.dart' show listEquals;
+import 'package:flutter/foundation.dart' show listEquals, setEquals;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -16,9 +16,9 @@ import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_chip.dart';
 import '../../../core/widgets/form_field.dart';
 import '../../../core/widgets/interest_chip.dart';
-import '../../../core/widgets/primary_button.dart';
 import '../../auth/application/session_controller.dart';
 import '../data/user_profile.dart';
+import '../../../core/theme/theme_colors.dart';
 import '../../onboarding/presentation/onboarding_screen.dart'
     show kPreferenceOptions;
 
@@ -41,6 +41,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late String _city;
   late final Set<String> _interests;
   late final Set<String> _prefs;
+  late final UserProfile _initial;
+
+  /// Set once the user chose to leave (saved or discarded), so the pop isn't
+  /// intercepted again.
+  bool _allowExit = false;
   bool _busy = false;
   bool _uploading = false;
   String? _error;
@@ -53,6 +58,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void initState() {
     super.initState();
     final p = context.read<SessionController>().profile!;
+    _initial = p;
     _name = TextEditingController(text: p.displayName);
     _bio = TextEditingController(text: p.bio);
     _instagram = TextEditingController(text: p.instagram ?? '');
@@ -61,6 +67,32 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _city = p.city;
     _interests = {...p.interests};
     _prefs = {...p.preferredActivityTypes};
+    for (final c in [_name, _bio, _instagram]) {
+      c.addListener(_onTextChanged);
+    }
+  }
+
+  // Rebuilds only when the dirty state flips (not on every keystroke).
+  bool _wasDirty = false;
+  void _onTextChanged() {
+    if (_dirty != _wasDirty) setState(() {});
+  }
+
+  String get _cleanInstagram => _instagram.text.replaceFirst('@', '').trim();
+
+  /// Whether anything differs from the profile the screen opened with.
+  bool get _dirty {
+    final p = _initial;
+    return _name.text.trim() != p.displayName.trim() ||
+        _bio.text.trim() != p.bio.trim() ||
+        _cleanInstagram != (p.instagram ?? '') ||
+        _country != (p.countryCode ?? '') ||
+        _city != p.city ||
+        _newPhotoUrl != null ||
+        _removePhoto ||
+        !listEquals(_photos, p.photos) ||
+        !setEquals(_interests, p.interests.toSet()) ||
+        !setEquals(_prefs, p.preferredActivityTypes.toSet());
   }
 
   @override
@@ -210,9 +242,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             onTap: _uploadingGallery ? null : _addGalleryPhoto,
             child: Ink(
               decoration: BoxDecoration(
-                color: AppColors.field,
+                color: context.field,
                 borderRadius: BorderRadius.circular(AppRadius.md),
-                border: Border.all(color: AppColors.outline),
+                border: Border.all(color: context.outline),
               ),
               child: Center(
                 child: _uploadingGallery
@@ -228,22 +260,24 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  Future<void> _save() async {
-    if (_busy || !_form.currentState!.validate()) return;
+  /// Saves and leaves the screen; returns false if validation or the API
+  /// stopped it (the screen stays open showing why).
+  Future<bool> _save() async {
+    if (_busy || !_form.currentState!.validate()) return false;
     if (_shownPhoto == null && _photos.isEmpty) {
       setState(() => _error = 'Add at least one photo.');
-      return;
+      return false;
     }
     if (_interests.isEmpty) {
       setState(() => _error = 'Pick at least one interest.');
-      return;
+      return false;
     }
     setState(() {
       _busy = true;
       _error = null;
     });
     final current = context.read<SessionController>().profile!;
-    final newInstagram = _instagram.text.replaceFirst('@', '').trim();
+    final newInstagram = _cleanInstagram;
     // Only send the newer fields when they changed, so ordinary edits keep
     // working against an API that predates them.
     final countryChanged = _country != (current.countryCode ?? '');
@@ -262,11 +296,42 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         instagram: instagramChanged ? newInstagram : null,
         photos: photosChanged ? _photos : null,
       );
+      _allowExit = true;
       if (mounted) context.pop();
+      return true;
     } on AppException catch (e) {
       if (mounted) setState(() => _error = e.message);
+      return false;
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Back pressed with unsaved edits: save, discard, or keep editing.
+  Future<void> _confirmLeave() async {
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Save your changes?'),
+        content: const Text('You have edits that haven\'t been saved.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'discard'),
+            child: const Text('Discard'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'save'),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    if (choice == 'save') {
+      await _save();
+    } else if (choice == 'discard') {
+      _allowExit = true;
+      context.pop();
     }
   }
 
@@ -288,179 +353,205 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
-    return Scaffold(
-      appBar: AppBar(title: const Text('Edit Profile')),
-      body: SafeArea(
-        child: Form(
-          key: _form,
-          child: ListView(
-            padding: AppSpacing.page.copyWith(top: 8, bottom: 24),
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            children: [
-              Center(
-                child: Column(
-                  children: [
-                    Stack(
-                      children: [
-                        UserAvatar(
-                          name: _name.text.isEmpty ? '?' : _name.text,
-                          photoUrl: _shownPhoto,
-                          size: 96,
-                        ),
-                        Positioned(
-                          right: 0,
-                          bottom: 0,
-                          child: Material(
-                            color: t.colorScheme.primary,
-                            shape: const CircleBorder(
-                              side: BorderSide(color: Colors.white, width: 2),
-                            ),
-                            child: IconButton(
-                              tooltip: 'Change profile photo',
-                              iconSize: 18,
-                              color: Colors.white,
-                              onPressed: _uploading ? null : _pickPhoto,
-                              icon: _uploading
-                                  ? const SizedBox(
-                                      width: 16,
-                                      height: 16,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                  : const Icon(Icons.photo_camera_outlined),
+    _wasDirty = _dirty;
+    return PopScope(
+      canPop: _allowExit || !_wasDirty || _busy,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _confirmLeave();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Edit Profile'),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: _busy
+                  ? const Center(
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
+                  : TextButton(
+                      key: const ValueKey('save-profile'),
+                      onPressed: _save,
+                      child: const Text('Save'),
+                    ),
+            ),
+          ],
+        ),
+        body: SafeArea(
+          child: Form(
+            key: _form,
+            child: ListView(
+              padding: AppSpacing.page.copyWith(top: 8, bottom: 24),
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              children: [
+                Center(
+                  child: Column(
+                    children: [
+                      Stack(
+                        children: [
+                          UserAvatar(
+                            name: _name.text.isEmpty ? '?' : _name.text,
+                            photoUrl: _shownPhoto,
+                            size: 96,
+                          ),
+                          Positioned(
+                            right: 0,
+                            bottom: 0,
+                            child: Material(
+                              color: t.colorScheme.primary,
+                              shape: const CircleBorder(
+                                side: BorderSide(color: Colors.white, width: 2),
+                              ),
+                              child: IconButton(
+                                tooltip: 'Change profile photo',
+                                iconSize: 18,
+                                color: Colors.white,
+                                onPressed: _uploading ? null : _pickPhoto,
+                                icon: _uploading
+                                    ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Icon(Icons.photo_camera_outlined),
+                              ),
                             ),
                           ),
+                        ],
+                      ),
+                      if (_shownPhoto != null && _photos.isNotEmpty)
+                        TextButton(
+                          onPressed: () => setState(() {
+                            _removePhoto = true;
+                            _newPhotoUrl = null;
+                          }),
+                          child: const Text('Remove photo'),
                         ),
-                      ],
-                    ),
-                    if (_shownPhoto != null && _photos.isNotEmpty)
-                      TextButton(
-                        onPressed: () => setState(() {
-                          _removePhoto = true;
-                          _newPhotoUrl = null;
-                        }),
-                        child: const Text('Remove photo'),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                Text('Photos', style: t.textTheme.titleMedium),
+                const SizedBox(height: 4),
+                Text(
+                  'Add up to $_maxPhotos photos so people can get to know you. '
+                  'The first one is your cover.',
+                  style: t.textTheme.bodySmall,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                _photoGrid(t),
+                const SizedBox(height: AppSpacing.lg),
+                AppFormField(
+                  label: 'Display name',
+                  controller: _name,
+                  validator: Validators.displayName,
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                _AgeInfo(
+                  ageRange: context.read<SessionController>().profile?.ageRange,
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                AppFormField(
+                  label: 'Bio',
+                  controller: _bio,
+                  validator: Validators.bio,
+                  maxLines: 4,
+                  maxLength: 300,
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                AppFormField(
+                  label: 'Instagram',
+                  controller: _instagram,
+                  hint: '@yourhandle',
+                  prefixIcon: Icons.alternate_email,
+                  validator: (v) {
+                    final h = (v ?? '').trim().replaceFirst('@', '');
+                    if (h.isEmpty) return null;
+                    return RegExp(r'^[A-Za-z0-9._]{1,30}$').hasMatch(h)
+                        ? null
+                        : 'Letters, numbers, . and _ only';
+                  },
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                PickerField(
+                  label: 'Country',
+                  hint: 'Where are you from?',
+                  valueText: kCountries.containsKey(_country)
+                      ? '${flagEmoji(_country)}  ${kCountries[_country]}'
+                      : 'Not shown',
+                  onTap: _pickCountry,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Text('City', style: t.textTheme.titleMedium),
+                const SizedBox(height: AppSpacing.sm),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final c in MapConfig.cities)
+                      AppChip(
+                        label: c.name,
+                        selected: _city == c.id,
+                        onSelected: (_) => setState(() => _city = c.id),
                       ),
                   ],
                 ),
-              ),
-              const SizedBox(height: AppSpacing.xl),
-              Text('Photos', style: t.textTheme.titleMedium),
-              const SizedBox(height: 4),
-              Text(
-                'Add up to $_maxPhotos photos so people can get to know you. '
-                'The first one is your cover.',
-                style: t.textTheme.bodySmall,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              _photoGrid(t),
-              const SizedBox(height: AppSpacing.lg),
-              AppFormField(
-                label: 'Display name',
-                controller: _name,
-                validator: Validators.displayName,
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              _AgeInfo(
-                ageRange: context.read<SessionController>().profile?.ageRange,
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              AppFormField(
-                label: 'Bio',
-                controller: _bio,
-                validator: Validators.bio,
-                maxLines: 4,
-                maxLength: 300,
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              AppFormField(
-                label: 'Instagram',
-                controller: _instagram,
-                hint: '@yourhandle',
-                prefixIcon: Icons.alternate_email,
-                validator: (v) {
-                  final h = (v ?? '').trim().replaceFirst('@', '');
-                  if (h.isEmpty) return null;
-                  return RegExp(r'^[A-Za-z0-9._]{1,30}$').hasMatch(h)
-                      ? null
-                      : 'Letters, numbers, . and _ only';
-                },
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              PickerField(
-                label: 'Country',
-                hint: 'Where are you from?',
-                valueText: kCountries.containsKey(_country)
-                    ? '${flagEmoji(_country)}  ${kCountries[_country]}'
-                    : 'Not shown',
-                onTap: _pickCountry,
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Text('City', style: t.textTheme.titleMedium),
-              const SizedBox(height: AppSpacing.sm),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final c in MapConfig.cities)
-                    AppChip(
-                      label: c.name,
-                      selected: _city == c.id,
-                      onSelected: (_) => setState(() => _city = c.id),
-                    ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.xl),
-              Text('Interests', style: t.textTheme.titleMedium),
-              const SizedBox(height: AppSpacing.sm),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final i in kInterests)
-                    InterestChip(
-                      interestId: i.id,
-                      selected: _interests.contains(i.id),
-                      onSelected: (v) => setState(
-                        () =>
-                            v ? _interests.add(i.id) : _interests.remove(i.id),
+                const SizedBox(height: AppSpacing.xl),
+                Text('Interests', style: t.textTheme.titleMedium),
+                const SizedBox(height: AppSpacing.sm),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final i in kInterests)
+                      InterestChip(
+                        interestId: i.id,
+                        selected: _interests.contains(i.id),
+                        onSelected: (v) => setState(
+                          () => v
+                              ? _interests.add(i.id)
+                              : _interests.remove(i.id),
+                        ),
                       ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.xl),
-              Text('Plans you prefer', style: t.textTheme.titleMedium),
-              const SizedBox(height: AppSpacing.sm),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final e in kPreferenceOptions.entries)
-                    AppChip(
-                      label: e.value,
-                      style: AppChipStyle.tinted,
-                      selected: _prefs.contains(e.key),
-                      onSelected: (v) => setState(
-                        () => v ? _prefs.add(e.key) : _prefs.remove(e.key),
-                      ),
-                    ),
-                ],
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: AppSpacing.md),
-                Semantics(
-                  liveRegion: true,
-                  child: Text(
-                    _error!,
-                    style: TextStyle(color: t.colorScheme.error),
-                  ),
+                  ],
                 ),
+                const SizedBox(height: AppSpacing.xl),
+                Text('Plans you prefer', style: t.textTheme.titleMedium),
+                const SizedBox(height: AppSpacing.sm),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final e in kPreferenceOptions.entries)
+                      AppChip(
+                        label: e.value,
+                        style: AppChipStyle.tinted,
+                        selected: _prefs.contains(e.key),
+                        onSelected: (v) => setState(
+                          () => v ? _prefs.add(e.key) : _prefs.remove(e.key),
+                        ),
+                      ),
+                  ],
+                ),
+                if (_error != null) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  Semantics(
+                    liveRegion: true,
+                    child: Text(
+                      _error!,
+                      style: TextStyle(color: t.colorScheme.error),
+                    ),
+                  ),
+                ],
               ],
-              const SizedBox(height: AppSpacing.xl),
-              PrimaryButton(label: 'Save', loading: _busy, onPressed: _save),
-            ],
+            ),
           ),
         ),
       ),
@@ -483,14 +574,14 @@ class _AgeInfo extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: AppColors.field,
+          color: context.field,
           borderRadius: BorderRadius.circular(AppRadius.field),
-          border: Border.all(color: AppColors.outline),
+          border: Border.all(color: context.outline),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.cake_outlined, color: AppColors.inkMuted),
+            Icon(Icons.cake_outlined, color: context.inkMuted),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

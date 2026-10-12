@@ -23,7 +23,7 @@ PY
 )
 D=(--dart-define=FIREBASE_API_KEY=$FB_KEY --dart-define=FIREBASE_APP_ID=$FB_APP \
    --dart-define=FIREBASE_MESSAGING_SENDER_ID=$FB_SENDER --dart-define=FIREBASE_PROJECT_ID=$FB_PROJECT \
-   --dart-define=FIREBASE_STORAGE_BUCKET=$FB_BUCKET --dart-define=API_BASE_URL=https://<your-api>/api/v1)
+   --dart-define=FIREBASE_STORAGE_BUCKET=$FB_BUCKET --dart-define=API_BASE_URL=https://nomad-emek.onrender.com/api/v1)
 flutter build apk --release --split-per-abi "${D[@]}"
 flutter build appbundle --release "${D[@]}"
 ```
@@ -32,7 +32,8 @@ flutter build appbundle --release "${D[@]}"
 That is the missing server address (item 1 below), not a connectivity problem. The release app signs in through Firebase directly, then asks *our* backend for the profile; with no `API_BASE_URL` it asks `localhost` on the phone and fails. From now on a release built without a real address shows "Server address isn't set" at launch instead, and a refused connection reads "Couldn't reach Nomad Mingle" (it used to say "No internet connection"). The address must be **https**: release builds block plain `http://` (only debug builds allow it).
 
 ## Before this can ship (not done, needs the owner)
-1. **API address.** The repo has no production API URL, so these builds were made *without* `API_BASE_URL`, which defaults to `http://localhost:8080/api/v1`. The app starts, but sign-in/profile/plans will fail on a real phone until it is built with the deployed URL (see `backend/render.yaml`; the backend is not confirmed deployed).
+1. ~~API address~~ **Done:** builds now use `https://nomad-emek.onrender.com/api/v1` (health check returns 200; API returns 401 without a token, as expected). Earlier builds had no address and failed on phones.
+1a. **Cold starts.** The first request after the server has been idle took about 31 s to answer, so the app's request timeout was raised from 15 s to 45 s. A sleeping server still means a slow first launch; an always-on Render plan removes that (`plan:` in `backend/render.yaml`).
 2. **Signing.** `android/app/build.gradle.kts` signs release with the **debug key** (TODO in the file); no keystore exists. These APKs cannot be uploaded to Play. Create an upload keystore, reference it from `key.properties`, keep it out of git, and back it up.
 3. **Google sign-in** needs the release SHA-1/SHA-256 added in Firebase (TASKS.md "Manual setup").
 4. **App icon** is still the default Flutter one (waiting for `app/assets/branding/app_icon.png`, then `tool/generate_icons.sh`).
@@ -41,3 +42,10 @@ That is the missing server address (item 1 below), not a connectivity problem. T
 
 ## Verified
 Release build compiled, shrank and installed; on the emulator (arm64) it launches against the real Firebase project and shows the first-run intro; no crash in logcat. Not verified: sign-in, anything needing the API, Google sign-in, install on a physical phone.
+
+## Known issue: "Validation failed" during onboarding on a release build
+Not reproducible against this repo's backend code: a new Google-style user (Google photo URL, gender, skipped interests, "Tell your story" fields) succeeds at every step; the only rejected inputs are a display name under 2 or over 40 characters. The likely cause is that the **deployed server is older than the app**: the `gender` field and the profile extras were added on 2026-10-11, and `backend/render.yaml` has `autoDeploy: false`, so Render only updates on a manual deploy. **Unconfirmed** until the deployed server is checked.
+
+To fix: in Render, open the service and choose *Manual Deploy → Deploy latest commit* (main is already pushed). To verify, `GET https://nomad-emek.onrender.com/health` now returns `{"status":"ok","version":"<commit>"}` once the new code is live (version is null on a server that predates this change, which itself tells you it is old).
+
+The app now also names the field in validation errors ("Name: Too big…") and says "The server doesn't recognise something this app sent… The server may need updating" for unknown fields, so the next report is self-explanatory.

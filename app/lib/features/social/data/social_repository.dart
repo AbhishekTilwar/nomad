@@ -37,7 +37,39 @@ class Traveler {
   );
 }
 
+/// A friend, or a member who asked to be one ([requestedAt] is set then).
+class FriendEntry {
+  const FriendEntry({
+    required this.uid,
+    required this.displayName,
+    this.photoUrl,
+    this.countryCode,
+    this.requestedAt,
+  });
+  final String uid;
+  final String displayName;
+  final String? photoUrl;
+  final String? countryCode;
+  final DateTime? requestedAt;
+
+  factory FriendEntry.fromJson(Map<String, dynamic> j) => FriendEntry(
+    uid: j['uid'] as String,
+    displayName: j['displayName'] as String? ?? 'Member',
+    photoUrl: j['photoUrl'] as String?,
+    countryCode: j['countryCode'] as String?,
+    requestedAt: DateTime.tryParse(
+      j['requestedAt'] as String? ?? '',
+    )?.toLocal(),
+  );
+}
+
 abstract class SocialRepository {
+  /// My friends (first 100).
+  Future<List<FriendEntry>> friends() async => const [];
+
+  /// Incoming friend requests, newest first.
+  Future<List<FriendEntry>> friendRequests() async => const [];
+
   Future<Friendship> sendFriendRequest(String uid);
   Future<void> acceptFriendRequest(String uid);
 
@@ -62,6 +94,18 @@ abstract class SocialRepository {
 class ApiSocialRepository implements SocialRepository {
   ApiSocialRepository(this._api);
   final ApiClient _api;
+
+  @override
+  Future<List<FriendEntry>> friends() async => (await _api.get(
+    '/users/me/friends',
+    query: {'limit': 100},
+  )).asList.map(FriendEntry.fromJson).toList();
+
+  @override
+  Future<List<FriendEntry>> friendRequests() async => (await _api.get(
+    '/users/me/friend-requests',
+    query: {'limit': 100},
+  )).asList.map(FriendEntry.fromJson).toList();
 
   @override
   Future<Friendship> sendFriendRequest(String uid) async {

@@ -8,6 +8,7 @@ import '../../../core/widgets/primary_button.dart';
 import '../data/auth_repository.dart';
 import 'auth_fields.dart';
 import 'auth_layout.dart';
+import '../../../core/theme/theme_colors.dart';
 
 /// Email registration: credentials only. Name, birthday, city and interests
 /// are collected by the same onboarding flow Google users see, so both
@@ -107,7 +108,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         Text(
           'For adults 18+. By continuing you agree to our Terms of Service and Community Guidelines.',
           textAlign: TextAlign.center,
-          style: t.textTheme.bodySmall?.copyWith(color: AppColors.inkMuted),
+          style: t.textTheme.bodySmall?.copyWith(color: context.inkMuted),
         ),
       ],
     );

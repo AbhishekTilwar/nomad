@@ -5,6 +5,7 @@ import { toMillis, ts } from '../../lib/time.js';
 import { encodeCursor, decodeCursor } from '../../lib/pagination.js';
 import { haversineKm } from '../../lib/geo.js';
 import { friendshipId } from './friends.js';
+import { isGoogleProfilePhoto, ownPhotoUrl, ownPhotoUrls } from '../../lib/photos.js';
 
 export const PUBLIC_FIELDS = [
   'displayName', 'photoUrl', 'photos', 'bio', 'city', 'interests', 'ageRange', 'accountStatus',
@@ -104,11 +105,18 @@ export function createUsersService({ db, auth, fv, now, logger, activities }) {
         }
       }
 
+      // Google account pictures are never stored (see lib/photos.js). Older app builds still send one at
+      // sign-up; it is dropped here, and one saved earlier is cleared on the next profile write.
+      if (isGoogleProfilePhoto(body.photoUrl)) body = { ...body, photoUrl: undefined };
+      if (body.photos !== undefined) body = { ...body, photos: ownPhotoUrls(body.photos) };
       const merged = { ...(existing ?? {}) };
       for (const k of ['displayName', 'bio', 'city', 'interests', 'photoUrl', 'photos', 'countryCode', 'instagram']) if (body[k] !== undefined) merged[k] = body[k];
+      merged.photoUrl = ownPhotoUrl(merged.photoUrl);
+      if (merged.photos) merged.photos = ownPhotoUrls(merged.photos);
       // A profile must keep at least one image: refuse a request that removes the last one.
+      // (A stored Google picture doesn't count as an image the person chose to keep.)
       if ((body.photos !== undefined || body.photoUrl !== undefined) && !merged.photoUrl && !(merged.photos?.length)
-          && (existing?.photoUrl || existing?.photos?.length)) {
+          && (ownPhotoUrl(existing?.photoUrl) || ownPhotoUrls(existing?.photos ?? []).length)) {
         throw invalid('Validation failed', [{ path: 'photos', message: 'At least one photo is required' }]);
       }
       const pubDoc = {

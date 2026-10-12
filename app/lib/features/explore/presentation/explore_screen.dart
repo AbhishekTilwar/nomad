@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
+import '../../create/presentation/create_activity_screen.dart';
 import '../../../core/config/map_config.dart';
 import '../../../core/widgets/basemap_layer.dart';
 import '../../../core/services/location_service.dart';
@@ -11,12 +12,14 @@ import '../../../core/theme/app_tokens.dart';
 import '../../../core/utils/category_style.dart';
 import '../../../core/widgets/activity_card.dart';
 import '../../../core/widgets/app_chip.dart';
-import '../../../core/widgets/activity_marker.dart';
+import '../../../core/widgets/plan_pin.dart';
+import '../../../core/widgets/user_location_marker.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/error_state.dart';
 import '../../../core/widgets/loading_skeleton.dart';
 import '../../../core/widgets/plan_sheet_card.dart';
 import 'explore_controller.dart';
+import 'map_clustering.dart';
 import '../../social/data/social_repository.dart';
 import '../../social/presentation/travelers_sheet.dart';
 import 'filter_screen.dart';
@@ -68,7 +71,7 @@ class ExploreScreen extends StatelessWidget {
               child: FloatingActionButton(
                 heroTag: 'create-plan',
                 tooltip: 'Create a plan',
-                onPressed: () => context.push('/explore/create'),
+                onPressed: () => showCreatePlanSheet(context),
                 child: const Icon(Icons.add),
               ),
             ),
@@ -237,7 +240,7 @@ class _NearbyPill extends StatelessWidget {
   }
 }
 
-/// Bottom-left "List" / "Map" switch.
+/// Bottom-left "Browse" / "Map" switch.
 class _ViewToggle extends StatelessWidget {
   const _ViewToggle({required this.isMap, required this.onPressed});
   final bool isMap;
@@ -260,10 +263,10 @@ class _ViewToggle extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(isMap ? Icons.view_list : Icons.map, size: 20),
+              Icon(isMap ? Icons.auto_awesome_mosaic_rounded : Icons.map, size: 20),
               const SizedBox(width: 8),
               Text(
-                isMap ? 'List' : 'Map',
+                isMap ? 'Browse' : 'Map',
                 style: t.textTheme.labelLarge?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
@@ -371,7 +374,7 @@ class _Body extends StatelessWidget {
           message:
               'Nothing is scheduled in ${c.city.name} right now. Host a coffee or a walk and others can join you.',
           actionLabel: 'Create a plan',
-          onAction: () => context.push('/explore/create'),
+          onAction: () => showCreatePlanSheet(context),
         );
       }
       return RefreshIndicator(
@@ -407,7 +410,9 @@ class _MapViewState extends State<_MapView> {
   final _config = MapConfig.fromEnvironment();
   bool _tilesFailing = false;
   bool _ready = false;
+  bool _locating = false;
   int _seenFocusTick = 0;
+  String? _seenSelectedId;
 
   @override
   void initState() {
@@ -423,8 +428,28 @@ class _MapViewState extends State<_MapView> {
     super.dispose();
   }
 
+  /// The plan card covers the lower half of the map; slide the selected pin
+  /// up into the visible part so it isn't hidden behind it.
+  void _revealSelected() {
+    final a = widget.controller.selected;
+    if (a == null || !_ready) return;
+    final cam = _map.camera;
+    final h = cam.nonRotatedSize.height;
+    final pinY = cam.latLngToScreenOffset(a.position).dy;
+    final target = (h - 420) / 2 + 40;
+    if (pinY > 90 && pinY < h - 460) return;
+    final shifted = cam.projectAtZoom(a.position) + Offset(0, h / 2 - target);
+    _map.move(cam.unprojectAtZoom(shifted), cam.zoom);
+  }
+
   void _onController() {
     final c = widget.controller;
+    if (c.selectedId != _seenSelectedId) {
+      _seenSelectedId = c.selectedId;
+      if (c.selectedId != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _revealSelected());
+      }
+    }
     if (c.focusTick != _seenFocusTick && c.focusPoint != null && _ready) {
       _seenFocusTick = c.focusTick;
       _map.move(c.focusPoint!, c.focusZoom ?? MapConfig.defaultZoom);
@@ -444,11 +469,15 @@ class _MapViewState extends State<_MapView> {
   }
 
   Future<void> _recenter(ExploreController c) async {
+    if (_locating) return;
     final messenger = ScaffoldMessenger.of(context);
     final location = context.read<LocationService>();
-    // Foreground, one-shot, only when the user taps the button.
+    // Foreground, one-shot, only when the user taps the button. Finding a fix
+    // can take a few seconds, so the button shows progress meanwhile.
+    setState(() => _locating = true);
     final r = await location.current();
     if (!mounted) return;
+    setState(() => _locating = false);
     final p = r.position;
     if (p == null) {
       messenger.showSnackBar(
@@ -468,6 +497,16 @@ class _MapViewState extends State<_MapView> {
     }
     c.setUserLocation(p);
     c.loadNearby(context.read<SocialRepository>(), p);
+  }
+
+  void _zoomInto(MapCluster g) {
+    _map.fitCamera(
+      CameraFit.coordinates(
+        coordinates: [for (final a in g.items) a.position],
+        padding: const EdgeInsets.all(90),
+        maxZoom: _config.maxZoom.toDouble(),
+      ),
+    );
   }
 
   void _onMapMoved(MapCamera camera) {
@@ -515,38 +554,56 @@ class _MapViewState extends State<_MapView> {
                 }
               },
             ),
-            MarkerLayer(
-              markers: [
-                for (final a in items)
-                  Marker(
-                    point: a.position,
-                    width: ActivityMarker.width,
-                    height: ActivityMarker.height,
-                    alignment: Alignment.topCenter,
-                    child: GestureDetector(
-                      onTap: () => c.select(a.id),
-                      child: ActivityMarker(
-                        category: a.category,
-                        selected: a.id == c.selectedId,
-                        full: a.isFull,
-                      ),
-                    ),
-                  ),
-                if (c.userLocation != null)
+            // Under the pins so the radar never covers a plan.
+            if (c.userLocation != null)
+              MarkerLayer(
+                markers: [
                   Marker(
                     point: c.userLocation!,
-                    width: 22,
-                    height: 22,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: t.colorScheme.primary,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 3),
-                        boxShadow: AppShadows.card,
-                      ),
-                    ),
+                    width: UserLocationMarker.size,
+                    height: UserLocationMarker.size,
+                    child: const UserLocationMarker(),
                   ),
-              ],
+                ],
+              ),
+            Builder(
+              builder: (context) {
+                final camera = MapCamera.of(context);
+                final clusters = clusterActivities(
+                  items,
+                  camera,
+                  keepSingleId: c.selectedId,
+                );
+                return MarkerLayer(
+                  markers: [
+                    for (final g in clusters)
+                      if (g.isSingle)
+                        Marker(
+                          point: g.items.first.position,
+                          width: PlanPin.width,
+                          height: PlanPin.height,
+                          alignment: Alignment.topCenter,
+                          child: GestureDetector(
+                            onTap: () => c.select(g.items.first.id),
+                            child: PlanPin(
+                              activity: g.items.first,
+                              selected: g.items.first.id == c.selectedId,
+                            ),
+                          ),
+                        )
+                      else
+                        Marker(
+                          point: g.center,
+                          width: ClusterPin.size,
+                          height: ClusterPin.size,
+                          child: GestureDetector(
+                            onTap: () => _zoomInto(g),
+                            child: ClusterPin(items: g.items),
+                          ),
+                        ),
+                  ],
+                );
+              },
             ),
             Padding(
               padding: EdgeInsets.only(
@@ -573,7 +630,7 @@ class _MapViewState extends State<_MapView> {
                 title: const Text('Map couldn\'t load'),
                 trailing: TextButton(
                   onPressed: () => c.setView(ExploreView.list),
-                  child: const Text('Use list'),
+                  child: const Text('Browse plans'),
                 ),
               ),
             ),
@@ -598,7 +655,7 @@ class _MapViewState extends State<_MapView> {
                     TextButton(
                       onPressed: c.hasActiveFilters
                           ? c.clearFilters
-                          : () => context.push('/explore/create'),
+                          : () => showCreatePlanSheet(context),
                       child: Text(
                         c.hasActiveFilters ? 'Clear filters' : 'Host one',
                       ),
@@ -645,7 +702,13 @@ class _MapViewState extends State<_MapView> {
             backgroundColor: t.colorScheme.surface,
             foregroundColor: t.colorScheme.primary,
             onPressed: () => _recenter(c),
-            child: const Icon(Icons.near_me_outlined),
+            child: _locating
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2.4),
+                  )
+                : const Icon(Icons.near_me_outlined),
           ),
         ),
         if (selected != null)
@@ -656,6 +719,7 @@ class _MapViewState extends State<_MapView> {
             child: PlanSheetCard(
               activity: selected,
               onClose: () => c.select(null),
+              onChanged: () => c.load(keepSelection: true),
             ),
           ),
       ],

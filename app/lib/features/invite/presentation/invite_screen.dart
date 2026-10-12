@@ -6,6 +6,7 @@ import '../../../core/theme/app_tokens.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../../core/widgets/secondary_button.dart';
 import '../invite_service.dart';
+import '../../../core/theme/theme_colors.dart';
 
 /// Invite friends: WhatsApp, contacts (via SMS), or copy / share the link.
 class InviteScreen extends StatelessWidget {
@@ -42,7 +43,7 @@ class InviteScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(AppSpacing.xl),
               decoration: BoxDecoration(
-                color: AppColors.primaryLight,
+                color: context.primaryLight,
                 borderRadius: BorderRadius.circular(AppRadius.lg),
               ),
               child: Column(
@@ -71,7 +72,7 @@ class InviteScreen extends StatelessWidget {
                     'Invite friends to join you on Nomad Mingle and make your next plan.',
                     textAlign: TextAlign.center,
                     style: t.textTheme.bodyMedium?.copyWith(
-                      color: AppColors.inkMuted,
+                      color: context.inkMuted,
                     ),
                   ),
                 ],
@@ -102,7 +103,7 @@ class InviteScreen extends StatelessWidget {
             Text('Your invite link', style: t.textTheme.labelMedium),
             const SizedBox(height: AppSpacing.sm),
             Material(
-              color: AppColors.field,
+              color: context.field,
               borderRadius: BorderRadius.circular(AppRadius.field),
               child: InkWell(
                 key: const ValueKey('invite-copy'),
@@ -115,9 +116,9 @@ class InviteScreen extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.link,
-                        color: AppColors.inkMuted,
+                        color: context.inkMuted,
                         size: 20,
                       ),
                       const SizedBox(width: 10),

@@ -102,6 +102,11 @@ flutter:
   assets:
     - assets/images/brand_logo.png
     - assets/images/welcome/
+    - assets/map/12/2874/
+    - assets/map/12/2875/
+    - assets/map/12/2876/
+    - assets/map/12/2877/
+    - assets/map/12/2878/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

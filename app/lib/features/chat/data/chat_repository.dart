@@ -5,29 +5,71 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/api/api_client.dart';
 import '../models/chat_message.dart';
 
-/// Which room a chat screen is showing.
+/// Which room a chat screen is showing: the community room, an activity's
+/// group chat, or a one-to-one conversation with a friend.
 class ChatRoom {
-  const ChatRoom.community() : activityId = null;
-  const ChatRoom.activity(String this.activityId);
+  const ChatRoom.community() : activityId = null, otherUid = null, _me = null;
+  const ChatRoom.activity(String this.activityId) : otherUid = null, _me = null;
+  const ChatRoom.direct({required String me, required String this.otherUid})
+    : activityId = null,
+      _me = me;
 
-  /// Null for the global community room.
+  /// Null for the community room and direct chats.
   final String? activityId;
 
-  bool get isCommunity => activityId == null;
-  String get collectionPath => isCommunity
+  /// The friend in a direct chat.
+  final String? otherUid;
+  final String? _me;
+
+  bool get isDirect => otherUid != null;
+  bool get isCommunity => activityId == null && otherUid == null;
+
+  /// Same pair id the backend uses: both uids sorted and joined by `_`.
+  static String pairId(String a, String b) => ([a, b]..sort()).join('_');
+
+  String get collectionPath => isDirect
+      ? 'dms/${pairId(_me!, otherUid!)}/messages'
+      : isCommunity
       ? 'communityRooms/global/messages'
       : 'activities/$activityId/messages';
-  String get apiPath =>
-      isCommunity ? '/community/messages' : '/activities/$activityId/messages';
+  String get apiPath => isDirect
+      ? '/users/$otherUid/messages'
+      : isCommunity
+      ? '/community/messages'
+      : '/activities/$activityId/messages';
 
   /// Key for read-state storage.
-  String get readKey => isCommunity ? 'community' : 'activity:$activityId';
+  String get readKey => isDirect
+      ? 'dm:$otherUid'
+      : isCommunity
+      ? 'community'
+      : 'activity:$activityId';
+
+  /// Value for report context `roomType`.
+  String get typeName =>
+      isDirect ? 'direct' : (isCommunity ? 'community' : 'activity');
 
   @override
   bool operator ==(Object other) =>
-      other is ChatRoom && other.activityId == activityId;
+      other is ChatRoom &&
+      other.activityId == activityId &&
+      other.otherUid == otherUid;
   @override
-  int get hashCode => activityId.hashCode;
+  int get hashCode => Object.hash(activityId, otherUid);
+}
+
+/// One row of the Chats tab for a one-to-one conversation.
+class DmConversation {
+  const DmConversation({
+    required this.otherUid,
+    required this.lastText,
+    required this.lastSenderId,
+    required this.updatedAt,
+  });
+  final String otherUid;
+  final String lastText;
+  final String lastSenderId;
+  final DateTime updatedAt;
 }
 
 /// Latest live window, newest first. [cursor] is an opaque handle to the OLDEST message in
@@ -109,6 +151,10 @@ abstract class ChatRepository {
   });
 
   Future<CommunityViewer> communityViewer();
+
+  /// Live list of my one-to-one conversations, newest first.
+  Stream<List<DmConversation>> watchConversations(String myUid) =>
+      const Stream.empty();
 
   /// Sender ids the viewer blocked (cached; pass [refresh] to refetch).
   Future<Set<String>> blockedIds({bool refresh = false});
@@ -215,6 +261,34 @@ class FirestoreChatRepository implements ChatRepository {
       clientMessageId: clientMessageId,
     );
   }
+
+  @override
+  Stream<List<DmConversation>> watchConversations(String myUid) => _db
+      .collection('dms')
+      .where('users', arrayContains: myUid)
+      .orderBy('updatedAt', descending: true)
+      .limit(50)
+      .snapshots()
+      .map((snap) {
+        final out = <DmConversation>[];
+        for (final d in snap.docs) {
+          final j = d.data();
+          final users = (j['users'] as List?)?.cast<String>() ?? const [];
+          final other = users.where((u) => u != myUid).firstOrNull;
+          final at = j['updatedAt'];
+          final last = (j['lastMessage'] as Map?)?.cast<String, dynamic>();
+          if (other == null || at is! Timestamp || last == null) continue;
+          out.add(
+            DmConversation(
+              otherUid: other,
+              lastText: last['text'] as String? ?? '',
+              lastSenderId: last['senderId'] as String? ?? '',
+              updatedAt: at.toDate(),
+            ),
+          );
+        }
+        return out;
+      });
 
   @override
   Future<CommunityViewer> communityViewer() async =>

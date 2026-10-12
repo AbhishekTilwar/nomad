@@ -201,3 +201,20 @@ test('notifications: owner reads own; others and unfiltered queries denied', asy
   await assertFails(getDocs(query(collection(db('bob'), 'notifications'), where('userId', '==', 'alice'))));
   await assertFails(getDocs(collection(db('bob'), 'notifications')));
 });
+
+test('dms: only participants can read their dm doc, list by array-contains, and visible messages', async () => {
+  await fresh();
+  for (const uid of ['bob', 'dave']) {
+    await assertSucceeds(getDoc(doc(db(uid), 'dms/bob_dave')));
+    await assertSucceeds(getDoc(doc(db(uid), 'dms/bob_dave/messages/visible')));
+    await assertSucceeds(getDocs(query(collection(db(uid), 'dms'), where('users', 'array-contains', uid), orderBy('updatedAt', 'desc'))));
+  }
+  for (const uid of ['erin', 'carol', null]) {
+    await assertFails(getDoc(doc(db(uid), 'dms/bob_dave')));
+    await assertFails(getDoc(doc(db(uid), 'dms/bob_dave/messages/visible')));
+  }
+  await assertFails(getDoc(doc(db('bob'), 'dms/bob_dave/messages/hidden')));
+  await assertFails(getDocs(query(collection(db('erin'), 'dms'), where('users', 'array-contains', 'bob'))));
+  await assertFails(setDoc(doc(db('bob'), 'dms/bob_dave'), { users: ['bob', 'dave'] }));
+  await assertFails(addDoc(collection(db('bob'), 'dms/bob_dave/messages'), { senderId: 'bob', text: 'x', moderationStatus: 'visible' }));
+});

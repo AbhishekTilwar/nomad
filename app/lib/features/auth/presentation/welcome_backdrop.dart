@@ -43,7 +43,9 @@ class _WelcomeBackdropState extends State<WelcomeBackdrop>
     duration: const Duration(seconds: 14),
   );
   bool _started = false;
-  bool _mapFailed = false;
+  // Bundled tiles keep a real map on screen offline; the painted contours
+  // remain only as a fallback in the painter.
+  final bool _mapFailed = false;
   List<ui.Image> _photos = const [];
   final _config = MapConfig.fromEnvironment();
 
@@ -126,11 +128,8 @@ class _WelcomeBackdropState extends State<WelcomeBackdrop>
                           opacity: 0.9,
                           child: BasemapLayer(
                             config: _config,
-                            onTileError: () {
-                              if (!_mapFailed && mounted) {
-                                setState(() => _mapFailed = true);
-                              }
-                            },
+                            // Offline, the bundled city tiles show instead.
+                            bundledTiles: 'assets/map/{z}/{x}/{y}.png',
                           ),
                         ),
                       ],

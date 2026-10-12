@@ -30,10 +30,15 @@ class AppFormField extends StatefulWidget {
     this.onTap,
     this.showLabel = true,
     this.initialValue,
+    this.errorText,
   });
 
   /// Used only when no [controller] is supplied (read-only display fields).
   final String? initialValue;
+
+  /// An error to show right now (e.g. from a step-by-step form), even if the
+  /// user hasn't touched the field.
+  final String? errorText;
   final String label;
   final TextEditingController? controller;
   final String? Function(String?)? validator;
@@ -70,6 +75,7 @@ class _AppFormFieldState extends State<AppFormField> {
       controller: widget.controller,
       initialValue: widget.controller == null ? widget.initialValue : null,
       validator: widget.validator,
+      forceErrorText: widget.errorText,
       obscureText: _hidden,
       enabled: widget.enabled,
       readOnly: widget.readOnly,

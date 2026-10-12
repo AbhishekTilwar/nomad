@@ -12,6 +12,7 @@ import '../../core/widgets/error_state.dart';
 import '../../core/widgets/user_avatar.dart';
 import '../auth/application/session_controller.dart';
 import '../safety/data/safety_repository.dart';
+import '../../core/theme/theme_colors.dart';
 
 /// In-app notification inbox. Reads the signed-in user's own `notifications`
 /// documents (rules allow owner reads; the backend writes them). Latest 30 only.
@@ -166,7 +167,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                   )
                                 : CircleAvatar(
                                     radius: 24,
-                                    backgroundColor: AppColors.tint,
+                                    backgroundColor: context.tint,
                                     child: Icon(
                                       _icon(type),
                                       size: 22,

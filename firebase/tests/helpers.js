@@ -57,6 +57,9 @@ export async function seed(testEnv) {
     await put('communityRooms/global/messages/visible', msg('bob'));
     await put('communityRooms/global/messages/hidden', msg('bob', 'hidden'));
     await put('communityRooms/global/messages/removed', msg('bob', 'removed'));
+    await put('dms/bob_dave', { users: ['bob', 'dave'], lastMessage: { text: 'hi', senderId: 'bob', senderName: 'bob' }, updatedAt: ts(1) });
+    await put('dms/bob_dave/messages/visible', msg('bob'));
+    await put('dms/bob_dave/messages/hidden', msg('bob', 'hidden'));
     await put('userBlocks/bob/blocked/dave', { blockedAt: ts(1), targetDisplayName: 'dave' });
     await put('reports/r1', { reporterId: 'bob', targetType: 'user', targetId: 'dave', status: 'open' });
     await put('moderationActions/a1', { actorId: 'alice', action: 'mute' });

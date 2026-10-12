@@ -1,3 +1,5 @@
+import '../../../core/utils/avatar_url.dart';
+
 class UserProfile {
   const UserProfile({
     required this.uid,
@@ -55,7 +57,7 @@ class UserProfile {
   factory UserProfile.fromJson(Map<String, dynamic> j) => UserProfile(
     uid: (j['uid'] ?? j['id']) as String,
     displayName: j['displayName'] as String? ?? '',
-    photoUrl: j['photoUrl'] as String?,
+    photoUrl: ownPhotoUrl(j['photoUrl'] as String?),
     bio: j['bio'] as String? ?? '',
     city: j['city'] as String? ?? 'mumbai',
     interests: List<String>.from(j['interests'] as List? ?? const []),
@@ -67,7 +69,7 @@ class UserProfile {
     role: j['role'] as String? ?? 'user',
     countryCode: j['countryCode'] as String?,
     instagram: j['instagram'] as String?,
-    photos: List<String>.from(j['photos'] as List? ?? const []),
+    photos: ownPhotoUrls(List<String>.from(j['photos'] as List? ?? const [])),
     ageRange: j['ageRange'] as String?,
   );
 }

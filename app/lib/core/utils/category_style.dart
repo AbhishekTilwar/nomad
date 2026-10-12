@@ -21,6 +21,15 @@ class CategoryStyle {
     'explore': 'Explore',
   };
 
+  /// A category colour for use as TEXT or a thin icon: the tuned colour on
+  /// light backgrounds, lifted toward white on dark ones so it stays readable.
+  static Color textColor(BuildContext context, String category) {
+    final c = color(category);
+    return Theme.of(context).brightness == Brightness.dark
+        ? Color.lerp(c, Colors.white, 0.5)!
+        : c;
+  }
+
   static Color color(String category) =>
       AppColors.categoryColors[category] ?? AppColors.secondary;
 

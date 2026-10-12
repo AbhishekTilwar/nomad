@@ -1,6 +1,9 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import '../utils/avatar_url.dart';
+import 'loading_skeleton.dart';
+
 class UserAvatar extends StatelessWidget {
   const UserAvatar({
     super.key,
@@ -47,13 +50,18 @@ class UserAvatar extends StatelessWidget {
         child: SizedBox(
           width: size,
           height: size,
-          child: (photoUrl == null || photoUrl!.isEmpty)
+          child: ownPhotoUrl(photoUrl) == null
               ? fallback
               : CachedNetworkImage(
-                  imageUrl: photoUrl!,
+                  imageUrl: ownPhotoUrl(photoUrl)!,
                   fit: BoxFit.cover,
                   memCacheWidth: (size * 3).round(),
-                  placeholder: (_, _) => fallback,
+                  fadeInDuration: const Duration(milliseconds: 150),
+                  fadeOutDuration: Duration.zero,
+                  // A pulsing disc while the photo loads (initials only if it
+                  // fails), so the avatar never flashes the wrong content.
+                  placeholder: (_, _) =>
+                      LoadingSkeleton(width: size, height: size, radius: 0),
                   errorWidget: (_, _, _) => fallback,
                 ),
         ),

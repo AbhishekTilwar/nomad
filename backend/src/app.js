@@ -33,7 +33,7 @@ export function createApp(deps) {
   const activities = createActivitiesService({ ...base, notifications });
   const users = createUsersService({ ...base, activities });
   const friends = createFriendsService({ ...base, notifications });
-  const chat = createChatService({ ...base, users });
+  const chat = createChatService({ ...base, users, notifications });
   const safety = createSafetyService(base);
   const admin = createAdminService({ ...base, notifications, activities });
 
@@ -57,7 +57,8 @@ export function createApp(deps) {
   app.use(ipLimiter(config.ipRateLimitPerMin));
   app.use(express.json({ limit: config.bodyLimit }));
 
-  app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+  // `version` (Render sets RENDER_GIT_COMMIT) lets you check which commit is actually deployed.
+  app.get('/health', (_req, res) => res.json({ status: 'ok', version: (process.env.RENDER_GIT_COMMIT || '').slice(0, 7) || null }));
   app.get('/ready', wrap(async (_req, res) => {
     try {
       await Promise.race([
@@ -74,7 +75,7 @@ export function createApp(deps) {
   v1.use('/internal/jobs', internalJobsRouter({ config, notifications }));
   v1.use(authenticate(base));
   v1.use(userLimiter(config.userRateLimitPerMin));
-  v1.use('/users', usersRouter({ users, activities, friends }));
+  v1.use('/users', usersRouter({ users, activities, friends, chat }));
   v1.use('/activities', requireProfile, activitiesRouter({ activities, chat }));
   v1.use('/community', requireProfile, communityRouter({ chat, safety }));
   v1.use('/reports', requireProfile, safetyRouter({ safety }));

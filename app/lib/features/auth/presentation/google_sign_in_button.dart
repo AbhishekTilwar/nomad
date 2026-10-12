@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_tokens.dart';
 import '../data/auth_repository.dart';
+import '../../../core/theme/theme_colors.dart';
 
 /// "Continue with Google" with its own busy state and friendly errors.
 class GoogleSignInButton extends StatefulWidget {
@@ -49,7 +50,7 @@ class _GoogleSignInButtonState extends State<GoogleSignInButton> {
       style: OutlinedButton.styleFrom(
         minimumSize: const Size.fromHeight(52),
         backgroundColor: Colors.white,
-        foregroundColor: AppColors.ink,
+        foregroundColor: context.ink,
         disabledBackgroundColor: Colors.white.withValues(alpha: 0.85),
         shape: shape,
         side: onWhiteSide,
@@ -74,7 +75,7 @@ class _GoogleSignInButtonState extends State<GoogleSignInButton> {
                     'Continue with Google',
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: AppColors.ink,
+                      color: context.ink,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -102,7 +103,7 @@ class _GoogleSignInButtonState extends State<GoogleSignInButton> {
 
   BorderSide get onWhiteSide => widget.onWhite
       ? BorderSide.none
-      : const BorderSide(color: AppColors.outline);
+      : BorderSide(color: context.outline);
 }
 
 /// Simple brand-colored "G" mark (no asset needed).

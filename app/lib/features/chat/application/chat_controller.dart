@@ -364,10 +364,7 @@ class ChatController extends ChangeNotifier {
     targetId: m.id,
     reason: r.reason.name,
     details: r.details,
-    context: {
-      'roomType': room.isCommunity ? 'community' : 'activity',
-      'activityId': ?room.activityId,
-    },
+    context: {'roomType': room.typeName, 'activityId': ?room.activityId},
   );
 
   Future<void> block(ChatMessage m) async {
@@ -514,4 +511,31 @@ class ActivityChatController extends ChatController {
 
     await Future.wait([loadActivity(), loadMembers()]);
   }
+}
+
+/// One-to-one chat with a friend. The title comes from the friend's profile
+/// (or the name passed in while it loads).
+class DirectChatController extends ChatController {
+  DirectChatController({
+    required super.repository,
+    required super.safety,
+    required super.currentUid,
+    required super.currentName,
+    required String otherUid,
+    required this.otherName,
+    super.currentPhotoUrl,
+    super.readStore,
+    super.pageSize,
+    super.idGenerator,
+    super.clock,
+  }) : super(
+         room: ChatRoom.direct(me: currentUid, otherUid: otherUid),
+       );
+
+  String otherName;
+
+  @override
+  String get title => otherName;
+  @override
+  String get subtitle => 'Friends';
 }

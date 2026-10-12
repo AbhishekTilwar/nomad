@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/utils/validators.dart';
+import '../../../core/theme/theme_colors.dart';
 
 /// iOS-style rounded composer with a circular send button. The text clears as soon as the
 /// message is handed to the controller: delivery failures appear as a retryable failed bubble,
@@ -75,9 +76,9 @@ class _ChatComposerState extends State<ChatComposer> {
       top: false,
       child: Container(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: AppColors.outline)),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          border: Border(top: BorderSide(color: context.outline)),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -95,7 +96,7 @@ class _ChatComposerState extends State<ChatComposer> {
                     decoration: InputDecoration(
                       hintText: 'Type a message...',
                       filled: true,
-                      fillColor: AppColors.field,
+                      fillColor: context.field,
                       isDense: true,
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -109,7 +110,7 @@ class _ChatComposerState extends State<ChatComposer> {
                           : null,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(AppRadius.xl),
-                        borderSide: const BorderSide(color: AppColors.outline),
+                        borderSide: BorderSide(color: context.outline),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(AppRadius.xl),
@@ -117,7 +118,7 @@ class _ChatComposerState extends State<ChatComposer> {
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(AppRadius.xl),
-                        borderSide: const BorderSide(color: AppColors.outline),
+                        borderSide: BorderSide(color: context.outline),
                       ),
                     ),
                   );

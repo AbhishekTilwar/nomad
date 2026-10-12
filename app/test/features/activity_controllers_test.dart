@@ -72,15 +72,63 @@ void main() {
       final e = c.validate(now: now);
       expect(
         e.keys,
-        containsAll([
-          'title',
-          'description',
-          'category',
-          'startAt',
-          'venueName',
-          'location',
-        ]),
+        unorderedEquals(['title', 'category', 'startAt', 'location']),
       );
+    });
+
+    test('description and venue name are optional', () {
+      final c = CreateActivityController(
+        FakeActivityRepository(),
+        city: 'mumbai',
+      );
+      _fill(c, now);
+      c.description = '';
+      c.venueName = '   ';
+      expect(c.validate(now: now), isEmpty);
+      final draft = c.buildDraft();
+      expect(draft.description, '');
+      expect(draft.venueName, CreateActivityController.fallbackVenue);
+      c.venueName = 'Cafe Leopold';
+      expect(c.buildDraft().venueName, 'Cafe Leopold');
+    });
+
+    test('validateStep only reports the fields on that step', () {
+      final c = CreateActivityController(
+        FakeActivityRepository(),
+        city: 'mumbai',
+      );
+      expect(c.validateStep(0, now: now), isFalse);
+      expect(c.errors.keys, unorderedEquals(['category', 'title']));
+      expect(c.validateStep(1, now: now), isFalse);
+      expect(c.errors.keys, unorderedEquals(['startAt', 'location']));
+      // Capacity defaults to a valid size and the plan is free, so step 3 is ok.
+      expect(c.validateStep(2, now: now), isTrue);
+      expect(c.validateStep(3, now: now), isTrue);
+    });
+
+    test('firstStepWithError finds the earliest step with a problem', () {
+      expect(CreateActivityController.firstStepWithError({}), isNull);
+      expect(
+        CreateActivityController.firstStepWithError({
+          'capacity': 'x',
+          'location': 'y',
+        }),
+        1,
+      );
+    });
+
+    test('shown errors clear as soon as the field becomes valid', () {
+      final c = CreateActivityController(
+        FakeActivityRepository(),
+        city: 'mumbai',
+      );
+      c.validateStep(0, now: now);
+      expect(c.errors, contains('title'));
+      c.edit(() => c.title = 'Sunday brunch plan');
+      expect(c.errors, isNot(contains('title')));
+      expect(c.errors, contains('category'));
+      c.update(() => c.category = 'food');
+      expect(c.errors, isNot(contains('category')));
     });
 
     test('rejects past date, bad capacity, and paid without cost note', () {

@@ -99,6 +99,18 @@ service cloud.firestore {
       }
     }
 
+    // ---------------------------------------------------------------- direct messages (friends only)
+    match /dms/{pairId} {
+      allow read: if isActive() && request.auth.uid in resource.data.users;
+      allow write: if false;   // POST /users/:uid/messages
+
+      match /messages/{messageId} {
+        allow read: if isActive() && resource.data.moderationStatus == 'visible'
+          && request.auth.uid in get(/databases/$(database)/documents/dms/$(pairId)).data.users;
+        allow write: if false;
+      }
+    }
+
     // ---------------------------------------------------------------- per-user data
     match /userBlocks/{uid}/blocked/{target} {
       allow read: if isSelf(uid);

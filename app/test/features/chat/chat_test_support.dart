@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:nomad_mingle/core/utils/app_exception.dart';
 import 'package:nomad_mingle/features/activities/data/my_activities_repository.dart';
 import 'package:nomad_mingle/features/chat/data/chat_repository.dart';
+import 'package:nomad_mingle/features/social/data/social_repository.dart';
 import 'package:nomad_mingle/features/chat/models/chat_message.dart';
 import 'package:nomad_mingle/features/safety/data/safety_repository.dart';
 
@@ -28,6 +29,10 @@ class FakeChatRepository implements ChatRepository {
   Object? blockedError;
   CommunityViewer? viewer;
   Object? viewerError;
+
+  @override
+  Stream<List<DmConversation>> watchConversations(String myUid) =>
+      const Stream.empty();
 
   // --- latest window
   StreamController<ChatWindow>? _window;
@@ -202,3 +207,13 @@ AppException rateLimited(int seconds, {String reason = 'rate_limit'}) =>
       retryAfterSeconds: seconds,
       reason: reason,
     );
+
+/// No friends or requests: enough for screens that only show the Requests row.
+class FakeSocialRepository implements SocialRepository {
+  @override
+  Future<List<FriendEntry>> friends() async => const [];
+  @override
+  Future<List<FriendEntry>> friendRequests() async => const [];
+  @override
+  dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
+}

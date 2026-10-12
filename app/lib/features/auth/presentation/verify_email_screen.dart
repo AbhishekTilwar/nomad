@@ -7,6 +7,7 @@ import '../../../core/widgets/secondary_button.dart';
 import '../application/session_controller.dart';
 import '../data/auth_repository.dart';
 import 'auth_layout.dart';
+import '../../../core/theme/theme_colors.dart';
 
 class VerifyEmailScreen extends StatefulWidget {
   const VerifyEmailScreen({super.key});
@@ -69,7 +70,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
             width: 72,
             height: 72,
             decoration: BoxDecoration(
-              color: AppColors.tint,
+              color: context.tint,
               borderRadius: BorderRadius.circular(20),
             ),
             child: Icon(
@@ -96,7 +97,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
               _message!,
               textAlign: TextAlign.center,
               style: t.textTheme.bodyMedium?.copyWith(
-                color: AppColors.inkMuted,
+                color: context.inkMuted,
               ),
             ),
           ),

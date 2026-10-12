@@ -8,6 +8,7 @@ import '../../../core/utils/validators.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../auth/application/session_controller.dart';
 import 'onboarding_widgets.dart';
+import '../../../core/theme/theme_colors.dart';
 
 /// Optional last step after the photo: a short story (bio + Instagram).
 /// Skippable. Also saves the country implied by the chosen city, so location
@@ -141,14 +142,14 @@ class _ProfileExtrasScreenState extends State<ProfileExtrasScreen> {
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
                 hintText: 'username',
-                prefixIcon: const Padding(
+                prefixIcon: Padding(
                   padding: EdgeInsets.symmetric(horizontal: 14),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.camera_alt_outlined, color: AppColors.ink),
+                      Icon(Icons.camera_alt_outlined, color: context.ink),
                       SizedBox(width: 8),
-                      Text('@', style: TextStyle(color: AppColors.inkMuted)),
+                      Text('@', style: TextStyle(color: context.inkMuted)),
                     ],
                   ),
                 ),

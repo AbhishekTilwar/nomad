@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../features/chat/models/chat_message.dart';
+import '../services/user_photo_cache.dart';
 import '../utils/formatters.dart';
 import 'user_avatar.dart';
 
@@ -119,17 +120,42 @@ class CommunityMessageBubble extends StatelessWidget {
           if (!isMine) ...[
             GestureDetector(
               onTap: onAvatarTap,
-              child: UserAvatar(
-                name: message.senderName,
-                photoUrl: message.senderPhotoUrl,
-                size: 32,
-              ),
+              child: _SenderAvatar(message: message),
             ),
             const SizedBox(width: 8),
           ],
           column,
           if (isMine) const SizedBox(width: 4),
         ],
+      ),
+    );
+  }
+}
+
+/// The sender's avatar with their *current* photo (messages only store the one
+/// they had when sent); the stored photo shows until the lookup resolves.
+class _SenderAvatar extends StatelessWidget {
+  const _SenderAvatar({required this.message});
+  final ChatMessage message;
+
+  @override
+  Widget build(BuildContext context) {
+    final latest = message.senderId.isEmpty
+        ? null
+        : UserPhotoCache.instance.watch(message.senderId);
+    if (latest == null) {
+      return UserAvatar(
+        name: message.senderName,
+        photoUrl: message.senderPhotoUrl,
+        size: 32,
+      );
+    }
+    return ValueListenableBuilder<UserSummary?>(
+      valueListenable: latest,
+      builder: (_, now, _) => UserAvatar(
+        name: message.senderName,
+        photoUrl: now == null ? message.senderPhotoUrl : now.photoUrl,
+        size: 32,
       ),
     );
   }

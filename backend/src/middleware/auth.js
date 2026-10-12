@@ -1,6 +1,7 @@
 import { wrap } from '../lib/http.js';
 import { unauthenticated, restricted, forbidden } from '../lib/errors.js';
 import { toMillis } from '../lib/time.js';
+import { ownPhotoUrl } from '../lib/photos.js';
 
 const RESTRICTED = new Set(['suspended', 'deleted']);
 // Restricted users may still see their own status and delete their own account.
@@ -22,7 +23,10 @@ export function authenticate({ auth, db, config }) {
       throw unauthenticated('Invalid or expired token');
     }
     const snap = await db.doc(`users/${decoded.uid}`).get();
-    const profile = snap.exists ? snap.data() : null;
+    const data = snap.exists ? snap.data() : null;
+    // A Google account picture saved before it was banned is treated as no photo, so it
+    // isn't copied into chat messages, member lists or notifications.
+    const profile = data && { ...data, photoUrl: ownPhotoUrl(data.photoUrl) };
     const status = profile?.accountStatus ?? null;
     req.user = {
       uid: decoded.uid,

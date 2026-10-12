@@ -32,6 +32,9 @@ class AppColors {
   static const field = Color(0xFFF1F3F0); // input / subtle container fill
   static const tint = primaryLight;
   static const outlineDark = Color(0xFF2C3E3B);
+  static const fieldDark = Color(0xFF223634); // input fill on dark surfaces
+  static const tintDark = Color(0xFF1F3F3A); // soft brand tint on dark
+  static const secondaryTintDark = Color(0xFF3A2E18);
 
   static const success = Color(0xFF23845B);
   static const warning = Color(0xFFB96D12);

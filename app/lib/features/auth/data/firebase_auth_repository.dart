@@ -6,6 +6,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../../core/config/app_config.dart';
 import 'auth_repository.dart';
+import '../../../core/utils/avatar_url.dart';
 
 class FirebaseAuthRepository implements AuthRepository {
   FirebaseAuthRepository({fb.FirebaseAuth? auth})
@@ -21,7 +22,8 @@ class FirebaseAuthRepository implements AuthRepository {
           email: u.email,
           emailVerified: u.emailVerified,
           displayName: u.displayName,
-          photoUrl: u.photoURL,
+          // The Google account picture is never used as a profile photo.
+          photoUrl: ownPhotoUrl(u.photoURL),
           usesPassword: u.providerData.any((p) => p.providerId == 'password'),
         );
 
