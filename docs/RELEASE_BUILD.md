@@ -23,10 +23,16 @@ PY
 )
 D=(--dart-define=FIREBASE_API_KEY=$FB_KEY --dart-define=FIREBASE_APP_ID=$FB_APP \
    --dart-define=FIREBASE_MESSAGING_SENDER_ID=$FB_SENDER --dart-define=FIREBASE_PROJECT_ID=$FB_PROJECT \
-   --dart-define=FIREBASE_STORAGE_BUCKET=$FB_BUCKET --dart-define=API_BASE_URL=https://nomad-emek.onrender.com/api/v1)
+   --dart-define=FIREBASE_STORAGE_BUCKET=$FB_BUCKET --dart-define=API_BASE_URL=https://nomad-266138323486.europe-west1.run.app/api/v1 \
+   --dart-define=API_BACKUP_URL=https://nomad-emek.onrender.com/api/v1)
 flutter build apk --release --split-per-abi "${D[@]}"
 flutter build appbundle --release "${D[@]}"
 ```
+
+## Primary and backup server
+`API_BASE_URL` is the main server (Google Cloud Run) and `API_BACKUP_URL` is the fallback (Render). The app switches to the backup for the same request when the primary can't be reached, takes over 12 s to answer a read, returns 502/503/504, or answers with something that isn't our API (e.g. Cloud Run's "Placeholder" page). Writes are only re-sent to the backup if they never reached the primary (never after a timeout). After a failover the backup is used for 3 minutes, then the primary is tried again. The backend must be deployed to **both** (same Firebase project) or users will see different data depending on which one answers.
+
+**Status 2026-10-13:** `https://nomad-266138323486.europe-west1.run.app` answers 200 on every path but serves Google's default "Placeholder | Cloud Run" page, i.e. the API is not deployed there yet. Until it is, builds using it as primary will fall back to Render on the first request.
 
 ## Symptom: "Couldn't load your account" on a release build
 That is the missing server address (item 1 below), not a connectivity problem. The release app signs in through Firebase directly, then asks *our* backend for the profile; with no `API_BASE_URL` it asks `localhost` on the phone and fails. From now on a release built without a real address shows "Server address isn't set" at launch instead, and a refused connection reads "Couldn't reach Nomad Mingle" (it used to say "No internet connection"). The address must be **https**: release builds block plain `http://` (only debug builds allow it).

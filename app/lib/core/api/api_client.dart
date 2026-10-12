@@ -10,20 +10,51 @@ import '../utils/app_exception.dart';
 /// Thin REST client for the Nomad Mingle API. Attaches a fresh Firebase ID
 /// token to each request (the backend verifies it; nothing client-supplied is
 /// trusted as identity) and maps the error envelope to [AppException].
+///
+/// With a [backupBaseUrl] the client fails over: if the primary can't be
+/// reached, times out (reads only), answers 502/503/504, or answers with
+/// something that isn't our API (an HTML placeholder, a proxy page), the same
+/// request goes to the backup. After a failover the backup is used for
+/// [stickyFor], then the primary is tried again.
 class ApiClient {
   ApiClient({
     required this.tokenProvider,
     http.Client? client,
     String? baseUrl,
+    String? backupBaseUrl,
     this.timeout = const Duration(seconds: 45),
+    this.primaryTimeout = const Duration(seconds: 12),
+    this.stickyFor = const Duration(minutes: 3),
+    DateTime Function()? clock,
   }) : _client = client ?? http.Client(),
-       baseUrl = baseUrl ?? AppConfig.apiBaseUrl;
+       baseUrl = baseUrl ?? AppConfig.apiBaseUrl,
+       backupBaseUrl = _clean(backupBaseUrl ?? AppConfig.apiBackupUrl),
+       _clock = clock ?? DateTime.now;
+
+  static String? _clean(String? u) =>
+      (u == null || u.trim().isEmpty) ? null : u.trim();
 
   /// Returns an ID token; when [forceRefresh] is true it must bypass the cache.
   final Future<String?> Function({bool forceRefresh}) tokenProvider;
   final http.Client _client;
   final String baseUrl;
+  final String? backupBaseUrl;
   final Duration timeout;
+
+  /// How long to wait on the primary before trying the backup (the backup
+  /// gets the full [timeout], as it may be waking from sleep).
+  final Duration primaryTimeout;
+  final Duration stickyFor;
+  final DateTime Function() _clock;
+  DateTime? _primaryDownUntil;
+
+  /// Which base URL the next request goes to first.
+  String get activeBaseUrl =>
+      backupBaseUrl != null &&
+          _primaryDownUntil != null &&
+          _clock().isBefore(_primaryDownUntil!)
+      ? backupBaseUrl!
+      : baseUrl;
 
   Future<ApiResponse> get(String path, {Map<String, dynamic>? query}) =>
       _send('GET', path, query: query);
@@ -49,48 +80,67 @@ class ApiClient {
         code: 'unauthenticated',
       );
     }
-    final uri = Uri.parse('$baseUrl$path').replace(
-      queryParameters: query == null
-          ? null
-          : {
-              for (final e in query.entries)
-                if (e.value != null) e.key: '${e.value}',
-            },
-    );
-    final req = http.Request(method, uri)
-      ..headers['Authorization'] = 'Bearer $token'
-      ..headers['Accept'] = 'application/json';
-    if (body != null) {
-      req.headers['Content-Type'] = 'application/json';
-      req.body = jsonEncode(body);
+    final bases = [
+      activeBaseUrl,
+      if (backupBaseUrl != null)
+        activeBaseUrl == baseUrl ? backupBaseUrl! : baseUrl,
+    ];
+    final idempotent = method == 'GET';
+    http.Response? res;
+    AppException? lastError;
+    for (var i = 0; i < bases.length; i++) {
+      final base = bases[i];
+      final isLast = i == bases.length - 1;
+      final usingBackup = base == backupBaseUrl;
+      try {
+        final r = await _attempt(
+          method,
+          base,
+          path,
+          token,
+          query: query,
+          body: body,
+          // Don't make people wait the full timeout on the primary if a
+          // backup exists.
+          wait: (!usingBackup && backupBaseUrl != null && !isLast)
+              ? primaryTimeout
+              : timeout,
+        );
+        if (!isLast && _looksDown(r)) {
+          if (!usingBackup) _markPrimaryDown();
+          continue;
+        }
+        res = r;
+        break;
+      } on TimeoutException {
+        lastError = const AppException(
+          'The server is taking too long to respond. Please try again.',
+          code: 'timeout',
+          retryable: true,
+        );
+        // A timeout may mean the server did act on it; only retry reads.
+        if (!isLast && idempotent) {
+          if (!usingBackup) _markPrimaryDown();
+          continue;
+        }
+        throw lastError;
+      } on SocketException {
+        lastError = _offline;
+        if (!isLast) {
+          if (!usingBackup) _markPrimaryDown();
+          continue;
+        }
+        throw lastError;
+      } on http.ClientException {
+        lastError = _offline;
+        if (!isLast) {
+          if (!usingBackup) _markPrimaryDown();
+          continue;
+        }
+        throw lastError;
+      }
     }
-
-    http.Response res;
-    try {
-      res = await http.Response.fromStream(
-        await _client.send(req).timeout(timeout),
-      );
-    } on TimeoutException {
-      throw const AppException(
-        'The server is taking too long to respond. Please try again.',
-        code: 'timeout',
-        retryable: true,
-      );
-    } on SocketException {
-      // Covers a dead network but also a server that refuses or cannot be
-      // found, so don't claim the user's internet is down.
-      throw const AppException(
-        'Couldn\'t reach Nomad Mingle. Check your connection and try again.',
-        code: 'offline',
-        retryable: true,
-      );
-    } on http.ClientException {
-      throw const AppException(
-        'Couldn\'t reach Nomad Mingle. Check your connection and try again.',
-        code: 'offline',
-        retryable: true,
-      );
-    }
+    if (res == null) throw lastError ?? _offline;
 
     if (res.statusCode == 401 && !isRetry) {
       return _send(method, path, query: query, body: body, isRetry: true);
@@ -107,10 +157,71 @@ class ApiClient {
     }
 
     if (res.statusCode >= 200 && res.statusCode < 300) {
+      // Our API always answers with a JSON object. Anything else on a 2xx
+      // (a hosting placeholder, a proxy page) means this isn't our server.
+      if (res.body.trim().isNotEmpty &&
+          json.isEmpty &&
+          !res.body.trim().startsWith('{')) {
+        throw const AppException(
+          'The server sent an unexpected reply. Please try again soon.',
+          code: 'bad_gateway',
+          retryable: true,
+        );
+      }
       return ApiResponse(json['data'], json['nextCursor'] as String?);
     }
     throw _mapError(res.statusCode, json);
   }
+
+  // Covers a dead network but also a server that refuses or cannot be found,
+  // so don't claim the user's internet is down.
+  static const _offline = AppException(
+    'Couldn\'t reach Nomad Mingle. Check your connection and try again.',
+    code: 'offline',
+    retryable: true,
+  );
+
+  Future<http.Response> _attempt(
+    String method,
+    String base,
+    String path,
+    String token, {
+    Map<String, dynamic>? query,
+    Object? body,
+    required Duration wait,
+  }) async {
+    final uri = Uri.parse('$base$path').replace(
+      queryParameters: query == null
+          ? null
+          : {
+              for (final e in query.entries)
+                if (e.value != null) e.key: '${e.value}',
+            },
+    );
+    final req = http.Request(method, uri)
+      ..headers['Authorization'] = 'Bearer $token'
+      ..headers['Accept'] = 'application/json';
+    if (body != null) {
+      req.headers['Content-Type'] = 'application/json';
+      req.body = jsonEncode(body);
+    }
+    return http.Response.fromStream(await _client.send(req).timeout(wait));
+  }
+
+  /// True for gateway errors and for replies that aren't from our API at all
+  /// (our API always answers with a JSON object).
+  bool _looksDown(http.Response r) {
+    if (r.statusCode == 502 || r.statusCode == 503 || r.statusCode == 504) {
+      return true;
+    }
+    try {
+      return jsonDecode(r.body) is! Map;
+    } on FormatException {
+      return true;
+    }
+  }
+
+  void _markPrimaryDown() => _primaryDownUntil = _clock().add(stickyFor);
 
   AppException _mapError(int status, Map<String, dynamic> json) {
     final err = (json['error'] as Map?)?.cast<String, dynamic>();

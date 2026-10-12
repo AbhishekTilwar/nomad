@@ -32,6 +32,10 @@ class AppConfig {
     defaultValue: 'https://nomadmingle.app',
   );
 
+  /// Optional second server, used automatically when [apiBaseUrl] is down
+  /// (`--dart-define=API_BACKUP_URL=https://.../api/v1`).
+  static const apiBackupUrl = String.fromEnvironment('API_BACKUP_URL');
+
   static const apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
     defaultValue: 'http://localhost:8080/api/v1',
