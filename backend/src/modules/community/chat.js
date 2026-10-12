@@ -19,7 +19,7 @@ const truncate = (t, n) => (t.length > n ? `${t.slice(0, n - 1)}…` : t);
  * requests from the same user cannot exceed the limit (the loser of a write conflict is retried
  * against fresh state). Message text is stored but never logged.
  */
-export function createChatService({ db, fv, now, config, users, logger, notifications }) {
+export function createChatService({ db, fv, now, config, users, logger, notifications, friends }) {
   const cfg = config.community;
   const schema = messageBodySchema(cfg.maxLength);
   let lastRoomTouch = 0;
@@ -54,6 +54,8 @@ export function createChatService({ db, fv, now, config, users, logger, notifica
       throw conflict('The community room is temporarily closed', { reason: 'room_closed' });
     }
     const pairId = room.type === 'dm' ? friendshipId(uid, room.otherUid) : null;
+    // Not friends? People who share a plan may still message. Computed before the transaction (bounded reads).
+    const viaPlan = room.type === 'dm' && uid !== room.otherUid ? await friends.canMessage(uid, room.otherUid) : false;
     const colPath = room.type === 'community' ? 'communityRooms/global/messages'
       : room.type === 'dm' ? `dms/${pairId}/messages` : `activities/${room.activityId}/messages`;
     const msgId = clientMessageId ? `${uid}_${clientMessageId}` : db.collection(colPath).doc().id;
@@ -97,7 +99,8 @@ export function createChatService({ db, fv, now, config, users, logger, notifica
       if (room.type === 'dm') {
         const td = tSnap.data();
         if (!tSnap.exists || td.accountStatus === 'deleted' || td.accountStatus === 'suspended') return { error: notFound('User not found') };
-        if (!fSnap.exists || fSnap.data().status !== 'accepted') return { error: forbidden('You can only message friends', { reason: 'not_friends' }) };
+        const areFriends = fSnap.exists && fSnap.data().status === 'accepted';
+        if (!areFriends && !viaPlan) return { error: forbidden('You can message friends and people from a plan you share', { reason: 'not_friends' }) };
         if (blockedByMe.exists || blockedByThem.exists) return { error: forbidden('You cannot message this user', { reason: 'blocked' }) };
       }
 

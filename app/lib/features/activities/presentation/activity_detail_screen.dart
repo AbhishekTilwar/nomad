@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
@@ -12,7 +11,7 @@ import '../../../core/widgets/basemap_layer.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/utils/app_exception.dart';
 import '../../../core/utils/category_style.dart';
-import '../../../core/widgets/plan_pin.dart';
+import '../../../core/widgets/plan_banner.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../../core/widgets/activity_marker.dart';
@@ -262,16 +261,11 @@ class _DetailViewState extends State<_DetailView> {
           children: [
             SizedBox(
               height: 270,
-              child: a.coverImageUrl != null
-                  ? CachedNetworkImage(
-                      imageUrl: a.coverImageUrl!,
-                      fit: BoxFit.cover,
-                      fadeInDuration: const Duration(milliseconds: 200),
-                      placeholder: (_, _) => _HeroFallback(color, a.category, a.title),
-                      errorWidget: (_, _, _) =>
-                          _HeroFallback(color, a.category, a.title),
-                    )
-                  : _HeroFallback(color, a.category, a.title),
+              child: PlanBanner(
+                title: a.title,
+                category: a.category,
+                coverUrl: a.coverImageUrl,
+              ),
             ),
             // Content sheet overlaps the hero with rounded top corners.
             Transform.translate(
@@ -739,32 +733,6 @@ class _MiniMap extends StatelessWidget {
       ),
     );
   }
-}
-
-class _HeroFallback extends StatelessWidget {
-  const _HeroFallback(this.color, this.category, this.title);
-  final Color color;
-  final String category;
-  final String title;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [color.withValues(alpha: 0.9), color.withValues(alpha: 0.45)],
-      ),
-    ),
-    child: Center(
-      child: PlanEmojiBadge(
-        title: title,
-        category: category,
-        size: 128,
-        onDark: true,
-      ),
-    ),
-  );
 }
 
 /// Loading shape of the plan page: hero, title, and the host row, so the

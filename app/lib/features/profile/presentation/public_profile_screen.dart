@@ -85,68 +85,80 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
     if (mounted) setState(() => _friendBusy = false);
   }
 
+  Widget _messageButton(PublicProfile p) => FilledButton.icon(
+    key: const ValueKey('message-friend'),
+    onPressed: () => context.push(
+      '/dm/${p.uid}',
+      extra: {'name': p.displayName, 'photoUrl': p.photoUrl},
+    ),
+    icon: const Icon(Icons.chat_bubble_outline),
+    label: const Text('Message'),
+  );
+
+  /// Message (for friends and for people who share a plan) beside the
+  /// friendship action.
   Widget _friendButtons(PublicProfile p) {
-    switch (p.friendship) {
-      case Friendship.friends:
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            FilledButton.icon(
-              key: const ValueKey('message-friend'),
-              onPressed: () => context.push(
-                '/dm/${p.uid}',
-                extra: {'name': p.displayName, 'photoUrl': p.photoUrl},
+    final Widget friend = switch (p.friendship) {
+      Friendship.friends => OutlinedButton.icon(
+        onPressed: _friendBusy
+            ? null
+            : () => _friendAction((s) => s.removeFriend(p.uid)),
+        icon: const Icon(Icons.check),
+        label: const Text('Friends'),
+      ),
+      Friendship.requestSent => OutlinedButton.icon(
+        onPressed: _friendBusy
+            ? null
+            : () => _friendAction((s) => s.removeFriend(p.uid)),
+        icon: const Icon(Icons.hourglass_top),
+        label: const Text('Requested'),
+      ),
+      Friendship.requestReceived => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FilledButton.icon(
+            onPressed: _friendBusy
+                ? null
+                : () => _friendAction((s) => s.acceptFriendRequest(p.uid)),
+            icon: const Icon(Icons.person_add_alt_1),
+            label: const Text('Accept'),
+          ),
+          const SizedBox(width: 8),
+          OutlinedButton(
+            onPressed: _friendBusy
+                ? null
+                : () => _friendAction((s) => s.removeFriend(p.uid)),
+            child: const Text('Decline'),
+          ),
+        ],
+      ),
+      Friendship.none =>
+        p.canMessage
+            // Message is the main action; adding a friend is the quiet one.
+            ? OutlinedButton.icon(
+                onPressed: _friendBusy
+                    ? null
+                    : () => _friendAction((s) => s.sendFriendRequest(p.uid)),
+                icon: const Icon(Icons.person_add_alt_1),
+                label: const Text('Add Friend'),
+              )
+            : FilledButton.icon(
+                onPressed: _friendBusy
+                    ? null
+                    : () => _friendAction((s) => s.sendFriendRequest(p.uid)),
+                icon: const Icon(Icons.person_add_alt_1),
+                label: const Text('Add Friend'),
               ),
-              icon: const Icon(Icons.chat_bubble_outline),
-              label: const Text('Message'),
-            ),
-            const SizedBox(width: 8),
-            OutlinedButton.icon(
-              onPressed: _friendBusy
-                  ? null
-                  : () => _friendAction((s) => s.removeFriend(p.uid)),
-              icon: const Icon(Icons.check),
-              label: const Text('Friends'),
-            ),
-          ],
-        );
-      case Friendship.requestSent:
-        return OutlinedButton.icon(
-          onPressed: _friendBusy
-              ? null
-              : () => _friendAction((s) => s.removeFriend(p.uid)),
-          icon: const Icon(Icons.hourglass_top),
-          label: const Text('Requested'),
-        );
-      case Friendship.requestReceived:
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            FilledButton.icon(
-              onPressed: _friendBusy
-                  ? null
-                  : () => _friendAction((s) => s.acceptFriendRequest(p.uid)),
-              icon: const Icon(Icons.person_add_alt_1),
-              label: const Text('Accept'),
-            ),
-            const SizedBox(width: 8),
-            OutlinedButton(
-              onPressed: _friendBusy
-                  ? null
-                  : () => _friendAction((s) => s.removeFriend(p.uid)),
-              child: const Text('Decline'),
-            ),
-          ],
-        );
-      case Friendship.none:
-        return FilledButton.icon(
-          onPressed: _friendBusy
-              ? null
-              : () => _friendAction((s) => s.sendFriendRequest(p.uid)),
-          icon: const Icon(Icons.person_add_alt_1),
-          label: const Text('Add Friend'),
-        );
-    }
+    };
+    if (!p.canMessage) return friend;
+    // With a shared plan but no friendship yet, make "Message" the primary
+    // action and keep "Add Friend" as the quiet one.
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      alignment: WrapAlignment.center,
+      children: [_messageButton(p), friend],
+    );
   }
 
   Future<void> _openInstagram(String handle) async {

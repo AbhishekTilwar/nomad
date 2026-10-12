@@ -54,7 +54,9 @@ void main() {
       ),
     );
     await settle(t);
-    expect(find.byKey(const ValueKey('brand-mark-image')), findsOneWidget);
+    // At rest only the name shows; the pin belongs to the splash entrance.
+    expect(find.byKey(const ValueKey('brand-mark-name')), findsOneWidget);
+    expect(find.byKey(const ValueKey('brand-mark-image')), findsNothing);
     // The tagline is real text under the logo, not part of the image.
     expect(find.byKey(const ValueKey('brand-mark-tagline')), findsOneWidget);
     expect(

@@ -33,7 +33,7 @@ export function createApp(deps) {
   const activities = createActivitiesService({ ...base, notifications });
   const users = createUsersService({ ...base, activities });
   const friends = createFriendsService({ ...base, notifications });
-  const chat = createChatService({ ...base, users, notifications });
+  const chat = createChatService({ ...base, users, notifications, friends });
   const safety = createSafetyService(base);
   const admin = createAdminService({ ...base, notifications, activities });
 

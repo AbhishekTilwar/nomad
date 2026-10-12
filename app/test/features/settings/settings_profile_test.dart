@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:nomad_mingle/features/social/data/social_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
@@ -49,6 +50,7 @@ Future<void> pumpScreen(
   required SessionController session,
   ApiClient? api,
   MyActivitiesRepository? mine,
+  SocialRepository? social,
 }) async {
   t.view.physicalSize = const Size(800, 1800);
   t.view.devicePixelRatio = 1;
@@ -69,6 +71,7 @@ Future<void> pumpScreen(
         ChangeNotifierProvider<SessionController>.value(value: session),
         if (api != null) Provider<ApiClient>.value(value: api),
         if (mine != null) Provider<MyActivitiesRepository>.value(value: mine),
+        if (social != null) Provider<SocialRepository>.value(value: social),
       ],
       child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
     ),
@@ -187,6 +190,61 @@ void main() {
   });
 
   group('ProfileScreen', () {
+    testWidgets('tapping Hosted / Friends opens a drawer with the list', (
+      t,
+    ) async {
+      final session = await makeSession();
+      final mine = FakeMyActivitiesRepository()
+        ..byRole[MyActivitiesRole.hosted] = [
+          MyActivity(
+            activity: sampleActivity(id: 'h1', title: 'Hosted one', isHost: true),
+          ),
+        ]
+        ..byRole[MyActivitiesRole.past] = [
+          MyActivity(
+            activity: sampleActivity(id: 'p1', title: 'Old joined plan'),
+          ),
+          MyActivity(
+            activity: sampleActivity(
+              id: 'p2',
+              title: 'Old hosted plan',
+              isHost: true,
+            ),
+          ),
+        ];
+      final social = _FriendsOnly([
+        const FriendEntry(uid: 'f1', displayName: 'Meera Rao'),
+      ]);
+      await pumpScreen(
+        t,
+        const ProfileScreen(),
+        session: session,
+        mine: mine,
+        social: social,
+      );
+
+      await t.tap(find.byKey(const ValueKey('stat-hosted')));
+      for (var i = 0; i < 6; i++) {
+        await t.pump(const Duration(milliseconds: 150));
+      }
+      expect(find.byKey(const ValueKey('list-sheet-title')), findsOneWidget);
+      // Hosted: upcoming hosted, then finished hosted; not finished joined.
+      expect(find.text('Hosted one'), findsWidgets);
+      expect(find.text('Old hosted plan'), findsOneWidget);
+      expect(find.text('Old joined plan'), findsNothing);
+      await t.tap(find.byTooltip('Close'));
+      for (var i = 0; i < 6; i++) {
+        await t.pump(const Duration(milliseconds: 150));
+      }
+      expect(find.byKey(const ValueKey('list-sheet-title')), findsNothing);
+
+      await t.tap(find.byKey(const ValueKey('stat-friends')));
+      for (var i = 0; i < 6; i++) {
+        await t.pump(const Duration(milliseconds: 150));
+      }
+      expect(find.text('Meera Rao'), findsOneWidget);
+    });
+
     testWidgets('shows stats from hosted + joined + past, and upcoming plans', (
       t,
     ) async {
@@ -208,7 +266,6 @@ void main() {
       await pumpScreen(t, const ProfileScreen(), session: session, mine: mine);
 
       expect(find.text('Rahul Verma'), findsOneWidget);
-      expect(find.text('Mumbai'), findsWidgets);
       expect(find.text('Hosted'), findsOneWidget);
       Text stat(String k) => t.widget<Text>(
         find
@@ -220,7 +277,15 @@ void main() {
       );
       expect(stat('stat-hosted').data, '2');
       expect(stat('stat-joined').data, '3');
-      expect(stat('stat-interests').data, '3');
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('count-Interests')),
+          matching: find.text('3'),
+        ),
+        findsOneWidget,
+      );
+      // Friends comes from the social repository (a fake with none here).
+      expect(find.byKey(const ValueKey('stat-friends')), findsOneWidget);
       expect(find.text('My plans'), findsOneWidget);
       expect(find.text('Trek to Kalsubai'), findsOneWidget);
 
@@ -244,4 +309,15 @@ void main() {
       expect(find.byKey(const ValueKey('upcoming-empty')), findsOneWidget);
     });
   });
+}
+
+class _FriendsOnly implements SocialRepository {
+  _FriendsOnly(this._friends);
+  final List<FriendEntry> _friends;
+
+  @override
+  Future<List<FriendEntry>> friends() async => _friends;
+
+  @override
+  dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
 }

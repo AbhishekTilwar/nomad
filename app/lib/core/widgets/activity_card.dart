@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -34,7 +33,6 @@ class ActivityCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context);
     final a = activity;
-    final color = CategoryStyle.color(a.category);
     final muted = t.textTheme.bodyMedium?.copyWith(
       color: t.colorScheme.onSurfaceVariant,
     );
@@ -61,19 +59,6 @@ class ActivityCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (!compact && a.coverImageUrl != null)
-                AspectRatio(
-                  aspectRatio: 16 / 7,
-                  child: CachedNetworkImage(
-                    imageUrl: a.coverImageUrl!,
-                    fit: BoxFit.cover,
-                    memCacheWidth: 900,
-                    placeholder: (_, _) =>
-                        ColoredBox(color: color.withValues(alpha: 0.1)),
-                    errorWidget: (_, _, _) =>
-                        ColoredBox(color: color.withValues(alpha: 0.1)),
-                  ),
-                ),
               Padding(
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 child: Column(

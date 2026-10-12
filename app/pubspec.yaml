@@ -100,7 +100,8 @@ flutter:
         - asset: assets/fonts/DancingScript-Variable.ttf
 
   assets:
-    - assets/images/brand_logo.png
+    - assets/images/logo_mark.png
+    - assets/images/logo_wordmark.png
     - assets/images/welcome/
     - assets/map/12/2874/
     - assets/map/12/2875/

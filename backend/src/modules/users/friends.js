@@ -25,6 +25,30 @@ export function createFriendsService({ db, fv, notifications }) {
     return f.requesterId === me ? 'request_sent' : 'request_received';
   }
 
+  /**
+   * True when both people are approved members of the same plan that isn't cancelled (they have been in
+   * a group chat together). Bounded: looks at the caller's newest 200 memberships, then reads only the
+   * other person's membership doc in each (one parallel read each) and the matching activity docs.
+   */
+  async function sharesPlan(a, b) {
+    if (a === b) return false;
+    const mine = await db.collectionGroup('members').where('userId', '==', a).where('status', '==', 'approved').limit(200).get();
+    const activities = mine.docs.map((d) => d.ref.parent.parent);
+    if (!activities.length) return false;
+    const theirs = await Promise.all(activities.map((r) => r.collection('members').doc(b).get()));
+    const shared = theirs.filter((s) => s.exists && s.data().status === 'approved').map((s) => s.ref.parent.parent);
+    if (!shared.length) return false;
+    const docs = await Promise.all(shared.map((r) => r.get()));
+    return docs.some((s) => s.exists && s.data().status !== 'cancelled');
+  }
+
+  /** Private messages are allowed between friends and between people who share a plan. Block checks are separate. */
+  async function canMessage(me, other) {
+    if (me === other) return false;
+    if ((await statusWith(me, other)) === 'friends') return true;
+    return sharesPlan(me, other);
+  }
+
   async function blockedEitherWay(a, b) {
     const [x, y] = await Promise.all([db.doc(`userBlocks/${a}/blocked/${b}`).get(), db.doc(`userBlocks/${b}/blocked/${a}`).get()]);
     return x.exists || y.exists;
@@ -121,5 +145,5 @@ export function createFriendsService({ db, fv, notifications }) {
     return profs.map((p) => ({ ...p, requestedAt: at.get(p.uid) ?? null }));
   }
 
-  return { statusWith, sendRequest, accept, remove, listFriends, listRequests };
+  return { statusWith, sharesPlan, canMessage, sendRequest, accept, remove, listFriends, listRequests };
 }

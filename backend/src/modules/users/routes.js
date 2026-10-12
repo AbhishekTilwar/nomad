@@ -57,7 +57,9 @@ export function usersRouter({ users, activities, friends, chat }) {
   r.get('/:uid', requireProfile, wrap(async (req, res) => {
     const { uid } = parse(uidParam, req.params);
     const [pub, friendship] = await Promise.all([users.getPublic(uid), friends.statusWith(req.user.uid, uid)]);
-    send(res, { ...pub, friendship });
+    // Friends can always message; otherwise people who share a plan can too.
+    const canMessage = friendship === 'friends' || (uid !== req.user.uid && await friends.sharesPlan(req.user.uid, uid));
+    send(res, { ...pub, friendship, canMessage });
   }));
   r.post('/:uid/friend-request', requireProfile, friendWriteLimiter, wrap(async (req, res) => {
     const out = await friends.sendRequest(req.user, parse(uidParam, req.params).uid);

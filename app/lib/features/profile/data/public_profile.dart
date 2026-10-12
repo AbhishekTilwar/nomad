@@ -19,8 +19,9 @@ class PublicProfile {
     this.countryCode,
     this.instagram,
     this.friendship = Friendship.none,
+    bool? canMessage,
     this.photos = const [],
-  });
+  }) : canMessage = canMessage ?? friendship == Friendship.friends;
 
   final String uid;
   final String displayName;
@@ -35,6 +36,9 @@ class PublicProfile {
   final String? countryCode;
   final String? instagram;
   final Friendship friendship;
+
+  /// Friends, and people who share a plan, may message each other privately.
+  final bool canMessage;
   final List<String> photos;
 
   factory PublicProfile.fromJson(String uid, Map<String, dynamic> j) {
@@ -53,9 +57,11 @@ class PublicProfile {
       countryCode: j['countryCode'] as String?,
       instagram: j['instagram'] as String?,
       friendship: friendshipFromString(j['friendship'] as String?),
-      photos: ownPhotoUrls(
-        List<String>.from(j['photos'] as List? ?? const []),
-      ),
+      canMessage:
+          j['canMessage'] as bool? ??
+          friendshipFromString(j['friendship'] as String?) ==
+              Friendship.friends,
+      photos: ownPhotoUrls(List<String>.from(j['photos'] as List? ?? const [])),
     );
   }
 }

@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../features/activities/models/activity.dart';
@@ -6,7 +5,7 @@ import '../../features/profile/data/user_profile.dart';
 import '../theme/app_theme.dart' show kFontFamily;
 import '../theme/app_tokens.dart';
 import '../utils/category_style.dart';
-import '../utils/plan_emoji.dart';
+import 'plan_banner.dart';
 import '../utils/formatters.dart';
 import 'user_avatar.dart';
 
@@ -29,13 +28,12 @@ class MapPreviewCard extends StatelessWidget {
       child: SizedBox(
         width: 84,
         height: 96,
-        child: a.coverImageUrl != null
-            ? CachedNetworkImage(
-                imageUrl: a.coverImageUrl!,
-                fit: BoxFit.cover,
-                errorWidget: (_, _, _) => _fallback(color),
-              )
-            : _fallback(color),
+        child: PlanBanner(
+          title: a.title,
+          category: a.category,
+          coverUrl: a.coverImageUrl,
+          memCacheWidth: 252,
+        ),
       ),
     );
 
@@ -154,16 +152,6 @@ class MapPreviewCard extends StatelessWidget {
       ),
     );
   }
-
-  Widget _fallback(Color c) => ColoredBox(
-    color: c.withValues(alpha: 0.14),
-    child: Center(
-      child: Text(
-        PlanEmoji.of(activity.title, activity.category),
-        style: const TextStyle(fontSize: 34, height: 1.1),
-      ),
-    ),
-  );
 }
 
 class _Tag extends StatelessWidget {

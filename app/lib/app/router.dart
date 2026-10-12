@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
 import '../features/activities/data/activity_repository.dart';
+import '../features/shell/splash_exit.dart';
 import '../features/activities/models/activity.dart';
 import '../features/create/presentation/create_activity_screen.dart';
 import '../features/create/presentation/location_picker_screen.dart';
@@ -104,7 +105,23 @@ GoRouter buildRouter(
       state.matchedLocation,
     ),
     routes: [
-      GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
+      GoRoute(
+        path: '/splash',
+        // The splash doesn't just vanish: the logo lifts, grows a little and
+        // fades away as the next screen takes over.
+        pageBuilder: (_, state) => CustomTransitionPage<void>(
+          key: state.pageKey,
+          transitionDuration: const Duration(milliseconds: 500),
+          reverseTransitionDuration: const Duration(milliseconds: 600),
+          child: const SplashScreen(),
+          transitionsBuilder: (context, animation, secondary, child) =>
+              SplashExit(
+                animation: animation,
+                secondaryAnimation: secondary,
+                child: child,
+              ),
+        ),
+      ),
       GoRoute(
         path: '/welcome',
         // Cross-fade from the splash so the logo hands over smoothly.

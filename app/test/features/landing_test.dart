@@ -60,7 +60,7 @@ void main() {
       }
     }
     // The logo is announced once, as one image.
-    expect(find.byKey(const ValueKey('brand-mark-image')), findsOneWidget);
+    expect(find.byKey(const ValueKey('brand-mark-name')), findsOneWidget);
   });
 
   testWidgets('splash holds for its minimum time, then hands over', (t) async {

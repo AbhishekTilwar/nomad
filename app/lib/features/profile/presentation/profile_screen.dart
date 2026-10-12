@@ -5,20 +5,20 @@ import 'package:provider/provider.dart';
 import '../../create/presentation/create_activity_screen.dart';
 import '../../../core/config/map_config.dart';
 import '../../../core/theme/app_tokens.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../core/utils/app_exception.dart';
 import '../../../core/utils/category_style.dart';
-import '../../../core/utils/countries.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../core/widgets/instagram_pill.dart';
+import '../../../core/widgets/instagram_pill.dart' show openInstagram;
+import '../../../core/utils/plan_emoji.dart';
 import '../../../core/widgets/loading_skeleton.dart';
-import '../../../core/widgets/interest_chip.dart';
 import '../../../core/widgets/user_avatar.dart';
 import '../../activities/data/my_activities_repository.dart';
 import '../../activities/models/activity.dart';
 import '../../auth/application/session_controller.dart';
+import '../../social/data/social_repository.dart';
 import '../data/user_profile.dart';
+import 'profile_lists_sheet.dart';
 import '../../../core/theme/theme_colors.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -36,8 +36,10 @@ class _ActivityStats {
     required this.joined,
     required this.upcoming,
     required this.capped,
+    this.friends,
   });
   final int hosted;
+  final int? friends;
   final int joined;
   final List<MyActivity> upcoming;
 
@@ -56,8 +58,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadStats();
   }
 
+  Future<int?> _loadFriends() async {
+    try {
+      return (await context.read<SocialRepository>().friends()).length;
+    } catch (_) {
+      return null; // the count is a nicety; the rest still shows
+    }
+  }
+
   Future<void> _loadStats() async {
     final repo = context.read<MyActivitiesRepository>();
+    final friends = _loadFriends();
     try {
       final res = await Future.wait([
         repo.list(MyActivitiesRole.hosted, limit: _page),
@@ -74,6 +85,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             res[1].items.length + past.where((m) => !m.activity.isHost).length,
         upcoming: upcoming,
         capped: res.any((r) => r.items.length >= _page),
+        friends: await friends,
       );
       if (mounted) setState(() => _stats = stats);
     } on AppException {
@@ -142,145 +154,396 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final p = session.profile;
     final t = Theme.of(context);
     if (p == null) return const Scaffold(body: SizedBox.shrink());
-    final cityName = MapConfig.cityById(p.city).name;
     final grey = t.colorScheme.onSurfaceVariant;
     final stats = _stats;
     String count(int? n) =>
         n == null ? '–' : (stats!.capped && n >= _page ? '$_page+' : '$n');
-
-    Widget row(
-      IconData icon,
-      String label,
-      VoidCallback onTap, {
-      Color? color,
-    }) => ListTile(
-      leading: Icon(icon, color: color ?? grey, size: 22),
-      title: Text(label, style: t.textTheme.bodyMedium?.copyWith(color: color)),
-      trailing: color == null
-          ? Icon(Icons.chevron_right, color: grey, size: 20)
-          : null,
-      onTap: onTap,
-      contentPadding: AppSpacing.page,
-      minTileHeight: 48,
+    final friends = stats?.friends;
+    Widget heading(String text, {String? badge, Widget? action}) => Padding(
+      padding: AppSpacing.page.copyWith(top: 20),
+      child: Row(
+        children: [
+          Text(
+            text,
+            style: t.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          if (badge != null) ...[
+            const SizedBox(width: 8),
+            Container(
+              key: ValueKey('count-$text'),
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
+              decoration: BoxDecoration(
+                color: context.tint,
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+              ),
+              child: Text(
+                badge,
+                style: t.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: t.colorScheme.primary,
+                ),
+              ),
+            ),
+          ],
+          const Spacer(),
+          ?action,
+        ],
+      ),
     );
 
     return Scaffold(
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _loadStats,
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.only(bottom: 32),
-            children: [
-              _Header(
-                profile: p,
-                subtitle: [
-                  cityName,
-                  if (countryName(p.countryCode).isNotEmpty)
-                    countryName(p.countryCode),
-                  if ((p.ageRange ?? '').isNotEmpty) p.ageRange!,
-                ].join('  ·  '),
-              ),
-              Padding(
-                padding: AppSpacing.page.copyWith(top: AppSpacing.lg),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surface,
-                    borderRadius: BorderRadius.circular(AppRadius.lg),
-                    border: Border.all(color: context.outline),
+      appBar: AppBar(
+        actions: [
+          IconButton.outlined(
+            key: const ValueKey('open-settings'),
+            tooltip: 'Settings',
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => context.push('/settings'),
+          ),
+          const SizedBox(width: AppSpacing.lg),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: _loadStats,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          // Clear the floating tab bar.
+          padding: const EdgeInsets.only(bottom: 120),
+          children: [
+            _Identity(
+              profile: p,
+              hosted: _statsFailed ? '–' : count(stats?.hosted),
+              joined: _statsFailed ? '–' : count(stats?.joined),
+              onOpen: (k) => showProfileListSheet(context, k),
+              friends: friends == null
+                  ? '–'
+                  : (friends >= 100 ? '100+' : '$friends'),
+            ),
+            Padding(
+              padding: AppSpacing.page.copyWith(top: 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: p.completionPercent < 100
+                        ? OutlinedButton(
+                            key: const ValueKey('edit-profile'),
+                            onPressed: () => context.push('/profile/edit'),
+                            child: const Text('Complete profile'),
+                          )
+                        : OutlinedButton(
+                            key: const ValueKey('edit-profile'),
+                            onPressed: () => context.push('/profile/edit'),
+                            child: const Text('Edit profile'),
+                          ),
                   ),
-                  child: Row(
-                    children: [
-                      _Stat(
-                        key: const ValueKey('stat-hosted'),
-                        value: _statsFailed ? '–' : count(stats?.hosted),
-                        label: 'Hosted',
-                      ),
-                      _Stat(
-                        key: const ValueKey('stat-joined'),
-                        value: _statsFailed ? '–' : count(stats?.joined),
-                        label: 'Joined',
-                      ),
-                      _Stat(
-                        key: const ValueKey('stat-interests'),
-                        value: '${p.interests.length}',
-                        label: 'Interests',
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Padding(
-                padding: AppSpacing.page.copyWith(top: AppSpacing.lg),
-                child: _SectionCard(
-                  caption: 'My interests',
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final i in p.interests) InterestChip(interestId: i),
-                    ],
-                  ),
-                ),
-              ),
-              Padding(
-                padding: AppSpacing.page.copyWith(top: AppSpacing.xl),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text('My plans', style: t.textTheme.titleMedium),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton(
+                      key: const ValueKey('invite-friends'),
+                      onPressed: () => context.push('/invite'),
+                      child: const Text('Invite friends'),
                     ),
-                    if (stats != null && stats.upcoming.isNotEmpty)
-                      IconButton.filledTonal(
-                        key: const ValueKey('add-plan'),
-                        tooltip: 'Add a plan',
-                        icon: const Icon(Icons.add),
-                        onPressed: () => showCreatePlanSheet(context),
+                  ),
+                ],
+              ),
+            ),
+            if (p.completionPercent < 100)
+              Padding(
+                padding: AppSpacing.page.copyWith(top: 8),
+                child: Text(
+                  _nextProfileStep(p),
+                  key: const ValueKey('profile-completion'),
+                  style: t.textTheme.bodySmall?.copyWith(color: grey),
+                ),
+              ),
+            heading('Interests', badge: '${p.interests.length}'),
+            Padding(
+              padding: AppSpacing.page.copyWith(top: 10),
+              child: p.interests.isEmpty
+                  ? Text(
+                      'Add interests so we can suggest plans you\'ll like.',
+                      style: t.textTheme.bodySmall?.copyWith(color: grey),
+                    )
+                  : Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final i in p.interests) _InterestPill(id: i),
+                      ],
+                    ),
+            ),
+            heading(
+              'My plans',
+              badge: stats == null ? null : '${stats.upcoming.length}',
+              action: stats != null && stats.upcoming.isNotEmpty
+                  ? TextButton.icon(
+                      key: const ValueKey('add-plan'),
+                      onPressed: () => showCreatePlanSheet(context),
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('Host'),
+                    )
+                  : null,
+            ),
+            if (stats != null && stats.upcoming.isNotEmpty)
+              for (final m in stats.upcoming.take(3))
+                Padding(
+                  padding: AppSpacing.page.copyWith(top: 8),
+                  child: _UpcomingCard(activity: m.activity),
+                )
+            else
+              Padding(
+                padding: AppSpacing.page.copyWith(top: 8),
+                child: stats == null && !_statsFailed
+                    ? const LoadingSkeleton(height: 80, radius: AppRadius.lg)
+                    : _statsFailed
+                    ? Text(
+                        'Couldn\'t load your plans. Pull down to retry.',
+                        key: const ValueKey('upcoming-empty'),
+                        style: t.textTheme.bodySmall?.copyWith(color: grey),
+                      )
+                    : _NoPlans(onAdd: () => showCreatePlanSheet(context)),
+              ),
+            const _SectionLabel('Your space'),
+            _GroupCard(
+              children: [
+                _SpaceRow(
+                  icon: Icons.photo_album_outlined,
+                  label: 'Memories',
+                  onTap: () => context.push('/memories'),
+                ),
+                _SpaceRow(
+                  icon: Icons.shield_outlined,
+                  label: 'Safety & Community',
+                  onTap: () => context.push('/safety'),
+                ),
+              ],
+            ),
+            const _SectionLabel('Account'),
+            _GroupCard(
+              children: [
+                _SpaceRow(
+                  icon: Icons.logout,
+                  label: 'Sign out',
+                  onTap: () => _confirmSignOut(context),
+                ),
+                _SpaceRow(
+                  icon: Icons.delete_outline,
+                  label: 'Delete account',
+                  color: AppColors.danger,
+                  onTap: () => _confirmDelete(context),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// What to do next to complete the profile, by the same checklist as
+/// [UserProfile.completionPercent].
+String _nextProfileStep(UserProfile p) {
+  if ((p.photoUrl ?? '').isEmpty) {
+    return 'Add a photo so people know who\'s coming';
+  }
+  if (p.bio.trim().isEmpty) {
+    return 'Write a short bio about yourself';
+  }
+  if (p.interests.length < 3) {
+    return 'Pick at least 3 interests';
+  }
+  if ((p.countryCode ?? '').isEmpty) {
+    return 'Add your hometown country';
+  }
+  if ((p.instagram ?? '').isEmpty) {
+    return 'Link your Instagram';
+  }
+  return 'Add a few photos to your gallery';
+}
+
+/// Avatar in a completion ring, with name, place and Hosted / Joined / Friends
+/// beside it (Instagram-style), and the Instagram handle below.
+class _Identity extends StatelessWidget {
+  const _Identity({
+    required this.profile,
+    required this.hosted,
+    required this.joined,
+    required this.friends,
+    required this.onOpen,
+  });
+  final ValueChanged<ProfileList> onOpen;
+  final UserProfile profile;
+  final String hosted;
+  final String joined;
+  final String friends;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    final p = profile;
+    final pct = p.completionPercent;
+    const size = 96.0;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              SizedBox(
+                width: size + 14,
+                height: size + 18,
+                child: Stack(
+                  alignment: Alignment.topCenter,
+                  children: [
+                    SizedBox(
+                      width: size + 14,
+                      height: size + 14,
+                      child: CircularProgressIndicator(
+                        value: pct / 100,
+                        strokeWidth: 4,
+                        strokeCap: StrokeCap.round,
+                        backgroundColor: context.outline,
+                        color: t.colorScheme.primary,
+                      ),
+                    ),
+                    Positioned(
+                      top: 7,
+                      child: UserAvatar(
+                        name: p.displayName,
+                        photoUrl: p.photoUrl,
+                        size: size,
+                      ),
+                    ),
+                    if (pct < 100)
+                      Positioned(
+                        bottom: 0,
+                        child: Container(
+                          key: const ValueKey('completion-pill'),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: t.colorScheme.onSurface,
+                            borderRadius: BorderRadius.circular(AppRadius.pill),
+                          ),
+                          child: Text(
+                            '$pct%',
+                            style: t.textTheme.labelMedium?.copyWith(
+                              color: t.colorScheme.surface,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
                       ),
                   ],
                 ),
               ),
-              if (stats != null && stats.upcoming.isNotEmpty)
-                for (final m in stats.upcoming.take(5))
-                  Padding(
-                    padding: AppSpacing.page.copyWith(top: AppSpacing.md),
-                    child: _UpcomingCard(activity: m.activity),
-                  )
-              else
-                Padding(
-                  padding: AppSpacing.page.copyWith(top: AppSpacing.md),
-                  child: stats == null && !_statsFailed
-                      ? const LoadingSkeleton(height: 88, radius: AppRadius.lg)
-                      : _statsFailed
-                      ? Text(
-                          'Couldn\'t load your plans. Pull down to retry.',
-                          key: const ValueKey('upcoming-empty'),
-                          style: t.textTheme.bodySmall?.copyWith(color: grey),
-                        )
-                      : _NoPlans(onAdd: () => showCreatePlanSheet(context)),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      p.displayName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: t.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        _Stat(
+                          key: const ValueKey('stat-hosted'),
+                          value: hosted,
+                          label: 'Hosted',
+                          onTap: () => onOpen(ProfileList.hosted),
+                        ),
+                        _Stat(
+                          key: const ValueKey('stat-joined'),
+                          value: joined,
+                          label: 'Joined',
+                          onTap: () => onOpen(ProfileList.joined),
+                        ),
+                        _Stat(
+                          key: const ValueKey('stat-friends'),
+                          value: friends,
+                          label: 'Friends',
+                          onTap: () => onOpen(ProfileList.friends),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              const SizedBox(height: AppSpacing.lg),
-              const Divider(),
-              row(
-                Icons.photo_album_outlined,
-                'Memories',
-                () => context.push('/memories'),
-              ),
-              row(
-                Icons.shield_outlined,
-                'Safety & Community',
-                () => context.push('/safety'),
-              ),
-              const Divider(),
-              row(Icons.logout, 'Sign out', () => _confirmSignOut(context)),
-              row(
-                Icons.delete_outline,
-                'Delete account',
-                () => _confirmDelete(context),
-                color: AppColors.danger,
               ),
             ],
+          ),
+          if ((p.instagram ?? '').isNotEmpty) ...[
+            const SizedBox(height: 10),
+            _InstagramChip(
+              handle: p.instagram!,
+              onTap: () => openInstagram(p.instagram!),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Quiet outlined "@handle" chip that opens Instagram.
+class _InstagramChip extends StatelessWidget {
+  const _InstagramChip({required this.handle, required this.onTap});
+  final String handle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    return Semantics(
+      button: true,
+      label: 'Instagram @$handle',
+      child: Material(
+        color: context.tint,
+        shape: StadiumBorder(side: BorderSide(color: context.outline)),
+        child: InkWell(
+          customBorder: const StadiumBorder(),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.camera_alt_outlined,
+                  size: 20,
+                  color: t.colorScheme.onSurface,
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    '@$handle',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Icon(
+                  Icons.open_in_new,
+                  size: 16,
+                  color: t.colorScheme.onSurfaceVariant,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -288,6 +551,89 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 }
 
+class _Stat extends StatelessWidget {
+  const _Stat({
+    super.key,
+    required this.value,
+    required this.label,
+    required this.onTap,
+  });
+  final String value;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    return Expanded(
+      child: Semantics(
+        button: true,
+        label: '$label, $value. Tap to see the list',
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  style: t.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                Text(
+                  label,
+                  style: t.textTheme.bodySmall?.copyWith(
+                    color: t.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _InterestPill extends StatelessWidget {
+  const _InterestPill({required this.id});
+  final String id;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      decoration: BoxDecoration(
+        color: context.tint,
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            CategoryStyle.icon(id),
+            size: 22,
+            color: t.colorScheme.onSurface,
+          ),
+          const SizedBox(width: 10),
+          Text(
+            CategoryStyle.shortLabels[id] ?? interestLabel(id),
+            style: t.textTheme.bodyLarge?.copyWith(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A compact upcoming-plan row (no banner): emoji, title, when and where.
 class _UpcomingCard extends StatelessWidget {
   const _UpcomingCard({required this.activity});
   final Activity activity;
@@ -297,42 +643,35 @@ class _UpcomingCard extends StatelessWidget {
     final t = Theme.of(context);
     final grey = t.colorScheme.onSurfaceVariant;
     final color = CategoryStyle.color(activity.category);
-    final cover = activity.coverImageUrl;
-    final fallback = Container(
-      color: color.withValues(alpha: 0.12),
-      alignment: Alignment.center,
-      child: Icon(CategoryStyle.icon(activity.category), color: color),
-    );
+    final city = MapConfig.cityById(activity.city).name;
+    final venue = activity.venueName.trim();
     return Material(
-      color: Theme.of(context).colorScheme.surface,
+      color: t.colorScheme.surface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.md),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
         side: BorderSide(color: context.outline),
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadius.md),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
         onTap: () => context.push('/activity/${activity.id}'),
         child: Padding(
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(AppRadius.sm),
-                child: SizedBox(
-                  width: 64,
-                  height: 64,
-                  child: (cover == null || cover.isEmpty)
-                      ? fallback
-                      : CachedNetworkImage(
-                          imageUrl: cover,
-                          fit: BoxFit.cover,
-                          memCacheWidth: 192,
-                          placeholder: (_, _) => fallback,
-                          errorWidget: (_, _, _) => fallback,
-                        ),
+              Container(
+                width: 44,
+                height: 44,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.14),
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  PlanEmoji.of(activity.title, activity.category),
+                  style: const TextStyle(fontSize: 22, height: 1.1),
                 ),
               ),
-              const SizedBox(width: AppSpacing.md),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -341,27 +680,22 @@ class _UpcomingCard extends StatelessWidget {
                       activity.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: t.textTheme.titleMedium?.copyWith(fontSize: 15),
+                      style: t.textTheme.titleSmall?.copyWith(
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      Formatters.activityWhen(activity.startAt),
+                      '${Formatters.activityWhen(activity.startAt)}  ·  ${venue.isEmpty ? city : venue}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: t.textTheme.bodySmall?.copyWith(color: grey),
-                    ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        Icon(Icons.place_outlined, size: 14, color: grey),
-                        const SizedBox(width: 2),
-                        Text(
-                          MapConfig.cityById(activity.city).name,
-                          style: t.textTheme.bodySmall?.copyWith(color: grey),
-                        ),
-                      ],
                     ),
                   ],
                 ),
               ),
+              Icon(Icons.chevron_right, color: grey),
             ],
           ),
         ),
@@ -370,139 +704,104 @@ class _UpcomingCard extends StatelessWidget {
   }
 }
 
-class _Stat extends StatelessWidget {
-  const _Stat({super.key, required this.value, required this.label});
-  final String value;
-  final String label;
+/// "— Your space —" divider label.
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.text);
+  final String text;
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
-    return Expanded(
-      child: Column(
+    final line = Expanded(child: Divider(color: context.outline, height: 1));
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
+      child: Row(
         children: [
-          Text(
-            value,
-            style: t.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w700,
+          SizedBox(
+            width: 18,
+            child: Divider(color: context.outline, height: 1),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Text(
+              text,
+              style: t.textTheme.bodyMedium?.copyWith(
+                color: t.colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
-          const SizedBox(height: 2),
-          Text(label, style: t.textTheme.bodySmall?.copyWith(fontSize: 12)),
+          line,
         ],
       ),
     );
   }
 }
 
-/// Soft grey card with a small caption.
-class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.caption, required this.child});
-  final String caption;
-  final Widget child;
+/// Bordered card that stacks rows with hairlines between them.
+class _GroupCard extends StatelessWidget {
+  const _GroupCard({required this.children});
+  final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
-    final t = Theme.of(context);
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: context.field,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            caption,
-            style: t.textTheme.labelLarge?.copyWith(color: context.inkMuted),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          child,
-        ],
-      ),
-    );
-  }
-}
-
-/// Gradient banner with the avatar, name, place and Instagram. Edit and
-/// settings are icon buttons in its corner.
-class _Header extends StatelessWidget {
-  const _Header({required this.profile, required this.subtitle});
-  final UserProfile profile;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context);
-    final p = profile;
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [context.primaryLight, context.sand],
+    return Padding(
+      padding: AppSpacing.page,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: context.outline),
         ),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              IconButton.filledTonal(
-                key: const ValueKey('edit-profile'),
-                tooltip: 'Edit profile',
-                icon: const Icon(Icons.edit_outlined),
-                onPressed: () => context.push('/profile/edit'),
-              ),
-              const SizedBox(width: 8),
-              IconButton.filledTonal(
-                tooltip: 'Settings',
-                icon: const Icon(Icons.settings_outlined),
-                onPressed: () => context.push('/settings'),
-              ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          children: [
+            for (var i = 0; i < children.length; i++) ...[
+              if (i > 0) Divider(height: 1, color: context.outline),
+              children[i],
             ],
-          ),
-          Container(
-            padding: const EdgeInsets.all(3),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-            ),
-            child: UserAvatar(
-              name: p.displayName,
-              photoUrl: p.photoUrl,
-              size: 104,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            p.displayName,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: t.textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 2),
-          Text(
-            subtitle,
-            textAlign: TextAlign.center,
-            style: t.textTheme.bodyMedium?.copyWith(
-              color: t.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          if ((p.instagram ?? '').isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.md),
-            InstagramPill(
-              handle: p.instagram!,
-              onTap: () => openInstagram(p.instagram!),
-            ),
           ],
-        ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SpaceRow extends StatelessWidget {
+  const _SpaceRow({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.color,
+  });
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    final c = color ?? t.colorScheme.onSurface;
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        child: Row(
+          children: [
+            Icon(icon, size: 24, color: c),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                label,
+                style: t.textTheme.bodyLarge?.copyWith(
+                  fontSize: 16.5,
+                  color: color,
+                ),
+              ),
+            ),
+            Icon(Icons.chevron_right, color: t.colorScheme.onSurfaceVariant),
+          ],
+        ),
       ),
     );
   }

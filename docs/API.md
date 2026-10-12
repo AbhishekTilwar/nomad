@@ -9,7 +9,7 @@ Error codes: `unauthenticated`(401) `forbidden`(403) `not_found`(404) `validatio
 - `GET /users/me` → own profile + private fields (no DOB; returns `ageRange`, `role`)
 - `PUT /users/me` (create/complete profile on first call) / `PATCH /users/me`: `displayName(2-40) bio(<=300) city interests[] preferredActivityTypes[] dateOfBirth(ISO, required on creation, must be >=18) photoUrl countryCode(ISO alpha-2|null) instagram(handle 1-30 [A-Za-z0-9._], leading @ stripped|null) gender(male|female|non_binary, optional, private)`
 - `DELETE /users/me` → deletes profile data, blocks, tokens; marks messages' sender as deleted user; deletes Auth user
-- `GET /users/:uid` → public fields only, plus `friendship: none|friends|request_sent|request_received` relative to the caller
+- `GET /users/:uid` → public fields only, plus `friendship: none|friends|request_sent|request_received` relative to the caller, and `canMessage` (true for friends and for people who are approved members of the same non-cancelled plan; blocking still prevents messaging)
 - `PUT /users/me/location {lat, lng, discoverable}` → `{discoverable}`. Stores only a 2-decimal approximate location while discoverable; `discoverable:false` removes it. (20/min/user)
 - `GET /users/travelers?lat&lng&radiusKm(50,max 100)&limit(30,max 50)&cursor` → `data: [{uid, displayName, photoUrl, countryCode, city, distanceKm}]`, `meta: nextCursor, total`. Discoverable, active, completed-profile users seen in the last 30 days, excluding the caller and blocks either way; sorted by distance. Scans at most 300 user docs per request (latitude band), so very dense areas may be truncated.
 - Friends: `POST /users/:uid/friend-request` → 201 `{friendship:'request_sent'}` (200 `{friendship:'friends'}` if they had already requested you; 400 self, 403 blocked, 404 unknown, 409 already friends/pending, 429 over 100 pending); `POST /users/:uid/friend-request/accept` → `{friendship:'friends'}` (404 no request, 403 own request, 409 already friends); `DELETE /users/:uid/friend` (cancel/decline/unfriend, idempotent) → `{friendship:'none'}`; `GET /users/me/friends?limit(50,max 100)&cursor` → `[{uid, displayName, photoUrl, countryCode}]` + `nextCursor`; `GET /users/me/friend-requests?limit` → incoming `[{uid, displayName, photoUrl, countryCode, requestedAt}]`. Blocking removes any friendship. (30/min/user on request/accept)
@@ -26,6 +26,7 @@ Error codes: `unauthenticated`(401) `forbidden`(403) `not_found`(404) `validatio
 - `POST /activities/:id/join` → `{status: approved|requested}`; `/leave`; `/cancel` (host); `/approve/:uid`, `/reject/:uid` (host); `POST /activities/:id/remove/:uid` (host)
 - `GET /activities/:id/members` (host: all incl. requests; others: approved only)
 - `GET|POST /activities/:id/messages` (approved members/host only)
+- `POST /users/:uid/messages {text, clientMessageId}` — private message. Allowed between friends **and** between people who share a plan (both approved members of the same plan that isn't cancelled); otherwise `403 not_friends`. Blocked in either direction → `403 blocked`.
 
 ## Community
 - `GET /community` → room info + viewer restrictions

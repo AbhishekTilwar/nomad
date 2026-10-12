@@ -8,6 +8,8 @@ import 'package:nomad_mingle/features/auth/data/auth_repository.dart';
 import 'package:nomad_mingle/features/profile/data/public_profile.dart';
 import 'package:nomad_mingle/features/profile/presentation/public_profile_screen.dart';
 import 'package:nomad_mingle/features/safety/data/safety_repository.dart';
+import 'package:nomad_mingle/features/social/data/social_repository.dart'
+    show Friendship;
 import 'package:provider/provider.dart';
 
 import '../support/fakes.dart';
@@ -64,6 +66,11 @@ pumpProfile(
       GoRoute(
         path: '/explore',
         builder: (_, _) => const Scaffold(body: Text('explore')),
+      ),
+      GoRoute(
+        path: '/dm/:uid',
+        builder: (_, s) =>
+            Scaffold(body: Text('dm with ${s.pathParameters['uid']}')),
       ),
       GoRoute(
         path: '/user/:uid',
@@ -144,5 +151,82 @@ void main() {
     await pumpProfile(t, uid: 'me');
     expect(find.byTooltip('More'), findsNothing);
     expect(find.text('Edit profile'), findsOneWidget);
+  });
+
+  group('private messages', () {
+    PublicProfile person({required Friendship f, bool? canMessage}) =>
+        PublicProfile(
+          uid: 'other',
+          displayName: 'Sarah Johnson',
+          city: 'mumbai',
+          friendship: f,
+          canMessage: canMessage,
+        );
+
+    testWidgets('a stranger gets Add Friend only, no Message', (t) async {
+      final repo = FakePublicProfiles()
+        ..profile = person(f: Friendship.none, canMessage: false);
+      await pumpProfile(t, repo: repo);
+      expect(find.text('Add Friend'), findsOneWidget);
+      expect(find.byKey(const ValueKey('message-friend')), findsNothing);
+    });
+
+    testWidgets(
+      'someone from a shared plan can be messaged before being friends',
+      (t) async {
+        final repo = FakePublicProfiles()
+          ..profile = person(f: Friendship.none, canMessage: true);
+        await pumpProfile(t, repo: repo);
+        expect(find.byKey(const ValueKey('message-friend')), findsOneWidget);
+        expect(find.text('Add Friend'), findsOneWidget);
+        await t.tap(find.byKey(const ValueKey('message-friend')));
+        for (var i = 0; i < 6; i++) {
+          await t.pump(const Duration(milliseconds: 100));
+        }
+        expect(find.text('dm with other'), findsOneWidget);
+      },
+    );
+
+    testWidgets('a pending request alone does not allow messaging', (t) async {
+      final repo = FakePublicProfiles()
+        ..profile = person(f: Friendship.requestSent, canMessage: false);
+      await pumpProfile(t, repo: repo);
+      expect(find.text('Requested'), findsOneWidget);
+      expect(find.byKey(const ValueKey('message-friend')), findsNothing);
+    });
+
+    testWidgets(
+      'friends can always be messaged (older servers omit canMessage)',
+      (t) async {
+        final repo = FakePublicProfiles()
+          ..profile = person(f: Friendship.friends);
+        await pumpProfile(t, repo: repo);
+        expect(find.byKey(const ValueKey('message-friend')), findsOneWidget);
+        expect(find.text('Friends'), findsOneWidget);
+      },
+    );
+
+    test('canMessage is read from the server and defaults to friendship', () {
+      final base = {'displayName': 'A', 'city': 'pune'};
+      expect(
+        PublicProfile.fromJson('u', {
+          ...base,
+          'friendship': 'none',
+          'canMessage': true,
+        }).canMessage,
+        isTrue,
+      );
+      expect(
+        PublicProfile.fromJson('u', {
+          ...base,
+          'friendship': 'friends',
+        }).canMessage,
+        isTrue,
+      );
+      expect(
+        PublicProfile.fromJson('u', {...base, 'friendship': 'none'}).canMessage,
+        isFalse,
+      );
+    });
   });
 }
