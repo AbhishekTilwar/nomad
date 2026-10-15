@@ -20,6 +20,16 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   bool _checking = false;
   String? _message;
 
+  @override
+  void initState() {
+    super.initState();
+    final error = context.read<AuthRepository>().takeVerificationSendError();
+    if (error != null) {
+      _message = 'We couldn\'t send the verification email: $error '
+          'Tap "Resend email" to try again.';
+    }
+  }
+
   Future<void> _check() async {
     setState(() {
       _checking = true;

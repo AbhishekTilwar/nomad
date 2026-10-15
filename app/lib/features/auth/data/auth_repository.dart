@@ -38,6 +38,10 @@ abstract class AuthRepository {
   Future<void> sendPasswordReset(String email);
   Future<void> sendEmailVerification();
 
+  /// Message for a failed verification email during sign-up, if any. Returned
+  /// once, then cleared. Sign-up still succeeds so the user can resend.
+  String? takeVerificationSendError() => null;
+
   /// Reloads the user and returns the fresh state (to pick up verification).
   Future<AuthUser?> reload();
   Future<String?> idToken({bool forceRefresh = false});

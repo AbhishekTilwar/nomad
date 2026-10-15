@@ -86,8 +86,22 @@ class FirebaseAuthRepository implements AuthRepository {
           email: email.trim(),
           password: password,
         );
-        await cred.user?.sendEmailVerification();
+        try {
+          await cred.user?.sendEmailVerification();
+        } on fb.FirebaseAuthException catch (e) {
+          // The account exists; let the verify screen offer a resend.
+          _verificationSendError = friendlyAuthMessage(e.code);
+        }
       });
+
+  String? _verificationSendError;
+
+  @override
+  String? takeVerificationSendError() {
+    final e = _verificationSendError;
+    _verificationSendError = null;
+    return e;
+  }
 
   @override
   Future<void> sendPasswordReset(String email) =>

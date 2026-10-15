@@ -1,0 +1,12 @@
+{
+  "name": "nomad-mingle-site",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Nomad Mingle public showcase and legal pages",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

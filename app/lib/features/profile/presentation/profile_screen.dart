@@ -160,12 +160,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         n == null ? '–' : (stats!.capped && n >= _page ? '$_page+' : '$n');
     final friends = stats?.friends;
     Widget heading(String text, {String? badge, Widget? action}) => Padding(
-      padding: AppSpacing.page.copyWith(top: 20),
+      padding: EdgeInsets.fromLTRB(16, 14, 16, 0),
       child: Row(
         children: [
           Text(
             text,
-            style: t.textTheme.titleMedium?.copyWith(
+            style: t.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -173,14 +173,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(width: 8),
             Container(
               key: ValueKey('count-$text'),
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
               decoration: BoxDecoration(
                 color: context.tint,
                 borderRadius: BorderRadius.circular(AppRadius.pill),
               ),
               child: Text(
                 badge,
-                style: t.textTheme.labelMedium?.copyWith(
+                style: t.textTheme.labelSmall?.copyWith(
                   fontWeight: FontWeight.w800,
                   color: t.colorScheme.primary,
                 ),
@@ -222,18 +222,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   : (friends >= 100 ? '100+' : '$friends'),
             ),
             Padding(
-              padding: AppSpacing.page.copyWith(top: 12),
+              padding: EdgeInsets.fromLTRB(16, 10, 16, 0),
               child: Row(
                 children: [
                   Expanded(
                     child: p.completionPercent < 100
                         ? OutlinedButton(
                             key: const ValueKey('edit-profile'),
+                            style: _compactButton,
                             onPressed: () => context.push('/profile/edit'),
                             child: const Text('Complete profile'),
                           )
                         : OutlinedButton(
                             key: const ValueKey('edit-profile'),
+                            style: _compactButton,
                             onPressed: () => context.push('/profile/edit'),
                             child: const Text('Edit profile'),
                           ),
@@ -242,6 +244,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Expanded(
                     child: OutlinedButton(
                       key: const ValueKey('invite-friends'),
+                      style: _compactButton,
                       onPressed: () => context.push('/invite'),
                       child: const Text('Invite friends'),
                     ),
@@ -251,7 +254,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             if (p.completionPercent < 100)
               Padding(
-                padding: AppSpacing.page.copyWith(top: 8),
+                padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: Text(
                   _nextProfileStep(p),
                   key: const ValueKey('profile-completion'),
@@ -260,7 +263,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             heading('Interests', badge: '${p.interests.length}'),
             Padding(
-              padding: AppSpacing.page.copyWith(top: 10),
+              padding: EdgeInsets.fromLTRB(16, 10, 16, 0),
               child: p.interests.isEmpty
                   ? Text(
                       'Add interests so we can suggest plans you\'ll like.',
@@ -289,12 +292,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             if (stats != null && stats.upcoming.isNotEmpty)
               for (final m in stats.upcoming.take(3))
                 Padding(
-                  padding: AppSpacing.page.copyWith(top: 8),
+                  padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
                   child: _UpcomingCard(activity: m.activity),
                 )
             else
               Padding(
-                padding: AppSpacing.page.copyWith(top: 8),
+                padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: stats == null && !_statsFailed
                     ? const LoadingSkeleton(height: 80, radius: AppRadius.lg)
                     : _statsFailed
@@ -364,6 +367,12 @@ String _nextProfileStep(UserProfile p) {
   return 'Add a few photos to your gallery';
 }
 
+final _compactButton = OutlinedButton.styleFrom(
+  minimumSize: const Size(0, 36),
+  padding: const EdgeInsets.symmetric(horizontal: 12),
+  textStyle: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+);
+
 /// Avatar in a completion ring, with name, place and Hosted / Joined / Friends
 /// beside it (Instagram-style), and the Instagram handle below.
 class _Identity extends StatelessWidget {
@@ -385,33 +394,33 @@ class _Identity extends StatelessWidget {
     final t = Theme.of(context);
     final p = profile;
     final pct = p.completionPercent;
-    const size = 96.0;
+    const size = 68.0;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               SizedBox(
-                width: size + 14,
-                height: size + 18,
+                width: size + 10,
+                height: size + 14,
                 child: Stack(
                   alignment: Alignment.topCenter,
                   children: [
                     SizedBox(
-                      width: size + 14,
-                      height: size + 14,
+                      width: size + 10,
+                      height: size + 10,
                       child: CircularProgressIndicator(
                         value: pct / 100,
-                        strokeWidth: 4,
+                        strokeWidth: 3,
                         strokeCap: StrokeCap.round,
                         backgroundColor: context.outline,
                         color: t.colorScheme.primary,
                       ),
                     ),
                     Positioned(
-                      top: 7,
+                      top: 5,
                       child: UserAvatar(
                         name: p.displayName,
                         photoUrl: p.photoUrl,
@@ -424,8 +433,8 @@ class _Identity extends StatelessWidget {
                         child: Container(
                           key: const ValueKey('completion-pill'),
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 3,
+                            horizontal: 7,
+                            vertical: 1,
                           ),
                           decoration: BoxDecoration(
                             color: t.colorScheme.onSurface,
@@ -433,7 +442,7 @@ class _Identity extends StatelessWidget {
                           ),
                           child: Text(
                             '$pct%',
-                            style: t.textTheme.labelMedium?.copyWith(
+                            style: t.textTheme.labelSmall?.copyWith(
                               color: t.colorScheme.surface,
                               fontWeight: FontWeight.w800,
                             ),
@@ -443,7 +452,7 @@ class _Identity extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -452,11 +461,11 @@ class _Identity extends StatelessWidget {
                       p.displayName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: t.textTheme.titleLarge?.copyWith(
+                      style: t.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 6),
                     Row(
                       children: [
                         _Stat(
@@ -485,7 +494,7 @@ class _Identity extends StatelessWidget {
             ],
           ),
           if ((p.instagram ?? '').isNotEmpty) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             _InstagramChip(
               handle: p.instagram!,
               onTap: () => openInstagram(p.instagram!),
@@ -516,7 +525,7 @@ class _InstagramChip extends StatelessWidget {
           customBorder: const StadiumBorder(),
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -531,7 +540,7 @@ class _InstagramChip extends StatelessWidget {
                     '@$handle',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: t.textTheme.bodyMedium?.copyWith(
+                    style: t.textTheme.bodySmall?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -573,13 +582,13 @@ class _Stat extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
+            padding: const EdgeInsets.symmetric(vertical: 2),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   value,
-                  style: t.textTheme.titleLarge?.copyWith(
+                  style: t.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -606,7 +615,7 @@ class _InterestPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: context.tint,
         borderRadius: BorderRadius.circular(AppRadius.pill),
@@ -619,11 +628,11 @@ class _InterestPill extends StatelessWidget {
             size: 22,
             color: t.colorScheme.onSurface,
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 6),
           Text(
             CategoryStyle.shortLabels[id] ?? interestLabel(id),
             style: t.textTheme.bodyLarge?.copyWith(
-              fontSize: 16,
+              fontSize: 13.5,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -655,12 +664,12 @@ class _UpcomingCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.lg),
         onTap: () => context.push('/activity/${activity.id}'),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           child: Row(
             children: [
               Container(
-                width: 44,
-                height: 44,
+                width: 36,
+                height: 36,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.14),
@@ -668,7 +677,7 @@ class _UpcomingCard extends StatelessWidget {
                 ),
                 child: Text(
                   PlanEmoji.of(activity.title, activity.category),
-                  style: const TextStyle(fontSize: 22, height: 1.1),
+                  style: const TextStyle(fontSize: 18, height: 1.1),
                 ),
               ),
               const SizedBox(width: 12),
@@ -681,7 +690,7 @@ class _UpcomingCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: t.textTheme.titleSmall?.copyWith(
-                        fontSize: 15.5,
+                        fontSize: 14,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -714,7 +723,7 @@ class _SectionLabel extends StatelessWidget {
     final t = Theme.of(context);
     final line = Expanded(child: Divider(color: context.outline, height: 1));
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
       child: Row(
         children: [
           SizedBox(
@@ -745,7 +754,7 @@ class _GroupCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: AppSpacing.page,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
@@ -785,16 +794,16 @@ class _SpaceRow extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         child: Row(
           children: [
-            Icon(icon, size: 24, color: c),
+            Icon(icon, size: 20, color: c),
             const SizedBox(width: 16),
             Expanded(
               child: Text(
                 label,
                 style: t.textTheme.bodyLarge?.copyWith(
-                  fontSize: 16.5,
+                  fontSize: 14.5,
                   color: color,
                 ),
               ),

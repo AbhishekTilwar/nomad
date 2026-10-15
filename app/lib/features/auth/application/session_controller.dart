@@ -64,10 +64,12 @@ class SessionController extends ChangeNotifier {
       _set(SessionStatus.signedOut);
       return;
     }
-    if (user.usesPassword && !user.emailVerified) {
-      _set(SessionStatus.needsEmailVerification);
-      return;
-    }
+    // TODO: re-enable the email verification gate once verification emails
+    // are reliably delivered.
+    // if (user.usesPassword && !user.emailVerified) {
+    //   _set(SessionStatus.needsEmailVerification);
+    //   return;
+    // }
     // Avoid refetching on benign userChanges() re-emits (token refresh).
     if (previousUid == user.uid &&
         (_status == SessionStatus.ready ||

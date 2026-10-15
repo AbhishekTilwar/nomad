@@ -132,27 +132,31 @@ void main() {
     expect(redirectFor(SessionStatus.ready, '/about-you'), '/explore');
   });
 
-  test('unverified password user is held at email verification', () async {
-    final auth = FakeAuthRepository(
-      const AuthUser(
-        uid: 'u1',
-        email: 'a@b.co',
-        emailVerified: false,
-        usesPassword: true,
-      ),
-    );
-    final s = SessionController(
-      auth: auth,
-      profiles: FakeProfileRepository(profile: _completed),
-    );
-    await pump();
-    expect(s.status, SessionStatus.needsEmailVerification);
-    expect(await s.refreshEmailVerification(), isFalse);
-    auth.verified = true;
-    expect(await s.refreshEmailVerification(), isTrue);
-    expect(s.status, SessionStatus.ready);
-    s.dispose();
-  });
+  test(
+    'unverified password user is held at email verification',
+    skip: 'Email verification gate disabled temporarily',
+    () async {
+      final auth = FakeAuthRepository(
+        const AuthUser(
+          uid: 'u1',
+          email: 'a@b.co',
+          emailVerified: false,
+          usesPassword: true,
+        ),
+      );
+      final s = SessionController(
+        auth: auth,
+        profiles: FakeProfileRepository(profile: _completed),
+      );
+      await pump();
+      expect(s.status, SessionStatus.needsEmailVerification);
+      expect(await s.refreshEmailVerification(), isFalse);
+      auth.verified = true;
+      expect(await s.refreshEmailVerification(), isTrue);
+      expect(s.status, SessionStatus.ready);
+      s.dispose();
+    },
+  );
 
   test('Google users are not asked to verify', () async {
     final s = SessionController(

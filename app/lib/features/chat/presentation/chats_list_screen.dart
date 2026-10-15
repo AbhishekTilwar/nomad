@@ -109,7 +109,7 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        titleSpacing: 20,
+        titleSpacing: 16,
         title: _searching
             ? TextField(
                 controller: _search,
@@ -121,7 +121,12 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                   prefixIcon: Icon(Icons.search),
                 ),
               )
-            : Text('Chats', style: Theme.of(context).textTheme.headlineMedium),
+            : Text(
+                'Chats',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+              ),
         actions: [
           if (_searching)
             IconButton.outlined(
@@ -297,10 +302,10 @@ class _FilterRow extends StatelessWidget {
           : 'Requests',
     };
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 4, 0, 14),
+      padding: const EdgeInsets.fromLTRB(16, 0, 0, 8),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.only(right: 20),
+        padding: const EdgeInsets.only(right: 16),
         child: Row(
           children: [
             for (final f in _ChatFilter.values) ...[
@@ -310,7 +315,7 @@ class _FilterRow extends StatelessWidget {
                 onTap: () => onChanged(f),
                 theme: t,
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
             ],
           ],
         ),
@@ -351,15 +356,15 @@ class _FilterPill extends StatelessWidget {
           customBorder: const StadiumBorder(),
           onTap: onTap,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 44),
+            constraints: const BoxConstraints(minHeight: 34),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
               child: Center(
                 widthFactor: 1,
                 child: Text(
                   label,
                   style: theme.textTheme.labelLarge?.copyWith(
-                    fontSize: 15,
+                    fontSize: 13.5,
                     fontWeight: FontWeight.w600,
                     color: selected ? scheme.onPrimary : context.inkMuted,
                   ),
@@ -400,14 +405,14 @@ class _ChatTile extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.only(left: 20),
+        padding: const EdgeInsets.only(left: 16),
         child: Row(
           children: [
-            SizedBox(width: 60, height: 60, child: leading),
-            const SizedBox(width: 16),
+            SizedBox(width: 46, height: 46, child: leading),
+            const SizedBox(width: 12),
             Expanded(
               child: Container(
-                padding: const EdgeInsets.fromLTRB(0, 16, 20, 16),
+                padding: const EdgeInsets.fromLTRB(0, 11, 16, 11),
                 decoration: BoxDecoration(
                   border: Border(bottom: BorderSide(color: context.outline)),
                 ),
@@ -422,17 +427,17 @@ class _ChatTile extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: t.textTheme.titleMedium?.copyWith(
-                              fontSize: 17,
+                              fontSize: 15,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
-                          const SizedBox(height: 3),
+                          const SizedBox(height: 1),
                           Text(
                             subtitle,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: t.textTheme.bodyMedium?.copyWith(
-                              fontSize: 14.5,
+                              fontSize: 13,
                               fontWeight: unread ? FontWeight.w600 : null,
                               color: unread
                                   ? t.colorScheme.onSurface
@@ -442,7 +447,7 @@ class _ChatTile extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 8),
                     Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.end,
@@ -450,11 +455,11 @@ class _ChatTile extends StatelessWidget {
                         Text(
                           Formatters.chatTime(time),
                           style: t.textTheme.bodySmall?.copyWith(
-                            fontSize: 13,
+                            fontSize: 11.5,
                             color: t.colorScheme.onSurfaceVariant,
                           ),
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 4),
                         if (unread)
                           Container(
                             key: unreadKey,
@@ -503,7 +508,7 @@ class _DmRow extends StatelessWidget {
             '/dm/${convo.otherUid}',
             extra: {'name': name, 'photoUrl': who?.photoUrl},
           ),
-          leading: UserAvatar(name: name, photoUrl: who?.photoUrl, size: 60),
+          leading: UserAvatar(name: name, photoUrl: who?.photoUrl, size: 46),
           title: name,
           subtitle:
               '${convo.lastSenderId == myUid ? 'You: ' : ''}${convo.lastText}',
@@ -552,7 +557,7 @@ class _ChatRow extends StatelessWidget {
                 title: a.title,
                 category: a.category,
                 coverUrl: a.coverImageUrl,
-                memCacheWidth: 180,
+                memCacheWidth: 140,
               ),
             ),
           ),
@@ -561,8 +566,8 @@ class _ChatRow extends StatelessWidget {
               right: -3,
               bottom: -3,
               child: Container(
-                width: 26,
-                height: 26,
+                width: 19,
+                height: 19,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: AppColors.secondary,
@@ -576,7 +581,7 @@ class _ChatRow extends StatelessWidget {
                   host[0].toUpperCase(),
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 12,
+                    fontSize: 10,
                     fontWeight: FontWeight.w800,
                     height: 1.1,
                   ),
@@ -624,7 +629,7 @@ class _PinnedCommunityTileState extends State<_PinnedCommunityTile> {
         final unread = _unread.hasUnread;
         if (widget.onlyUnread && !unread) return const SizedBox.shrink();
         return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
           child: Material(
             color: context.tint,
             borderRadius: BorderRadius.circular(20),
@@ -632,12 +637,12 @@ class _PinnedCommunityTileState extends State<_PinnedCommunityTile> {
               borderRadius: BorderRadius.circular(20),
               onTap: () => context.push('/community'),
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 14, 16, 14),
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
                 child: Row(
                   children: [
                     Container(
-                      width: 60,
-                      height: 60,
+                      width: 44,
+                      height: 44,
                       decoration: BoxDecoration(
                         color: t.colorScheme.primary,
                         shape: BoxShape.circle,
@@ -645,10 +650,10 @@ class _PinnedCommunityTileState extends State<_PinnedCommunityTile> {
                       child: Icon(
                         Icons.chat_rounded,
                         color: t.colorScheme.onPrimary,
-                        size: 28,
+                        size: 22,
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -661,7 +666,7 @@ class _PinnedCommunityTileState extends State<_PinnedCommunityTile> {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: t.textTheme.titleMedium?.copyWith(
-                                    fontSize: 17,
+                                    fontSize: 15,
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
@@ -669,12 +674,12 @@ class _PinnedCommunityTileState extends State<_PinnedCommunityTile> {
                               const SizedBox(width: 8),
                               Icon(
                                 Icons.push_pin,
-                                size: 16,
+                                size: 13,
                                 color: t.colorScheme.primary,
                               ),
                             ],
                           ),
-                          const SizedBox(height: 3),
+                          const SizedBox(height: 1),
                           Text(
                             unread
                                 ? 'New messages'

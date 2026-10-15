@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io' show SocketException;
 
 import 'package:flutter_test/flutter_test.dart';
@@ -119,8 +118,9 @@ void main() {
     'a write that never reached the primary does go to the backup',
     () async {
       final h = Harness((r) async {
-        if (r.url.host == 'primary.test')
+        if (r.url.host == 'primary.test') {
           throw const SocketException('refused');
+        }
         return ok('"b"');
       });
       expect((await h.api.post('/x', body: {'a': 1})).data, 'b');

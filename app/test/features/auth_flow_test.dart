@@ -135,21 +135,23 @@ void main() {
       expect(find.textContaining('Interests'), findsNothing);
     });
 
-    testWidgets('valid credentials register and go to email verification', (
-      t,
-    ) async {
-      final auth = FakeAuthRepository();
-      await open(t, auth);
-      await t.enterText(find.byKey(const ValueKey('signup-email')), 'a@b.co');
-      await t.enterText(
-        find.byKey(const ValueKey('signup-password')),
-        'longenough1',
-      );
-      await t.tap(find.text('Create Account'));
-      await settle(t);
-      expect(auth.currentUser?.email, 'a@b.co');
-      expect(find.text('Verify your email'), findsOneWidget);
-    });
+    testWidgets(
+      'valid credentials register (email verification gate is disabled for now)',
+      (t) async {
+        final auth = FakeAuthRepository();
+        await open(t, auth);
+        await t.enterText(find.byKey(const ValueKey('signup-email')), 'a@b.co');
+        await t.enterText(
+          find.byKey(const ValueKey('signup-password')),
+          'longenough1',
+        );
+        await t.tap(find.text('Create Account'));
+        await settle(t);
+        expect(auth.currentUser?.email, 'a@b.co');
+        // TODO: expect 'Verify your email' once the gate is re-enabled.
+        expect(find.text('Verify your email'), findsNothing);
+      },
+    );
   });
 
   testWidgets('auth screens lay out on a small phone without overflow', (

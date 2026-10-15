@@ -17,6 +17,7 @@ key.properties
 # Build
 node_modules/
 build/
+website/dist/
 .dart_tool/
 coverage/
 firebase-debug.log
