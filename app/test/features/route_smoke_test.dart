@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -142,6 +144,21 @@ Future<void> settle(WidgetTester t) async {
   }
 }
 
+/// Holds every plan list back until [gate] completes.
+class _GatedMyActivities extends FakeMyActivitiesRepository {
+  _GatedMyActivities(this.gate);
+  final Future<void> gate;
+  @override
+  Future<MyActivitiesPage> list(
+    MyActivitiesRole role, {
+    String? cursor,
+    int limit = 20,
+  }) async {
+    await gate;
+    return super.list(role, cursor: cursor, limit: limit);
+  }
+}
+
 late _Images _images;
 late _Location _location;
 late _Social _social;
@@ -243,6 +260,23 @@ void main() {
     await t.tap(find.byKey(const ValueKey('nav-Map')));
     await settle(t);
     expect(find.byTooltip('Create a plan'), findsOneWidget);
+  });
+
+  testWidgets('chats: filters and Community show while plans still load', (
+    t,
+  ) async {
+    final gate = Completer<void>();
+    await pumpSignedIn(t, mine: _GatedMyActivities(gate.future));
+    await t.tap(find.byKey(const ValueKey('nav-Chat')));
+    await t.pump(const Duration(milliseconds: 300));
+    // Plans are still loading: skeleton rows, but the static UI is real.
+    expect(find.bySemanticsLabel('Loading chats'), findsOneWidget);
+    expect(find.text('Unread'), findsOneWidget);
+    expect(find.text('Mingle Community'), findsOneWidget);
+    gate.complete();
+    await settle(t);
+    expect(find.bySemanticsLabel('Loading chats'), findsNothing);
+    expect(find.text('Mingle Community'), findsOneWidget);
   });
 
   testWidgets('chats: filters, search and the + invite button', (t) async {

@@ -56,8 +56,34 @@ class ApiClient {
       ? backupBaseUrl!
       : baseUrl;
 
-  Future<ApiResponse> get(String path, {Map<String, dynamic>? query}) =>
-      _send('GET', path, query: query);
+  /// GETs currently on the wire, keyed by path + query. Two callers asking for
+  /// the same thing at the same moment share one request (screens that mount
+  /// together, e.g. Chats and its requests badge, would otherwise both fetch).
+  final Map<String, Future<ApiResponse>> _inFlightGets = {};
+
+  /// Requests actually sent, by `METHOD /path` with ids collapsed to `:id`.
+  /// Counts attempts to the server, not callers served; never holds tokens,
+  /// bodies or query values. For tests and local measurement.
+  final Map<String, int> requestCounts = {};
+
+  Future<ApiResponse> get(String path, {Map<String, dynamic>? query}) {
+    final key = '$path?${_queryKey(query)}';
+    // Block body on purpose: `whenComplete` waits on a returned Future, and
+    // `remove` would hand back this very request.
+    return _inFlightGets[key] ??= _send('GET', path, query: query).whenComplete(
+      () {
+        _inFlightGets.remove(key);
+      },
+    );
+  }
+
+  static String _queryKey(Map<String, dynamic>? query) {
+    if (query == null) return '';
+    final keys = query.keys.where((k) => query[k] != null).toList()..sort();
+    return keys.map((k) => '$k=${query[k]}').join('&');
+  }
+
+  static final _idSegment = RegExp(r'/[A-Za-z0-9_-]{16,}');
   Future<ApiResponse> post(String path, {Object? body}) =>
       _send('POST', path, body: body);
   Future<ApiResponse> put(String path, {Object? body}) =>
@@ -73,6 +99,10 @@ class ApiClient {
     Object? body,
     bool isRetry = false,
   }) async {
+    if (!isRetry) {
+      final shape = path.replaceAll(_idSegment, '/:id');
+      requestCounts.update('$method $shape', (n) => n + 1, ifAbsent: () => 1);
+    }
     final token = await tokenProvider(forceRefresh: isRetry);
     if (token == null) {
       throw const AppException(

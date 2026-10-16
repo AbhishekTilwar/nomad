@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart' show CupertinoDatePickerMode;
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -348,10 +349,18 @@ class _CreateViewState extends State<_CreateView> {
   }
 
   static const _steps = <(String, String, String)>[
-    ('🎯', 'What\'s the plan?', 'Pick a vibe and give it a name. A description is optional.'),
+    (
+      '🎯',
+      'What\'s the plan?',
+      'Pick a vibe and give it a name. A description is optional.',
+    ),
     ('🗓️', 'When & where?', 'Set the time and drop a pin so people find you.'),
     ('👥', 'Who\'s it for?', 'Group size, cost and how people get in.'),
-    ('✨', 'Finishing touches', 'All optional, but a photo and a clear meeting spot help people say yes.'),
+    (
+      '✨',
+      'Finishing touches',
+      'All optional, but a photo and a clear meeting spot help people say yes.',
+    ),
   ];
 
   void _next(CreateActivityController c) {
@@ -403,7 +412,11 @@ class _CreateViewState extends State<_CreateView> {
     );
   }
 
-  Widget _wizard(BuildContext context, CreateActivityController c, ThemeData t) {
+  Widget _wizard(
+    BuildContext context,
+    CreateActivityController c,
+    ThemeData t,
+  ) {
     final last = _step == _steps.length - 1;
     final (emoji, title, subtitle) = _steps[_step];
     return Column(
@@ -521,7 +534,9 @@ class _CreateViewState extends State<_CreateView> {
         Container(
           padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
           decoration: BoxDecoration(
-            border: Border(top: BorderSide(color: t.colorScheme.outlineVariant)),
+            border: Border(
+              top: BorderSide(color: t.colorScheme.outlineVariant),
+            ),
           ),
           child: Row(
             children: [
@@ -551,7 +566,11 @@ class _CreateViewState extends State<_CreateView> {
     );
   }
 
-  Widget _stepBody(BuildContext context, CreateActivityController c, ThemeData t) {
+  Widget _stepBody(
+    BuildContext context,
+    CreateActivityController c,
+    ThemeData t,
+  ) {
     final err = c.errors;
     const gap = SizedBox(height: 16);
     Widget section(String s) => Padding(
@@ -759,11 +778,12 @@ class _CreateViewState extends State<_CreateView> {
                 padding: const EdgeInsets.only(bottom: 8),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(AppRadius.md),
-                  child: Image.network(
-                    c.coverImageUrl!,
+                  child: CachedNetworkImage(
+                    imageUrl: c.coverImageUrl!,
                     height: 140,
                     width: double.infinity,
                     fit: BoxFit.cover,
+                    memCacheWidth: 1000,
                   ),
                 ),
               ),
@@ -843,7 +863,10 @@ class _CategoryTile extends StatelessWidget {
             child: ConstrainedBox(
               constraints: const BoxConstraints(minHeight: 46),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [

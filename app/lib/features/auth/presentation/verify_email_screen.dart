@@ -25,7 +25,8 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     super.initState();
     final error = context.read<AuthRepository>().takeVerificationSendError();
     if (error != null) {
-      _message = 'We couldn\'t send the verification email: $error '
+      _message =
+          'We couldn\'t send the verification email: $error '
           'Tap "Resend email" to try again.';
     }
   }
@@ -106,9 +107,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
             child: Text(
               _message!,
               textAlign: TextAlign.center,
-              style: t.textTheme.bodyMedium?.copyWith(
-                color: context.inkMuted,
-              ),
+              style: t.textTheme.bodyMedium?.copyWith(color: context.inkMuted),
             ),
           ),
         ],

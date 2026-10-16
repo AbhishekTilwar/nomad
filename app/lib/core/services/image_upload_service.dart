@@ -116,7 +116,15 @@ class FirebaseImageUploadService implements ImageUploadService {
     };
     final ref = _storage.ref('$folder/${_randomName()}.jpg');
     try {
-      await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
+      await ref.putData(
+        bytes,
+        SettableMetadata(
+          contentType: 'image/jpeg',
+          // The name is random and never reused, so the bytes behind this URL
+          // never change: let devices and CDNs keep it for a year.
+          cacheControl: 'public, max-age=31536000, immutable',
+        ),
+      );
       return await ref.getDownloadURL();
     } on FirebaseException {
       throw const AppException(

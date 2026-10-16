@@ -1,6 +1,6 @@
 # Nomad Mingle public website
 
-A lightweight, static showcase plus public Privacy Policy and Delete Account pages. It uses the app's bundled Nomad Mingle logo assets, Inter font files and brand palette. There are no runtime dependencies or tracking scripts.
+A lightweight, static showcase plus public Privacy Policy, Child Safety Standards and Delete Account pages. It uses the app's bundled Nomad Mingle logo assets, Inter font files and brand palette. There are no runtime dependencies or tracking scripts.
 
 ## Local build
 
@@ -11,7 +11,7 @@ npm run build
 python3 -m http.server 8000 --directory dist
 ```
 
-Open `http://localhost:8000`. The public pages are available at `/privacy-policy` and `/delete-account` (Vercel clean URLs are enabled).
+Open `http://localhost:8000`. The public pages are available at `/privacy-policy`, `/child-safety` and `/delete-account` (Vercel clean URLs are enabled).
 
 ## Deploy to Vercel
 
@@ -21,6 +21,7 @@ The public URLs will be:
 
 - `https://<your-domain>/`
 - `https://<your-domain>/privacy-policy`
+- `https://<your-domain>/child-safety` (the CSAE standards URL for Play Console's "Safety standards URL" field)
 - `https://<your-domain>/delete-account`
 
 ## Required legal launch work

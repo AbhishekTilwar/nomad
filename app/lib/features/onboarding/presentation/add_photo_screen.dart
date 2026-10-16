@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -160,10 +161,11 @@ class _PhotoTile extends StatelessWidget {
                   fit: StackFit.expand,
                   children: [
                     if (url != null)
-                      Image.network(
-                        url!,
+                      CachedNetworkImage(
+                        imageUrl: url!,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => const _TileIcon(),
+                        memCacheWidth: 600,
+                        errorWidget: (_, _, _) => const _TileIcon(),
                       )
                     else
                       const _TileIcon(),

@@ -160,7 +160,19 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
         builder: (context, _) {
           switch (_c.status) {
             case ChatsListStatus.loading:
-              return LoadingSkeleton.list();
+              // Only the plan rows wait on the network; the filters and the
+              // pinned Community chat are available straight away.
+              return Column(
+                children: [
+                  _filterRow(),
+                  if (_filter == _ChatFilter.all ||
+                      _filter == _ChatFilter.unread)
+                    _PinnedCommunityTile(
+                      onlyUnread: _filter == _ChatFilter.unread,
+                    ),
+                  const Expanded(child: _ChatRowsSkeleton()),
+                ],
+              );
             case ChatsListStatus.error:
               return ErrorState(
                 title: 'Couldn\'t load your chats',
@@ -277,6 +289,62 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
       onAction: () => context.go('/explore'),
     );
   }
+}
+
+/// Placeholder rows with the same geometry as [_ChatTile], so the list does
+/// not shift when the real rows arrive.
+class _ChatRowsSkeleton extends StatelessWidget {
+  const _ChatRowsSkeleton();
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: 'Loading chats',
+    child: ListView.builder(
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: 6,
+      itemBuilder: (context, _) => Padding(
+        padding: const EdgeInsets.only(left: 16),
+        child: Row(
+          children: [
+            const SizedBox(
+              width: 46,
+              height: 46,
+              child: LoadingSkeleton(height: 46, width: 46, radius: 23),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(0, 11, 16, 11),
+                decoration: BoxDecoration(
+                  border: Border(bottom: BorderSide(color: context.outline)),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      height: 20,
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: LoadingSkeleton(height: 14, width: 150),
+                      ),
+                    ),
+                    SizedBox(height: 1),
+                    SizedBox(
+                      height: 18,
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: LoadingSkeleton(height: 12, width: 230),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _FilterRow extends StatelessWidget {
